@@ -3,9 +3,7 @@
     exact_size_is_empty,
     extend_one,
     maybe_uninit_write_slice,
-    int_roundings,
-    const_mut_refs,
-    const_replace
+    int_roundings
 )]
 #[macro_use]
 extern crate tracing;
@@ -79,9 +77,9 @@ pub mod __macro_internals {
     // re-export for macro usage
     pub use {generic_array, static_casing, typenum};
 
-    use crate::Field;
     use crate::convert::{FromSpanner, SpannerEncode};
     use crate::error::ConvertError;
+    use crate::Field;
 
     #[inline]
     #[doc(hidden)]
@@ -113,28 +111,71 @@ mod private {
         fn to_key(self) -> ListValue;
     }
 
+    // TODO: rewrite spanner_rs_macros::impl_pk_sealed as a macro_rules macro,
+    // that way we can totally get rid of spanner_rs_macros
+    #[allow(dead_code)]
     macro_rules! impl_sealed_to_key {
+        ($($gen:ident: $index:tt),*) => {
+            const _: () = {
+                impl_sealed_to_key! {
+                    @INNER
+                    generics = [$($gen: $index),*],
+                    last = [],
+                    units = [],
+                }
+            };
+        };
         (
             @INNER
-            generics = [$($index:tt -> $gen:ident),* $(,)?],
-            units = [$($unit:ty,)*],
+            generics = [$gen:ident : $index:tt $(,)?],
+            last = [],
+            units = [$($unit:ty),* $(,)?],
         ) => {
-            impl<$($gen,)*> SealedToKey for ($($gen,)* $($unit)*)
+            // last impl, ends recursion
+            impl<$gen> SealedToKey for ($gen, $($unit,)*)
             where
                 $($gen: $crate::convert::IntoSpanner,)*
             {
                 fn to_key(self) -> ListValue {
                     ListValue {
                         values: vec![
-                            $(
-                                self.$index.into_spanner()
-                            ),*
+                            $(self.$index.into_spanner(),)*
                         ]
                     }
                 }
             }
         };
+        (
+            @INNER
+            generics = [$($gen:ident : $index:tt),* $(,)?],
+            last = [],
+            units = [$($unit:ty),* $(,)?],
+        ) => {
+            impl<$($gen,)* $last_gen> SealedToKey for ($($gen,)* $last_gen, $($unit)*)
+            where
+                $($gen: $crate::convert::IntoSpanner,)*
+                $last_gen: $crate::convert::IntoSpanner,
+            {
+                fn to_key(self) -> ListValue {
+                    ListValue {
+                        values: vec![
+                            $(self.$index.into_spanner(),)*
+                            self.$last_index.into_spanner(),
+                        ]
+                    }
+                }
+            }
+
+            impl_sealed_to_key! {
+                @INNER
+                generics = [$($gen: $index),*],
+                last = [],
+                units = [$($unit),* ()]
+            }
+        };
     }
+
+    // impl_sealed_to_key!(A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9, J: 10, K: 11, L: 12, M: 13, N: 14, O: 15, P: 16);
 
     // Spanner itself limits primary keys to 16 columns
     spanner_rs_macros::impl_pk_sealed!(SealedToKey; T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);

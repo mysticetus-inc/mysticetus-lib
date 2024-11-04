@@ -222,20 +222,6 @@ async fn upload_body_inner(
     ok_resp.json().await.map_err(Error::from)
 }
 
-/// Helper type that urlencodes the string during serialization.
-/// Actual encoding defers to [`urlencoding::Encoded`].
-struct Encoded<'a>(&'a str);
-
-impl Serialize for Encoded<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        // use the actual urlencoding type when serializing
-        serializer.collect_str(&urlencoding::Encoded(self.0.as_bytes()))
-    }
-}
-
 /// Helper type for using either a parsed [`Mime`], or
 /// just defering to a basic [`&'static str`] or [`String`] mime type.
 pub enum MimeOrString {

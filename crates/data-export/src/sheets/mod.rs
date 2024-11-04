@@ -12,7 +12,7 @@ pub(crate) struct BaseSheet<'xlsx> {
     pub(crate) col_sums: Vec<ColSums>,
 }
 
-enum MaybeOwnedSheet<'xlsx> {
+pub(crate) enum MaybeOwnedSheet<'xlsx> {
     Ref(&'xlsx mut rust_xlsxwriter::Worksheet),
     Owned(rust_xlsxwriter::Worksheet),
 }

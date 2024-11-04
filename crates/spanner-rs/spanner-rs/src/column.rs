@@ -3,14 +3,14 @@ use crate::queryable::Queryable;
 use crate::ty::SpannerType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Column {
+pub struct Column<'a> {
     pub index: usize,
-    pub name: &'static str,
-    pub ty: &'static crate::ty::Type,
+    pub name: &'a str,
+    pub ty: &'a crate::ty::Type,
     pub nullable: bool,
 }
 
-impl Column {
+impl Column<'static> {
     pub const fn new<T: SpannerEncode>(index: usize, name: &'static str) -> Self {
         Self {
             index,

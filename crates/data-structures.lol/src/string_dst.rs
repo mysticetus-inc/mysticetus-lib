@@ -16,7 +16,7 @@ pub trait StringDst {
     /// Gets the length of the underlying dst, in bytes.
     fn len(&self) -> usize;
 
-    /// Checks if the underlying dst is empty.    
+    /// Checks if the underlying dst is empty.
     #[inline]
     fn is_empty(&self) -> bool {
         self.len() == 0
