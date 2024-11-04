@@ -2,7 +2,7 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use http::{Request, header};
+use http::{header, Request};
 use tonic::transport::Channel;
 use tower::{Layer, Service};
 
@@ -36,7 +36,7 @@ macro_rules! user_agent {
 pub type BoxedService<Req, Resp, Err, Fut> =
     Pin<Box<dyn Service<Req, Response = Resp, Error = Err, Future = Fut>>>;
 
-/// A bare channel with no attached scopes.
+/// A bare channel, authenticated to a [Scope] determined by the internal [Auth]
 #[derive(Debug, Clone)]
 pub struct AuthChannel<Svc = Channel> {
     svc: Svc,
@@ -202,6 +202,33 @@ impl<Svc> AuthChannel<Svc> {
     }
 }
 
+#[inline]
+fn make_future_state<Svc, Body>(
+    svc: &mut Svc,
+    auth: &Auth,
+    mut req: Request<Body>,
+) -> future::State<Svc, Body>
+where
+    Svc: Service<Request<Body>>,
+    Svc::Future: Unpin,
+    Svc::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    // Try and get an existing non-expired token to skip a step.
+    match auth.get_header() {
+        GetHeaderResult::Cached(header) => {
+            req.headers_mut().insert(header::AUTHORIZATION, header);
+
+            future::State::MakingRequest {
+                future: Service::call(svc, req),
+            }
+        }
+        GetHeaderResult::Refreshing(future) => future::State::GettingToken {
+            future,
+            req: Some(req),
+        },
+    }
+}
+
 impl<Svc, Body> Service<Request<Body>> for AuthChannel<Svc>
 where
     Svc: Service<Request<Body>> + Clone,
@@ -216,28 +243,39 @@ where
         Service::poll_ready(&mut self.svc, cx).map_err(|e| Error::Transport(e.into()))
     }
 
-    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         // see docs on `clone_parts` as to why this is needed
         let mut new_self = self.clone_parts();
 
-        // Try and get an existing non-expired token to skip a step.
-        let state = match new_self.auth.get_header() {
-            GetHeaderResult::Cached(header) => {
-                req.headers_mut().insert(header::AUTHORIZATION, header);
-
-                future::State::MakingRequest {
-                    future: Service::call(&mut new_self.svc, req),
-                }
-            }
-            GetHeaderResult::Refreshing(future) => future::State::GettingToken {
-                future,
-                req: Some(req),
-            },
-        };
-
         future::AuthFuture {
-            state,
+            state: make_future_state(&mut new_self.svc, &new_self.auth, req),
             channel: new_self,
+        }
+    }
+}
+
+impl<'a, Svc, Body> Service<Request<Body>> for &'a AuthChannel<Svc>
+where
+    &'a Svc: Service<Request<Body>>,
+    <&'a Svc as Service<Request<Body>>>::Future: Unpin,
+    <&'a Svc as Service<Request<Body>>>::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    type Response = <&'a Svc as Service<Request<Body>>>::Response;
+    type Error = Error;
+    type Future = future::AuthFuture<&'a Svc, Body>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Service::poll_ready(&mut &self.svc, cx).map_err(|e| Error::Transport(e.into()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        // Try and get an existing non-expired token to skip a step.
+        future::AuthFuture {
+            state: make_future_state(&mut &self.svc, &self.auth, req),
+            channel: AuthChannel {
+                svc: &self.svc,
+                auth: self.auth.clone(),
+            },
         }
     }
 }

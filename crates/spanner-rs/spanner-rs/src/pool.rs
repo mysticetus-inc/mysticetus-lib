@@ -17,17 +17,16 @@ const MAX_SESSIONS: usize = 100;
 
 static POOL_DEBUG: LazyLock<bool> = LazyLock::new(|| std::env::var("POOL_DEBUG").is_ok());
 
-pub struct Session {
+pub struct Session<'a> {
     // expected to be Some until Drop
-    session: Option<Borrowed<'static, WrappedSession>>,
+    session: Option<Borrowed<'a, WrappedSession>>,
     // hold onto the a clone of the session name separately, that way we can access it without
     // having to unwrap the Option
     session_name: Arc<str>,
-    pool: &'static SessionPool,
     client: Client,
 }
 
-impl fmt::Debug for Session {
+impl fmt::Debug for Session<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.session.as_ref() {
             Some(inner) => inner.session.fmt(f),
@@ -39,7 +38,7 @@ impl fmt::Debug for Session {
     }
 }
 
-impl Session {
+impl Session<'_> {
     pub fn name(&self) -> &str {
         &self.session_name
     }
@@ -48,17 +47,11 @@ impl Session {
         &self.session_name
     }
 
-    pub fn delete(mut self) {
-        if let Some(session) = self.session.take() {
-            spawn_delete_session(self.client.grpc(), session.remove().session);
-        }
-    }
-
     // let Drop do the work
     pub fn finish(self) {}
 }
 
-impl Drop for Session {
+impl Drop for Session<'_> {
     fn drop(&mut self) {
         if let Some(session) = self.session.take() {
             // if we couldn't return the session, try and delete it instead
@@ -179,19 +172,18 @@ impl SessionPool {
         self.batch_create_size.store(b, Ordering::SeqCst);
     }
 
-    pub fn get_session(&'static self, client: &Client) -> Option<Session> {
+    pub fn get_session(&self, client: &Client) -> Option<Session<'_>> {
         self.sessions.borrow().map(|session| Session {
             session_name: Arc::clone(&session.name),
             session: Some(session),
             client: client.clone(),
-            pool: self,
         })
     }
 
-    pub async fn get_existing_session(
-        &'static self,
+    pub async fn get_existing_session<'a>(
+        &'a self,
         client: &Client,
-    ) -> crate::Result<Option<Session>> {
+    ) -> crate::Result<Option<Session<'a>>> {
         // lazily create a scoped client, since it requires cloning a couple Arc's and a string (for
         // the Database).
         let mut scoped = None;
@@ -213,7 +205,6 @@ impl SessionPool {
                     return Ok(Some(Session {
                         session_name: Arc::clone(&session.name),
                         session: Some(session),
-                        pool: self,
                         client: client.clone(),
                     }));
                 }
@@ -223,11 +214,11 @@ impl SessionPool {
         }
     }
 
-    pub async fn wait_for_session(
-        &'static self,
-        timeout: timestamp::Duration,
+    pub async fn wait_for_session<'a>(
+        &'a self,
         client: &Client,
-    ) -> Option<Session> {
+        timeout: timestamp::Duration,
+    ) -> Option<Session<'a>> {
         let session = match self.sessions.borrow_or_wait_with_timeout(timeout) {
             Ok(session) => session,
             Err(fut) => match fut.await {
@@ -239,12 +230,14 @@ impl SessionPool {
         Some(Session {
             session_name: Arc::clone(&session.name),
             session: Some(session),
-            pool: self,
             client: client.clone(),
         })
     }
 
-    pub async fn get_or_create_session(&'static self, client: &Client) -> crate::Result<Session> {
+    pub async fn get_or_create_session<'a>(
+        &'a self,
+        client: &Client,
+    ) -> crate::Result<Session<'a>> {
         if let Some(sess) = self.get_session(client) {
             return Ok(sess);
         }
@@ -252,7 +245,7 @@ impl SessionPool {
         self.batch_create_sessions(self.batch_create_size.load(Ordering::SeqCst), client, None)
             .await?;
 
-        self.wait_for_session(timestamp::Duration::from_seconds(5), client)
+        self.wait_for_session(client, timestamp::Duration::from_seconds(5))
             .await
             .ok_or_else(|| SessionError::TimedOutWaitingForSession.into())
     }
@@ -426,8 +419,8 @@ pub(crate) mod queue {
     use std::task::{Context, Poll};
 
     use crossbeam::queue::ArrayQueue;
-    use tokio::sync::Notify;
     use tokio::sync::futures::Notified;
+    use tokio::sync::Notify;
 
     pub(crate) struct Borrowed<'a, T> {
         item: T,
@@ -523,10 +516,13 @@ pub(crate) mod queue {
             timeout: timestamp::Duration,
         ) -> Result<Borrowed<'_, T>, WaitForBorrowedTimeout<'_, T>> {
             self.borrow().ok_or_else(|| {
-                tokio::time::timeout(timeout.into(), WaitForBorrowed {
-                    notified: self.notify_new.notified(),
-                    queue: self,
-                })
+                tokio::time::timeout(
+                    timeout.into(),
+                    WaitForBorrowed {
+                        notified: self.notify_new.notified(),
+                        queue: self,
+                    },
+                )
             })
         }
 
