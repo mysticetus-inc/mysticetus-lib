@@ -728,7 +728,7 @@ macro_rules! __table_impls {
         impl $crate::queryable::Queryable for $table {
             type NumColumns = $crate::__macro_internals::typenum::U<{ <[()]>::len(&[$($crate::__replace_with_unit!($field),)*]) }>;
 
-            const COLUMNS: $crate::__macro_internals::generic_array::GenericArray<$crate::column::Column, Self::NumColumns> = $crate::__macro_internals::generic_array::GenericArray::from_array([
+            const COLUMNS: $crate::__macro_internals::generic_array::GenericArray<$crate::column::Column<'static>, Self::NumColumns> = $crate::__macro_internals::generic_array::GenericArray::from_array([
                 $(
                     $crate::column::Column::new::<$($column_ty)*>($col_idx, $field_name),
                 )*
