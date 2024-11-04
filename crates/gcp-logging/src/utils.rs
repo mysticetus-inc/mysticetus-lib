@@ -5,7 +5,7 @@ use std::io;
 use serde::ser::SerializeMap;
 use serde::Serializer;
 
-use crate::{LogOptions, TryGetBacktrace};
+use crate::TryGetBacktrace;
 
 pub(crate) struct SerializeDebug<'a, F: ?Sized>(pub &'a F);
 

@@ -1,10 +1,9 @@
-use std::fmt;
 
-use http::{HeaderMap, HeaderName, HeaderValue};
+use http::{HeaderMap, HeaderName};
 use http_body::Body;
 
 use crate::http_request::fields::*;
-use crate::http_request::{HttpRequest, TRACE_CTX_HEADER};
+use crate::http_request::TRACE_CTX_HEADER;
 use crate::subscriber::{RequestTrace, SubscriberHandle};
 
 pub const SPAN_FIELD_NAME: &str = "logging.googleapis.com/spanId";

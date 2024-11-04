@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::sync::atomic::AtomicBool;
-use std::thread::LocalKey;
 
 use sharded_slab::{Clear, Pool};
 

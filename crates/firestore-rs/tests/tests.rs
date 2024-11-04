@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
-use firestore_rs::{Firestore, Value};
-use rand::Rng;
+use firestore_rs::Firestore;
 use rand::rngs::ThreadRng;
+use rand::Rng;
 
 async fn get_client() -> Firestore {
-    Firestore::new("mysticetus-oncloud")
+    Firestore::new("mysticetus-oncloud", gcp_auth_channel::Scope::Firestore)
         .await
         .expect("should be able to build client")
 }
@@ -343,7 +341,9 @@ async fn test_query() -> firestore_rs::Result<()> {
 
     use futures::StreamExt;
 
-    let client = firestore_rs::Firestore::new("winged-citron-305220").await?;
+    let client =
+        firestore_rs::Firestore::new("winged-citron-305220", gcp_auth_channel::Scope::Firestore)
+            .await?;
 
     let mut result_stream = client
         .collection("videos")

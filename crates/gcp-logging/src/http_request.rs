@@ -1,7 +1,7 @@
 use std::fmt;
-use std::num::{FpCategory, NonZeroU64};
+use std::num::FpCategory;
 
-use http::{HeaderName, HeaderValue, Method, StatusCode, Uri, Version, header};
+use http::{HeaderName, HeaderValue, Method, StatusCode, Version, header};
 use http_body::Body;
 use serde::ser::SerializeMap;
 use timestamp::Duration;

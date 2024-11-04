@@ -1,11 +1,7 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt;
 use std::io::Stdout;
 use std::num::NonZeroU64;
-use std::ops::{Deref, DerefMut};
-use std::sync::{Arc, OnceLock};
-use std::thread::LocalKey;
+use std::sync::Arc;
 
 use dashmap::DashMap;
 use http::{HeaderValue, StatusCode};
@@ -13,11 +9,9 @@ use http_body::Body;
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use timestamp::Duration;
-use tracing::level_filters::LevelFilter;
 use tracing::span::Id;
-use tracing_subscriber::fmt::MakeWriter;
-use tracing_subscriber::layer::{Layered, SubscriberExt};
-use tracing_subscriber::{Layer, Registry, layer};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::Registry;
 
 use crate::env_filter::EnvFilter;
 use crate::http_request::{HttpRequest, TRACE_CTX_HEADER};

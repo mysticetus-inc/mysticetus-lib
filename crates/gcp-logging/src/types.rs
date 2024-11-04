@@ -5,8 +5,6 @@ use tracing::span::Id;
 use tracing_subscriber::fmt::{FmtContext, FormatFields};
 use tracing_subscriber::registry::LookupSpan;
 
-use crate::http_request::{HttpRequest, HttpRequestPayload};
-use crate::payload::AlertFound;
 use crate::span::SPAN_FIELD_NAME;
 use crate::subscriber::RequestTrace;
 use crate::trace_layer::{ActiveTraces, TraceHeader};

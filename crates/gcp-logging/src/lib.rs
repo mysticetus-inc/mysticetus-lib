@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::{fmt, io};
+use std::fmt;
 
 use dashmap::DashMap;
 use serde::ser::SerializeMap;
