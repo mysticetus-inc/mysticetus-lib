@@ -1,0 +1,33 @@
+[package]
+name = "pubsub-rs"
+version.workspace = true
+edition = "2021"
+
+[dependencies]
+bytes.workspace = true
+futures.workspace = true
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+http.workspace = true
+path-aware-serde = { path = "../path-aware-serde" }
+protos = { path = "../protos", features = ["pubsub"] }
+rand.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "parking_lot",
+    "time",
+] }
+tonic = { workspace = true, features = [
+    "transport",
+    "tls",
+    "tls-roots",
+    "tls-webpki-roots",
+] }
+net-utils = { path = "../net-utils", features = ["tonic"] }
+tracing.workspace = true
+pin-project-lite = "0.2.13"
+uuid = { workspace = true, features = ["v4"] }

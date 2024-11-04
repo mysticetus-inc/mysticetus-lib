@@ -1,0 +1,23 @@
+[package]
+name = "gcr"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { workspace = true, features = [] }
+tokio = { workspace = true, features = ["signal", "time", "fs", "macros"] }
+tower-layer = "0.3.2"
+tower-service = "0.3.2"
+tracing.workspace = true
+futures.workspace = true
+timestamp = { path = "../timestamp" }
+itoa.workspace = true
+rand.workspace = true
+
+reqwest = { workspace = true, optional = true }
+
+[features]
+default = ["reqwest"]
+reqwest = ["dep:reqwest"]

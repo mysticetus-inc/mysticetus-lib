@@ -1,0 +1,22 @@
+[package]
+name = "path-aware-serde"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { workspace = true, features = ["alloc", "derive", "rc"] }
+serde_json = { workspace = true, optional = true }
+serde-helpers = { path = "../serde-helpers" }
+schemars = { version = "0.8.11", optional = true, features = ["chrono"] }
+axum = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json.workspace = true
+
+
+[features]
+axum = ["dep:axum"]
+json = ["serde_json"]
+schemars = ["dep:schemars"]

@@ -1,0 +1,163 @@
+use gcp_auth_channel::{Auth, Scope};
+use reqwest::header;
+use shared::Shared;
+
+use crate::Error;
+
+/// A GCS client, scoped to a single bucket. Most methods only require a shared reference, at the
+/// cost of them requiring an external [`String`] buffer for URL formatting. See [`StorageClient`]
+/// for a version of this with an internal [`String`] buffer.
+#[derive(Debug, Clone)]
+pub struct Client {
+    pub(crate) client: reqwest::Client,
+    pub(crate) auth: Auth,
+}
+
+impl Client {
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        let auth = Auth::new(project_id, scope).await?;
+        let client = reqwest::Client::new();
+        Ok(Self { client, auth })
+    }
+
+    pub const fn into_bucket(self, bucket: Shared<str>) -> BucketClient {
+        BucketClient {
+            client: self,
+            bucket,
+            url_buffer: String::new(),
+        }
+    }
+
+    pub fn from_parts(client: reqwest::Client, auth: Auth) -> Self {
+        Self { client, auth }
+    }
+
+    pub fn bucket(&self, bucket: impl Into<Shared<str>>) -> BucketClient {
+        self.clone().into_bucket(bucket.into())
+    }
+
+    pub fn auth(&self) -> &Auth {
+        &self.auth
+    }
+
+    pub async fn delete(
+        &self,
+        url_buf: &mut String,
+        bucket: &str,
+        path: &str,
+    ) -> Result<(), Error> {
+        let auth_header = self.auth.get_header().await?;
+
+        crate::url::UrlBuilder::new(bucket)
+            .name(path)
+            .format_into(url_buf);
+
+        let request = self
+            .client
+            .delete(url_buf.as_str())
+            .header(header::AUTHORIZATION, auth_header)
+            .build()?;
+
+        crate::execute_and_validate_with_backoff(&self.client, request).await?;
+        Ok(())
+    }
+
+    pub fn read<'a>(&'a self, bucket: &str, path: &str) -> crate::ReadBuilder<'a> {
+        crate::ReadBuilder::new(self, bucket, path)
+    }
+
+    pub fn write<'a>(&'a self, bucket: &str, path: &'a str) -> crate::WriteBuilder<'a, ()> {
+        crate::WriteBuilder::new(self, bucket, path)
+    }
+
+    pub fn list<'a>(&'a self, bucket: &str) -> crate::ListBuilder<'a> {
+        crate::ListBuilder::new(self, bucket)
+    }
+
+    pub fn rewrite<'a>(
+        &'a self,
+        src_bucket: &'a str,
+        src: &'a str,
+    ) -> crate::rewrite::RewriteToBuilder<'a> {
+        crate::rewrite::RewriteToBuilder::new(&self, src_bucket, src, None)
+    }
+}
+
+/// A GCS client, scoped to a single bucket. Unlike [`SharedClient`], methods require
+/// unique/mutable references, since it contains a [`String`] buffer internally.
+#[derive(Debug, Clone)]
+pub struct BucketClient {
+    client: Client,
+    bucket: Shared<str>,
+    url_buffer: String,
+}
+
+impl BucketClient {
+    pub fn new_bucket(&self, bucket: Shared<str>) -> Self {
+        Self {
+            client: self.client.clone(),
+            bucket,
+            url_buffer: String::new(),
+        }
+    }
+
+    pub fn auth(&self) -> &Auth {
+        &self.client.auth
+    }
+
+    pub fn from_parts(client: reqwest::Client, auth: Auth, bucket: Shared<str>) -> Self {
+        Self {
+            client: Client::from_parts(client, auth),
+            bucket,
+            url_buffer: String::new(),
+        }
+    }
+
+    pub async fn new<B>(
+        project_id: &'static str,
+        bucket_name: B,
+        scope: Scope,
+    ) -> Result<Self, Error>
+    where
+        Shared<str>: From<B>,
+    {
+        Client::new(project_id, scope)
+            .await
+            .map(|client| client.into_bucket(From::from(bucket_name)))
+    }
+
+    pub async fn delete(&mut self, path: &str) -> Result<(), Error> {
+        self.client
+            .delete(&mut self.url_buffer, &self.bucket, path)
+            .await
+    }
+
+    pub async fn delete_opt(&mut self, path: &str) -> Result<bool, Error> {
+        match self.delete(path).await {
+            Ok(()) => Ok(true),
+            Err(Error::NotFound(_)) => Ok(false),
+            Err(other) => Err(other),
+        }
+    }
+
+    pub fn read<'a>(&'a mut self, path: &str) -> crate::ReadBuilder<'a> {
+        crate::ReadBuilder::new_buf(&self.client, &mut self.url_buffer, &self.bucket, path)
+    }
+
+    pub fn write<'a>(&'a mut self, path: &'a str) -> crate::WriteBuilder<'a, ()> {
+        crate::WriteBuilder::new_buf(&self.client, &mut self.url_buffer, &self.bucket, path)
+    }
+
+    pub fn list<'a>(&'a mut self) -> crate::ListBuilder<'a> {
+        crate::ListBuilder::new_buf(&self.client, &mut self.url_buffer, &self.bucket)
+    }
+
+    pub fn rewrite<'a>(&'a mut self, src: &'a str) -> crate::rewrite::RewriteToBuilder<'a> {
+        crate::rewrite::RewriteToBuilder::new(
+            &self.client,
+            &self.bucket,
+            src,
+            Some(&mut self.url_buffer),
+        )
+    }
+}

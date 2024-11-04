@@ -1,0 +1,17 @@
+[package]
+name = "serde-helpers"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+compact_str = { version = "0.6.0", features = ["serde", "bytes"] }
+# data-structures = { path = "../data-structures" }
+rustversion = "1.0.9"
+serde.workspace = true
+static_assertions = "1.1.0"
+deepsize = { version = "0.2.0", features = ["derive"], optional = true }
+
+[features]
+deepsize = ["dep:deepsize"]

@@ -1,0 +1,23 @@
+[package]
+name = "net-utils"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+tonic = { workspace = true, optional = true }
+tower = { workspace = true, features = ["retry"], optional = true }
+pin-project-lite.workspace = true
+bytes.workspace = true
+rand.workspace = true
+tracing.workspace = true
+timestamp = { path = "../timestamp" }
+http.workspace = true
+
+
+[features]
+tower = ["dep:tower"]
+tonic = ["dep:tonic", "tower"]

@@ -1,0 +1,21 @@
+[package]
+name = "spanner-rs-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitflags = "1.3.2"
+quote = "1.0.23"
+syn = "1.0.107"
+timestamp = { path = "../../timestamp" }
+serde_json.workspace = true
+convert_case = "0.6.0"
+itoa.workspace = true
+deluxe = "0.4.2"
+darling = "0.14.3"
+proc-macro2 = "1.0.51"

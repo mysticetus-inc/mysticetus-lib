@@ -1,0 +1,121 @@
+use bytes::Bytes;
+use gcp_auth_channel::{Auth, Scope};
+use tiny_skia::Pixmap;
+
+use crate::coords::Zoom;
+use crate::tiles::Tile;
+use crate::{Error, MapStyle};
+
+const TILE_CACHE_BUCKET: &str = "mysticetus-mapbox-tile-cache";
+
+const TILE_EXT: &str = ".png";
+
+#[derive(Debug, Clone)]
+pub struct TileCache {
+    gcs: small_gcs::BucketClient,
+}
+
+impl TileCache {
+    pub fn from_client(gcs: small_gcs::BucketClient) -> Self {
+        Self { gcs }
+    }
+
+    pub async fn invalidate_cache(_gcs: small_gcs::BucketClient) -> Result<(), small_gcs::Error> {
+        todo!(
+            "need to implement bucket creating and deletion, that's way simpler than listing and \
+             deleting each cached tile one by one"
+        )
+    }
+
+    pub fn from_parts(client: reqwest::Client, auth: Auth) -> Self {
+        Self::from_client(small_gcs::BucketClient::from_parts(
+            client,
+            auth,
+            TILE_CACHE_BUCKET.into(),
+        ))
+    }
+
+    pub async fn new(scope: Scope) -> Result<Self, Error> {
+        let gcs =
+            small_gcs::BucketClient::new("mysticetus-oncloud", TILE_CACHE_BUCKET, scope).await?;
+
+        Ok(Self { gcs })
+    }
+
+    pub async fn try_load_tile(
+        &mut self,
+        style: MapStyle,
+        zoom: Zoom,
+        tile: Tile,
+    ) -> Result<Option<(Tile, Pixmap)>, Error> {
+        let path = build_tile_path(style, zoom, tile);
+
+        let bytes = match self.gcs.read(&path).content_to_bytes_opt(1234).await? {
+            Some(bytes) => bytes,
+            None => return Ok(None),
+        };
+
+        let map = Pixmap::decode_png(&bytes)?;
+
+        Ok(Some((tile, map)))
+    }
+
+    pub fn upload_tile(&self, style: MapStyle, zoom: Zoom, tile: Tile, png_bytes: Bytes) {
+        let mut gcs = self.gcs.clone();
+
+        tokio::spawn(async move {
+            let path = build_tile_path(style, zoom, tile);
+
+            if let Err(error) = gcs
+                .write(&path)
+                .content_len(png_bytes.len() as u64)
+                .mime_type(mime_guess::mime::IMAGE_PNG)
+                .upload(png_bytes)
+                .await
+            {
+                error!(message = "whoops lmao", ?error);
+            } else {
+                info!(message = "added tile to the GCS cache", path);
+            }
+        });
+    }
+}
+
+fn build_tile_path(style: MapStyle, zoom: Zoom, tile: Tile) -> String {
+    let mut buf = itoa::Buffer::new();
+
+    const PATH_SEP_LEN: usize = 4;
+    const UNDERSCORE_SEP_LEN: usize = 3;
+
+    let style_str = style.as_str();
+
+    let component_len =
+        crate::sum_n_digits(&[zoom.as_mapbox_zoom(), tile.x, tile.y]) + style_str.len();
+
+    let cap = (2 * component_len) + PATH_SEP_LEN + UNDERSCORE_SEP_LEN + TILE_EXT.len();
+
+    let mut dst = String::with_capacity(cap);
+
+    macro_rules! push_parts {
+        ($sep:literal => $trailing:expr) => {
+            // leading path
+            dst.push_str(style_str);
+            dst.push_str($sep);
+            dst.push_str(buf.format(zoom.as_mapbox_zoom()));
+            dst.push_str($sep);
+            dst.push_str(buf.format(tile.x));
+            dst.push_str($sep);
+            dst.push_str(buf.format(tile.y));
+            dst.push_str($trailing);
+        };
+    }
+
+    // path (+ a trailing /)
+    push_parts!("/" => "/");
+
+    // filename w/ extension
+    push_parts!("_" => TILE_EXT);
+
+    debug_assert_eq!(dst.len(), cap);
+    dst
+}

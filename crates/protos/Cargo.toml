@@ -1,0 +1,77 @@
+[package]
+name = "protos"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# doctests need to be disabled, since the generated code usually includes
+# comments that are flagged as doctests, but arent, causing tons of test
+# failure warnings.
+doctest = false
+# built docs also need to be disabled, there's lots of invalid comments that
+# cause rustdoc panics.
+doc = false
+
+[dependencies]
+bytes = { workspace = true, features = ["serde"] }
+prost.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, optional = true }
+tonic = { workspace = true, optional = true }
+timestamp = { path = "../timestamp", optional = true }
+# type-mods = { path = "../type-mods", features = ["enum-str"] }
+
+[build-dependencies]
+tonic-build = { workspace = true, features = ["prost"] }
+
+
+[features]
+default = []
+# Common dependencies
+protobuf = ["timestamp"]
+iam = ["protobuf", "type", "tonic"]
+type = []
+longrunning = ["rpc"]
+api = ["protobuf"]
+rpc = ["protobuf", "tonic", "serde_json"]
+mysticetus-common = []
+mysticetus-config = ["mysticetus-validation", "mysticetus-common"]
+mysticetus-validation = ["protobuf", "mysticetus-common"]
+mysticetus-video = ["protobuf", "mysticetus-common"]
+mysticetus-video-rpc = ["mysticetus-video"]
+
+
+mysticetus = [
+    "mysticetus-config",
+    "mysticetus-validation",
+    "mysticetus-video",
+    "mysticetus-video-rpc",
+]
+
+# specific features
+bigquery = ["rpc"]
+firestore = ["rpc", "type"]
+firestore-admin = ["firestore", "longrunning"]
+monitoring = ["rpc", "api", "type"]
+logging = ["rpc", "api", "longrunning"]
+pubsub = ["rpc"]
+storage = ["iam", "rpc"]
+cloud-run = ["iam", "rpc", "longrunning", "api"]
+artifact-registry = ["longrunning", "iam", "rpc"]
+spanner = ["rpc"]
+spanner-admin-database = ["rpc", "longrunning", "iam"]
+spanner-admin-instance = ["rpc", "longrunning", "iam"]
+
+
+# Mostly used for generating all proto -> rust files at a time with:
+# 'cargo check --features full'
+full = [
+    "bigquery",
+    "firestore",
+    "firestore-admin",
+    "monitoring",
+    "logging",
+    "pubsub",
+]

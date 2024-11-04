@@ -1,0 +1,45 @@
+[package]
+name = "gcp-logging"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum.workspace = true
+bytes.workspace = true
+futures.workspace = true
+http.workspace = true
+http-body.workspace = true
+itoa.workspace = true
+ryu = "1.0.13"
+serde.workspace = true
+serde_json.workspace = true
+serde-helpers = { path = "../serde-helpers" }
+mime = "0.3.17"
+pin-project-lite.workspace = true
+path-aware-serde = { path = "../path-aware-serde" }
+timestamp = { path = "../timestamp" }
+tower.workspace = true
+tower-http = { version = "0.5.2", features = ["trace"] }
+tracing = { workspace = true, features = ["valuable"] }
+valuable = "0.1"
+tracing-subscriber = { workspace = true, features = [
+    "json",
+    "time",
+    "parking_lot",
+] }
+uuid = { workspace = true, features = ["serde", "v3", "v4", "v5"] }
+rand.workspace = true
+hex = "0.4.3"
+smallvec = { version = "1.13.2", features = [
+    "union",
+    "serde",
+    "const_new",
+    "const_generics",
+] }
+sharded-slab = "0.1.7"
+memchr = "2.7.2"
+fxhash = "0.2.1"
+dashmap = { version = "5.5.3", features = ["inline", "serde", "raw-api"] }
+anyhow = { version = "1.0.82", features = ["backtrace"] }

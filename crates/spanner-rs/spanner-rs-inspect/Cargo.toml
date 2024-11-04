@@ -1,0 +1,17 @@
+[package]
+name = "spanner-rs-inspect"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.70"
+clap = { version = "4.1.11", features = ["derive"] }
+# data-structures = { version = "0.0.0", path = "../../data-structures" }
+itoa.workspace = true
+serde = { workspace = true, features = ["derive"] }
+spanner-rs = { path = "../spanner-rs" }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["fs", "bytes", "parking_lot"] }
+typed-builder = "0.14.0"

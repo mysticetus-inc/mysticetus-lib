@@ -1,0 +1,28 @@
+[package]
+name = "longrunning"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+futures.workspace = true
+prost.workspace = true
+protos = { path = "../protos", features = ["longrunning"] }
+thiserror.workspace = true
+net-utils = { path = "../net-utils", features = ["tonic"] }
+
+pin-project-lite.workspace = true
+
+tokio-util.workspace = true
+
+tokio = { workspace = true, features = [
+    "sync",
+    "macros",
+    "time",
+    "parking_lot",
+] }
+tonic = { workspace = true, features = ["transport"] }
+
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+timestamp = { path = "../timestamp" }

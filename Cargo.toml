@@ -1,0 +1,72 @@
+[workspace]
+members = [
+    "crates/bigquery-rs",
+    "crates/cloud-storage-2",
+    "crates/data-export",
+    # "crates/data-structures",
+    # not included so everything builds, needs to be pulled out into its own repo
+    # or removed altogther
+    # "crates/enc-rs",
+    "crates/env-macros",
+    "crates/firestore-rs",
+    "crates/gcp-auth-channel",
+    "crates/gcp-logging",
+    "crates/gcr",
+    "crates/geo",
+    "crates/geojson",
+    "crates/geojson-derive",
+    "crates/longrunning",
+    "crates/map-render",
+    "crates/net-utils",
+    "crates/path-aware-serde",
+    "crates/protos",
+    "crates/pubsub-rs",
+    "crates/realtime-database",
+    "crates/rest-discovery",
+    "crates/serde-helpers",
+    "crates/small-gcs",
+    # not included so everything builds, may or may not complete
+    # "crates/spanner-rs/google-sql",
+    "crates/spanner-rs/spanner-rs-macros",
+    "crates/spanner-rs/spanner-rs-inspect",
+    "crates/static-manager",
+    "crates/timestamp",
+]
+
+
+[workspace.package]
+version = "0.0.0"
+
+[workspace.dependencies]
+tokio = "1.33.0"
+tokio-util = "0.7.12"
+axum = "0.7.5"
+base64 = "0.21.0"
+http = "1.1.0"
+http-body = "1.0.1"
+serde = "1.0.190"
+serde_json = "1.0.108"
+tonic = "0.12.1"
+tonic-build = "0.12.1"
+tower = "0.4.13"
+reqwest = "0.12.5"
+itoa = "1.0.9"
+ryu = "1"
+memchr = "2.7.4"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.17"
+thiserror = "1.0.50"
+rand = "0.8.5"
+pin-project-lite = "0.2.13"
+uuid = "1.5.0"
+futures = "0.3.29"
+gcp_auth = "0.12.2"
+bytes = "1.5.0"
+prost = "0.13.3"
+prost-build = "0.13.3"
+typenum = "1.17.0"
+time = "0.3.30"
+regex = "1.11.0"
+static-casing = { git = "https://github.com/mrudisel/static-casing" }
+owned-range-bounds = { git = "https://github.com/mrudisel/owned-range-bounds" }
+shared = { git = "https://github.com/mrudisel/shared" }

@@ -1,0 +1,27 @@
+[package]
+name = "geojson"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+geojson-derive = { path = "../geojson-derive" }
+path-aware-serde = { path = "../path-aware-serde" }
+serde = { workspace = true, features = ["derive", "rc"] }
+serde_json = { workspace = true, features = ["raw_value"] }
+timestamp = { path = "../timestamp" }
+uuid = { workspace = true, features = ["serde", "v3", "v4", "v5"] }
+geo = { path = "../geo" }
+itoa = "1.0.2"
+serde-helpers = { path = "../serde-helpers" }
+
+axum = { workspace = true, optional = true }
+
+[dev-dependencies]
+rand.workspace = true
+
+[features]
+default = ["geo-normal", "axum"]
+geo-normal = ["geo/normal"]
+axum = ["dep:axum", "path-aware-serde/axum"]

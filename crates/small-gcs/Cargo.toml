@@ -1,0 +1,33 @@
+[package]
+name = "small-gcs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytes.workspace = true
+# data-structures = { path = "../data-structures" }
+futures.workspace = true
+reqwest = { workspace = true, features = ["json", "stream"] }
+shared.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde-helpers = { path = "../serde-helpers" }
+tokio = { workspace = true, features = [
+    "sync",
+    "bytes",
+    "parking_lot",
+    "macros",
+] }
+timestamp = { path = "../timestamp" }
+net-utils = { path = "../net-utils" }
+serde_json.workspace = true
+gcp-auth-channel = { path = "../gcp-auth-channel" }
+thiserror.workspace = true
+urlencoding = "2.1"
+mime_guess = "2.0.4"
+itoa.workspace = true
+pin-project-lite.workspace = true
+base64 = "0.13.1"
+tokio-util = { version = "0.7.4", features = ["io", "io-util"] }
+percent-encoding = "2.2.0"

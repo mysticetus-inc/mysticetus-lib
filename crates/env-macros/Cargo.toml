@@ -1,0 +1,11 @@
+[package]
+name = "env-macros"
+version.workspace = true
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[features]
+default = []
+env-fallback-warn = []

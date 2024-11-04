@@ -1,0 +1,25 @@
+[package]
+name = "realtime-database"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-compression = { version = "0.3.12", features = ["brotli", "gzip", "tokio", "zlib"], default-features = false }
+bytes.workspace = true
+futures.workspace = true
+gcp_auth.workspace = true
+lazy_static = "1.4.0"
+log = "0.4.16"
+parking_lot = "0.12.0"
+path-aware-serde = { path = "../path-aware-serde" }
+reqwest = { workspace = true, features = ["blocking", "brotli", "deflate", "gzip", "json", "native-tls", "rustls-tls", "stream"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+timestamp = { path = "../timestamp" }
+tokio = { workspace = true, features = ["macros"] }
+tracing.workspace = true
+url = { version = "2.2.2", features = ["serde"], default-features = false }
+gcp-auth-channel = { path = "../gcp-auth-channel" }

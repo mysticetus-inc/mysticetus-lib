@@ -1,0 +1,12 @@
+[package]
+name = "data-export"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror.workspace = true
+# data-structures = { path = "../data-structures" }
+num-traits = "0.2.15"
+rust_xlsxwriter = { git = "https://github.com/mrudisel/rust_xlsxwriter" }

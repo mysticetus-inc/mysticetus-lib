@@ -1,0 +1,20 @@
+[package]
+name = "enc-rs"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytes = { workspace = true, features = ["serde"] }
+data-structures = { path = "../data-structures", features = ["small-str"] }
+memchr = "2.5.0"
+serde = { workspace = true, features = ["alloc", "derive", "rc"] }
+thiserror.workspace = true
+
+
+[features]
+backtrace = []
+
+[dev-dependencies]
+serde_json.workspace = true

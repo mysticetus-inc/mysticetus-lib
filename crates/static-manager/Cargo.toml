@@ -1,0 +1,30 @@
+[package]
+name = "static-manager"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { workspace = true, features = ["sync", "macros", "parking_lot"] }
+tracing.workspace = true
+gcp-auth-channel = { path = "../gcp-auth-channel", optional = true }
+firestore-rs = { path = "../firestore-rs", optional = true }
+bigquery-rs = { path = "../bigquery-rs", optional = true, default-features = false }
+pubsub-rs = { path = "../pubsub-rs", optional = true }
+realtime-database = { path = "../realtime-database", optional = true }
+reqwest = { workspace = true, features = ["json", "stream"], optional = true }
+small-gcs = { path = "../small-gcs", optional = true }
+
+[features]
+default = ["auth"]
+auth = ["gcp-auth-channel"]
+firestore = ["firestore-rs", "auth"]
+realtime-db = ["realtime-database", "auth"]
+bigquery-storage = ["auth", "bigquery-rs/storage"]
+bigquery-rest = ["auth", "bigquery-rs/rest"]
+pubsub = ["pubsub-rs", "auth"]
+reqwest = ["dep:reqwest"]
+small-gcs = ["dep:small-gcs", "auth", "reqwest"]
+
+full = ["auth", "firestore", "realtime-db", "bigquery-rest", "bigquery-storage", "pubsub", "reqwest", "small-gcs"]
