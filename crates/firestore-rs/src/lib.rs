@@ -395,7 +395,7 @@ mod tests {
 
     async fn get_client() -> &'static Firestore {
         async fn init() -> Firestore {
-            firestore::Firestore::new("winged-citron-305220")
+            firestore::Firestore::new("winged-citron-305220", gcp_auth_channel::Scope::Firestore)
                 .await
                 .expect("should be able to build client")
         }
@@ -600,7 +600,9 @@ mod tests {
 
         use futures::StreamExt;
 
-        let client = firestore::Firestore::new("winged-citron-305220").await?;
+        let client =
+            firestore::Firestore::new("winged-citron-305220", gcp_auth_channel::Scope::Firestore)
+                .await?;
 
         let mut result_stream = client
             .collection("videos")

@@ -33,6 +33,7 @@ impl InvalidColumnIndex {
         Self { index, len }
     }
 
+    #[allow(unused)]
     pub(crate) const fn new<T: Queryable>(index: usize) -> Self {
         Self::new_explicit(index, <T::NumColumns as typenum::Unsigned>::USIZE)
     }

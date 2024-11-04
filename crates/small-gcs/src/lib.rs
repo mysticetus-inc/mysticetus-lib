@@ -21,7 +21,7 @@ pub use read::ReadBuilder;
 pub use rewrite::RewriteBuilder;
 pub use write::WriteBuilder;
 
-mod params {
+pub mod params {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub enum Alt {
         Json,
@@ -143,7 +143,12 @@ async fn test_client() -> Result<(), Error> {
     let path = "VNE.0522.Fugro.RPS.GOExplorer.GP.Jul.2022-443155/SignOffs/GOExplorerVis/\
                 2022-10-21/GOExplorerVis-2022-10-21-2358-Final-Edited-EPE-epe-KD-epe-[KD].\
                 Mysticetus";
-    let mut client = StorageClient::new("mysticetus-replicated-data").await?;
+    let mut client = BucketClient::new(
+        "mysticetus-oncloud",
+        "mysticetus-replicated-data",
+        gcp_auth_channel::Scope::GcsReadWrite,
+    )
+    .await?;
 
     let rewrite = client
         .rewrite(path)

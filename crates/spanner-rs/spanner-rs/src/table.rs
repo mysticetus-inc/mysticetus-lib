@@ -1,6 +1,5 @@
-use crate::PrimaryKey;
 use crate::insertable::Insertable;
-use crate::queryable::Queryable;
+use crate::PrimaryKey;
 
 /*
 // old version for reference

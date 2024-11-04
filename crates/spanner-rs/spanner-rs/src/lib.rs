@@ -113,7 +113,7 @@ mod private {
 
     // TODO: rewrite spanner_rs_macros::impl_pk_sealed as a macro_rules macro,
     // that way we can totally get rid of spanner_rs_macros
-    #[allow(dead_code)]
+    #[allow(unused_macros)]
     macro_rules! impl_sealed_to_key {
         ($($gen:ident: $index:tt),*) => {
             const _: () = {

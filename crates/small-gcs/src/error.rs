@@ -2,9 +2,8 @@ use std::collections::HashMap;
 use std::fmt;
 
 use bytes::Bytes;
-use reqwest::StatusCode;
 use reqwest::header::InvalidHeaderValue;
-use serde::{Deserialize, de};
+use reqwest::StatusCode;
 use serde_json::Value;
 
 #[derive(Debug, thiserror::Error)]
@@ -322,98 +321,7 @@ impl fmt::Display for ErrorPayload {
 
 impl std::error::Error for ErrorPayload {}
 
-#[derive(Debug)]
-enum TextOrJson {
-    Text(String),
-    #[allow(dead_code)]
-    Json {
-        error: ErrorPayload,
-    },
-}
-
 #[derive(serde::Deserialize)]
 struct NestedPayload {
     error: ErrorPayload,
-}
-
-impl<'de> serde::Deserialize<'de> for TextOrJson {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_any(TextOrJsonVisitor)
-    }
-}
-
-struct TextOrJsonVisitor;
-
-impl<'de> de::Visitor<'de> for TextOrJsonVisitor {
-    type Value = TextOrJson;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a pure text or json payload")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if is_maybe_json(v.trim_start().as_bytes()) {
-            serde_json::from_str::<NestedPayload>(v)
-                .map(|error| TextOrJson::Json { error: error.error })
-                .map_err(de::Error::custom)
-        } else {
-            Ok(TextOrJson::Text(v.to_owned()))
-        }
-    }
-
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        if is_maybe_json(v.trim_start().as_bytes()) {
-            serde_json::from_str::<NestedPayload>(&v)
-                .map(|error| TextOrJson::Json { error: error.error })
-                .map_err(de::Error::custom)
-        } else {
-            Ok(TextOrJson::Text(v))
-        }
-    }
-
-    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_any(self)
-    }
-
-    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
-    where
-        A: de::MapAccess<'de>,
-    {
-        use serde::de::value::MapAccessDeserializer;
-        let de = MapAccessDeserializer::new(map);
-        let value = NestedPayload::deserialize(de)?;
-        Ok(TextOrJson::Json { error: value.error })
-    }
-
-    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        let s = std::str::from_utf8(v).map_err(de::Error::custom)?;
-        self.visit_str(s)
-    }
-
-    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        let s = String::from_utf8(v).map_err(de::Error::custom)?;
-        self.visit_string(s)
-    }
-}
-
-fn is_maybe_json(b: &[u8]) -> bool {
-    matches!(b.first().copied(), Some(b'[' | b'{'))
 }

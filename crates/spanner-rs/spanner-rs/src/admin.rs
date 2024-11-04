@@ -17,8 +17,6 @@ use timestamp::Duration;
 use crate::client::Client;
 use crate::info::{Database, Instance};
 
-const ADMIN_SCOPE: Scope = Scope::SpannerAdmin;
-
 #[derive(Clone)]
 pub struct SpannerAdmin {
     channel: AuthChannel,
@@ -66,6 +64,24 @@ impl SpannerAdmin {
 
     fn instance_client(&self) -> InstanceAdminClient<AuthChannel> {
         InstanceAdminClient::new(self.channel.clone())
+    }
+
+    pub async fn get_instance(
+        &self,
+        instance_name: String,
+    ) -> crate::Result<protos::spanner::admin::instance::Instance> {
+        let request = protos::spanner::admin::instance::GetInstanceRequest {
+            name: instance_name,
+            field_mask: None,
+        };
+
+        let instance = self
+            .instance_client()
+            .get_instance(request)
+            .await?
+            .into_inner();
+
+        Ok(instance)
     }
 
     pub async fn build_new_spanner_stack(

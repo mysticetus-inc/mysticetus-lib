@@ -170,6 +170,7 @@ impl Emulator {
 
         let mut child_proc = spawn_docker_run(&options)?;
 
+        #[allow(unreachable_code)] // see comment in the spawned future
         fn drain_stdio<Src, Sink>(src: &mut Option<Src>, mut sink: Sink)
         where
             Src: tokio::io::AsyncReadExt + Unpin + Send + 'static,
@@ -186,6 +187,8 @@ impl Emulator {
                     }
                 }
 
+                // we'll never hit this, but we need it for type annotations
+                // (because async type inference isnt perfect)
                 Ok(()) as std::io::Result<()>
             });
         }

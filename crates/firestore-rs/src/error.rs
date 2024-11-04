@@ -53,26 +53,6 @@ impl From<Errors> for Error {
     }
 }
 
-// helper trait to allow for optional conversion instead of fallible conversion.
-pub(crate) trait ErrorConverter: Sized {
-    fn convert(self) -> Option<Error>;
-}
-
-impl<T> ErrorConverter for T
-where
-    Error: From<T>,
-{
-    fn convert(self) -> Option<Error> {
-        Some(Error::from(self))
-    }
-}
-
-impl ErrorConverter for protos::rpc::Status {
-    fn convert(self) -> Option<Error> {
-        Error::check_rpc_status(self).err()
-    }
-}
-
 #[derive(Debug)]
 pub struct Errors {
     errors: Vec<Error>,

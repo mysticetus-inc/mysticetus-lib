@@ -201,98 +201,6 @@ fn escape_component_into(parent: &mut String, path: &str) {
     parent.push('`');
 }
 
-/*
-enum InsertTo<'a> {
-    Map(&'a mut HashMap<String, Value>),
-    Array(&'a mut Vec<Value>),
-}
-
-impl<'a> InsertTo<'a> {
-    pub fn get_or_insert_nested(self, field: &str) -> Self {
-        todo!()
-        /*
-        match self {
-            Self::Map(map) => {
-
-            }
-            Self::Array(array) => {
-                if let Ok(index) = field.parse::<usize>() {
-                    array.get_mut(index)
-                } else {
-
-                }
-            }
-        }
-        */
-    }
-}
-
-pub(crate) fn escape_and_insert(
-    dst: &mut HashMap<String, Value>,
-    path: &str,
-    value: Value,
-) -> String {
-    fn push_empty_map<'a>(
-        parent: &'a mut HashMap<String, Value>,
-        field: &str,
-    ) -> &'a mut HashMap<String, Value> {
-        let empty_map = Value {
-            value_type: Some(ValueType::MapValue(MapValue {
-                fields: HashMap::new(),
-            })),
-        };
-
-        parent.insert(field.to_owned(), empty_map);
-        match parent.get_mut(comp).unwrap().value_type.unwrap() {
-            ValueType::MapValue(ref mut map) => map.fields,
-            _ => unreachable!("just inserted this as a map"),
-        }
-    }
-
-    let mut path_dst = String::with_capacity(path.len());
-
-    let mut current = dst;
-    for comp in path.split_terminator('.') {
-        let key: Key = match current.get_mut(comp) {
-            Some(value) => {
-                match value.value_type {
-                    Some(ValueType::MapValue(ref mut map)) => current = &mut map.fields,
-                    Some(ValueType::ArrayValue(ref mut array)) => {}
-                    Some(ref mut other) => {
-                        *other = ValueType::MapValue(MapValue {
-                            fields: HashMap::new(),
-                        });
-
-                        match other {
-                            ValueType::MapValue(map) => current = &mut map.fields,
-                            _ => unreachable!("just set other to a map"),
-                        };
-                    }
-                    None => {
-                        current = match value.value_type.insert(ValueType::MapValue(MapValue {
-                            fields: HashMap::new(),
-                        })) {
-                            ValueType::MapValue(map) => current = &mut map.fields,
-                            _ => unreachable!("just inserted a map"),
-                        };
-                    }
-                }
-                Key::Map(comp)
-            }
-            _ => {
-                current = push_empty_map(current, comp);
-                Key::Map(comp)
-            }
-        };
-
-        key.escape_into_parent(&mut path_dst);
-    }
-
-    path_dst
-    todo!()
-}
-
-*/
 pub fn escape_field_path_into<I>(parts: I, dst: &mut String)
 where
     I: IntoIterator,
@@ -333,6 +241,7 @@ fn component_needs_escaping(s: &str) -> bool {
 }
 
 enum Key<'a> {
+    #[allow(unused)]
     Index(usize),
     Map(&'a str),
 }

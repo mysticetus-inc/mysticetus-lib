@@ -178,7 +178,7 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use gcp_auth_channel::AuthManager;
+    use gcp_auth_channel::Auth;
 
     use super::*;
 
@@ -188,16 +188,14 @@ mod tests {
     const GUID: &str = "0ed284b2-c9a8-41fe-a846-2fce914a2d50";
 
     lazy_static::lazy_static! {
-        static ref AUTH: AuthManager = {
-            let service_account = gcp_auth::CustomServiceAccount::from_file(CERT).unwrap();
-            AuthManager::from_custom_service_account(PROJECT_ID.into(), service_account)
+        static ref AUTH: Auth = {
+            Auth::new_from_service_account_file(PROJECT_ID, CERT, gcp_auth_channel::Scope::FirestoreRealtimeDatabase).unwrap()
         };
     }
 
     #[tokio::test]
     async fn test_get_stations() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder()
-            .project_id(PROJECT_ID)
+        let db = RealtimeDatabase::builder(PROJECT_ID)
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -235,8 +233,7 @@ mod tests {
     async fn test_event_stream() -> Result<(), Error> {
         use futures::StreamExt;
 
-        let db = RealtimeDatabase::builder()
-            .project_id(PROJECT_ID)
+        let db = RealtimeDatabase::builder(PROJECT_ID)
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -254,8 +251,7 @@ mod tests {
 
     #[tokio::test]
     async fn test() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder()
-            .project_id(PROJECT_ID)
+        let db = RealtimeDatabase::builder(PROJECT_ID)
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -284,8 +280,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_key_helpers() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder()
-            .project_id(PROJECT_ID)
+        let db = RealtimeDatabase::builder(PROJECT_ID)
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -304,8 +299,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder()
-            .project_id(PROJECT_ID)
+        let db = RealtimeDatabase::builder(PROJECT_ID)
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;

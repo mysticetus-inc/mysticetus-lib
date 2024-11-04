@@ -7,7 +7,6 @@ use mime_guess::Mime;
 use net_utils::backoff::Backoff;
 use reqwest::header::{self, HeaderValue};
 use reqwest::RequestBuilder;
-use serde::Serialize;
 use tokio_util::io::ReaderStream;
 
 use crate::client::Client;

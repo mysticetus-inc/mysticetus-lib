@@ -2,7 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use gcp_auth_channel::Auth;
-use reqwest::header::{self, HeaderName, HeaderValue};
+use reqwest::header::{self, HeaderValue};
 use reqwest::Response;
 // use parking_lot::RwLock;
 
@@ -10,16 +10,7 @@ use crate::error::{Error, RealtimeDbError};
 use crate::event::EventStream;
 use crate::path::RtDbPath;
 
-const SCOPES: &[&str] = &[
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/firebase.database",
-];
-
-lazy_static::lazy_static! {
-    static ref FIREBASE_ETAG_HEADER: HeaderName = HeaderName::from_static("X-Firebase-ETag");
-
-    static ref EVENT_STREAM_VALUE: HeaderValue = HeaderValue::from_static("text/event-stream");
-}
+const EVENT_STREAM_VALUE: HeaderValue = HeaderValue::from_static("text/event-stream");
 
 const TYPED_NONE: Option<&()> = None;
 
