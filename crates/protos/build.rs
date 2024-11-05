@@ -133,5 +133,6 @@ fn main() -> std::io::Result<()> {
         cfg = cfg.type_attribute(ty, derive);
     }
 
-    cfg.out_dir("src/protos").compile_protos(FILES, ROOT)
+    #[allow(deprecated)]
+    cfg.out_dir("src/protos").compile(FILES, ROOT)
 }
