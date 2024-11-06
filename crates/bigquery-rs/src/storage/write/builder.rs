@@ -130,7 +130,7 @@ where
         // re-use this path for the default stream name later on
         let mut qual_path = format!(
             "projects/{project_id}/datasets/{dataset_id}/tables/{table_id}",
-            project_id = self.client.project_id,
+            project_id = self.client.channel.auth().project_id(),
             dataset_id = self.dataset_id,
             table_id = self.table_id,
         );

@@ -1,12 +1,11 @@
+use std::cell::RefCell;
 use std::sync::Arc;
-
-use data_structures::take_once::TakeOnce;
 
 use super::bindings::TableDataInsertAllResponse;
 // re-export bindings in the relevant module
 pub use super::bindings::{Table, TableFieldSchema, TableSchema};
 use super::client::InnerClient;
-use super::{Identifier, route};
+use super::{route, Identifier};
 
 pub mod schema_builder;
 
@@ -56,7 +55,7 @@ impl<D, T> TableClient<D, T> {
             skip_invalid_rows: false,
             ignore_unknown_values: false,
             trace_id: uuid::Uuid::new_v4(),
-            rows: RowIter(TakeOnce::new(rows)),
+            rows: RowIter(RefCell::new(Some(rows))),
         };
 
         self.inner
@@ -132,7 +131,7 @@ fn is_false(b: &bool) -> bool {
     !*b
 }
 
-struct RowIter<R>(TakeOnce<R>);
+struct RowIter<R>(RefCell<Option<R>>);
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,7 +150,7 @@ where
         S: serde::Serializer,
     {
         use serde::ser::SerializeSeq;
-        let rows = self.0.take().into_iter();
+        let rows = self.0.take().expect("serialize called twice").into_iter();
         let (low, high) = rows.size_hint();
 
         let len_hint = match high {

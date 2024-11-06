@@ -2,8 +2,9 @@ use std::io::{Cursor, Read, Seek};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use apache_avro::Schema;
 use apache_avro::types::Value;
+use apache_avro::Schema;
+use bytes::Bytes;
 use serde::de::{self, IntoDeserializer};
 use serde::forward_to_deserialize_any;
 
@@ -51,14 +52,14 @@ where
 }
 
 #[derive(Debug)]
-pub struct RowsDeserializer<R = Cursor<Vec<u8>>> {
+pub struct RowsDeserializer<R = Cursor<Bytes>> {
     reader: R,
     schema: Arc<Schema>,
     row_count: usize,
     len: usize,
 }
 
-pub struct RowIter<S, R = Cursor<Vec<u8>>>
+pub struct RowIter<S, R = Cursor<Bytes>>
 where
     for<'de> S: de::DeserializeSeed<'de> + Clone,
 {
@@ -880,9 +881,12 @@ impl<'a, 'de> de::EnumAccess<'de> for AvroDeserializer<'a> {
     {
         let value = seed.deserialize(self)?;
 
-        Ok((value, VariantAccess {
-            _marker: PhantomData,
-        }))
+        Ok((
+            value,
+            VariantAccess {
+                _marker: PhantomData,
+            },
+        ))
     }
 }
 

@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll, ready};
+use std::task::{ready, Context, Poll};
 
 use apache_avro::Schema;
 use futures::stream::{FuturesUnordered, Stream, StreamExt};
@@ -161,11 +161,12 @@ impl<S> StreamRows<S> {
     }
 }
 
-#[derive(Debug)]
-#[pin_project]
-pub struct StreamRows<S> {
-    streams: Vec<StreamState<S>>,
-    shuffle_rng: rand::rngs::ThreadRng,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    pub struct StreamRows<S> {
+        streams: Vec<StreamState<S>>,
+        shuffle_rng: rand::rngs::ThreadRng,
+    }
 }
 
 impl<S, O> Stream for StreamRows<S>
@@ -202,12 +203,13 @@ where
     }
 }
 
-#[derive(Debug)]
-#[pin_project]
-pub struct SpawnStreamAll<O> {
-    handles: FuturesUnordered<JoinHandle<Result<(), Error>>>,
-    rx: UnboundedReceiver<Result<Vec<O>, Error>>,
-    rx_closed: bool,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    pub struct SpawnStreamAll<O> {
+        handles: FuturesUnordered<JoinHandle<Result<(), Error>>>,
+        rx: UnboundedReceiver<Result<Vec<O>, Error>>,
+        rx_closed: bool,
+    }
 }
 
 impl<O> SpawnStreamAll<O> {

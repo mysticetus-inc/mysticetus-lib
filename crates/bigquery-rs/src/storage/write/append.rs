@@ -83,7 +83,7 @@ pub struct RowAppendCommitStream {
 mod cached {
     use std::collections::VecDeque;
 
-    use data_structures::circular_buffer::CircularBuffer;
+    use bytes::{Bytes, BytesMut};
 
     use super::Error;
 
@@ -98,8 +98,8 @@ mod cached {
     /// and removal.
     #[derive(Debug, Default)]
     pub struct CachedRows {
-        chunks: VecDeque<(Vec<Vec<u8>>, usize)>,
-        last_sizes: CircularBuffer<WINDOW_SIZE, usize>,
+        chunks: VecDeque<(Vec<Bytes>, usize)>,
+        max_row_size: usize,
     }
 
     // helper macros for getting/inserting chunks infallibly.
@@ -128,16 +128,6 @@ mod cached {
             self.chunks.is_empty()
         }
 
-        pub(crate) fn estimate_needed_row_capacity(&self) -> usize {
-            let sum = self
-                .last_sizes
-                .as_discontinuous_slice()
-                .iter()
-                .sum::<usize>();
-
-            sum / self.last_sizes.len()
-        }
-
         pub(super) fn num_chunks(&self) -> usize {
             self.chunks.len()
         }
@@ -158,8 +148,6 @@ mod cached {
             I: IntoIterator<Item = R>,
             R: serde::Serialize,
         {
-            let cap = self.estimate_needed_row_capacity();
-
             let mut chunk = get_last_chunk!(self);
 
             for row in iter {
@@ -167,20 +155,23 @@ mod cached {
                     chunk = get_new_chunk!(self);
                 }
 
-                let mut buf = Vec::with_capacity(cap);
+                let mut buf = BytesMut::with_capacity(self.max_row_size);
                 super::super::ProtoSerializer::new(&mut buf, schemas).serialize_row(&row)?;
                 chunk.1 += buf.len();
-                self.last_sizes.push(buf.len());
+                self.max_row_size = self.max_row_size.max(buf.len());
+                chunk.0.push(buf.freeze());
             }
 
             Ok(())
         }
 
-        pub(super) fn pop_chunk(&mut self) -> Option<Vec<Vec<u8>>> {
-            match self.chunks.pop_front() {
-                Some((chunk, _)) if !chunk.is_empty() => Some(chunk),
-                _ => None,
+        pub(super) fn pop_chunk(&mut self) -> Option<Vec<Bytes>> {
+            while let Some((chunk, _)) = self.chunks.pop_front() {
+                if !chunk.is_empty() {
+                    return Some(chunk);
+                }
             }
+            None
         }
     }
 }

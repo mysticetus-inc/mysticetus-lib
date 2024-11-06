@@ -21,39 +21,25 @@ mod stream;
 pub use session::ReadSession;
 pub use stream::ReadStream;
 
-#[derive(Clone)]
-pub struct ReadClient {
-    inner: BigQueryStorageClient,
-}
+#[derive(Debug, Clone)]
+pub struct ReadClient(BigQueryStorageClient);
 
 impl From<BigQueryStorageClient> for ReadClient {
     fn from(inner: BigQueryStorageClient) -> Self {
-        Self { inner }
-    }
-}
-
-impl fmt::Debug for ReadClient {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter
-            .debug_struct("ReadClient")
-            .field("project_id", &self.inner.project_id)
-            .field("channel", &self.inner.channel)
-            .finish()
+        Self(inner)
     }
 }
 
 impl ReadClient {
-    pub async fn new<P>(project_id: P) -> Result<Self, Error>
-    where
-        P: Into<String>,
-    {
-        let inner = BigQueryStorageClient::new(project_id).await?;
-
-        Ok(Self { inner })
+    /// Builds a read client, internally building a [`BigQueryStorageClient`].
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        BigQueryStorageClient::new(project_id, scope)
+            .await
+            .map(Self)
     }
 
     pub fn session_builder(&self) -> ReadSessionBuilder<(), ()> {
-        ReadSessionBuilder::new(self.inner.clone())
+        ReadSessionBuilder::new(self.0.clone())
     }
 
     pub async fn session<D, T, O>(

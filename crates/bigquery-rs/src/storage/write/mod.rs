@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 
+use bytes::BytesMut;
 use gcp_auth_channel::Scope;
 use http::HeaderValue;
 use net_utils::bidirec::{self, Bidirec};
@@ -24,25 +25,21 @@ pub use stream_types::{Buffered, Committed, Default, Pending, PendingStream};
 
 use super::proto::{ProtoSerializer, Schemas};
 
-pub struct WriteClient {
-    client: BigQueryStorageClient,
-}
+#[derive(Debug, Clone)]
+pub struct WriteClient(BigQueryStorageClient);
 
 impl From<BigQueryStorageClient> for WriteClient {
     fn from(client: BigQueryStorageClient) -> Self {
-        Self { client }
+        Self(client)
     }
 }
 
 impl WriteClient {
     /// Builds a write client, internally building a [`BigQueryStorageClient`].
-    pub async fn new<S>(project_id: S) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        BigQueryStorageClient::new(project_id.into())
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        BigQueryStorageClient::new(project_id, scope)
             .await
-            .map(Self::from)
+            .map(Self)
     }
 
     /// Shortcut to 'client.session_builder().dataset_id(dataset_id)'.
@@ -54,7 +51,7 @@ impl WriteClient {
     }
 
     pub fn session_builder(&self) -> builder::WriteSessionBuilder<(), (), ()> {
-        builder::WriteSessionBuilder::new(self.client.clone())
+        builder::WriteSessionBuilder::new(self.0.clone())
     }
 }
 
@@ -249,15 +246,14 @@ where
         for row in row_iter {
             let mut row_buf = row_size_sum
                 .checked_div(rows.len())
-                .map(Vec::with_capacity)
+                .map(BytesMut::with_capacity)
                 .unwrap_or_default();
 
             ProtoSerializer::new(&mut row_buf, &schemas).serialize_row(&row)?;
 
             row_size_sum += row_buf.len();
-            row_buf.shrink_to_fit();
 
-            rows.push(row_buf);
+            rows.push(row_buf.freeze());
         }
 
         // BQ throws errors if it gets empty rows (plus it's doing IO for no reason), so bail early

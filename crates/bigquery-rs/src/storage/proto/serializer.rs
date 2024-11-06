@@ -1,19 +1,19 @@
 use std::mem::transmute;
 
-use bytes::BufMut;
-use serde::{Serialize, Serializer, ser};
+use bytes::{BufMut, BytesMut};
+use serde::{ser, Serialize, Serializer};
 
 use super::encode::{Varint, WireType};
 use super::{EncodeError, FieldIndex, Schemas};
 
 #[derive(Debug)]
 pub struct ProtoSerializer<'a> {
-    row: &'a mut Vec<u8>,
+    row: &'a mut BytesMut,
     schemas: &'a Schemas,
 }
 
 impl<'a> ProtoSerializer<'a> {
-    pub fn new(row: &'a mut Vec<u8>, schemas: &'a Schemas) -> Self {
+    pub fn new(row: &'a mut BytesMut, schemas: &'a Schemas) -> Self {
         Self { row, schemas }
     }
 
@@ -327,7 +327,7 @@ impl ser::SerializeTupleStruct for &mut ProtoSerializer<'_> {
 
 #[derive(Debug)]
 pub struct ProtoValueSerializer<'a> {
-    buf: &'a mut Vec<u8>,
+    buf: &'a mut BytesMut,
     field_index: &'a FieldIndex,
     field_name: &'a str,
     #[allow(unused)]
@@ -348,7 +348,7 @@ impl<'a> ProtoValueSerializer<'a> {
         Ok(Self {
             field_index,
             field_name,
-            buf: &mut parent.row,
+            buf: parent.row,
             schemas: &parent.schemas,
         })
     }

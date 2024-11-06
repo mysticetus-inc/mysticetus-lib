@@ -1,8 +1,7 @@
 use std::ops::Range;
 use std::sync::Arc;
 
-use gcp_auth_channel::scopes::Scopes;
-use gcp_auth_channel::{Auth, AuthManager, Scope};
+use gcp_auth_channel::{Auth, Scope};
 use http::header::HeaderValue;
 use reqwest::Response;
 
@@ -36,18 +35,14 @@ impl PartialEq for InnerClient {
 }
 
 impl BigQueryClient {
-    pub async fn new<S>(project_id: S) -> Result<Self, Error>
-    where
-        S: AsRef<str>,
-    {
-        let manager = AuthManager::new_shared().await?;
-        let auth = Auth::new(manager);
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        let auth = Auth::new(project_id, scope).await?;
 
         let client = reqwest::Client::builder()
             .user_agent("bigquery-rs")
             .build()?;
 
-        let base_url = format!("{BASE_URL}/projects/{}", project_id.as_ref()).into_boxed_str();
+        let base_url = format!("{BASE_URL}/projects/{project_id}").into_boxed_str();
 
         let project_id_range = (BASE_URL.len() + "/projects/".len())..base_url.len();
 
@@ -76,17 +71,12 @@ impl BigQueryClient {
 }
 
 impl InnerClient {
-    pub(crate) fn project_id(&self) -> &str {
-        // since Range isn't Copy, we need to re-construct it from the fields themselves.
-        &self.base_url[self.project_id_range.start..self.project_id_range.end]
+    pub(crate) fn project_id(&self) -> &'static str {
+        self.auth.project_id()
     }
 
     async fn get_auth_header(&self) -> Result<HeaderValue, Error> {
-        let (_, token) = self
-            .auth
-            .get_header(Scopes::from_scope(Scope::BigQueryReadWrite))
-            .await?;
-        Ok(token)
+        self.auth.get_header().await.map_err(Error::from)
     }
 
     pub(crate) fn base_url(&self) -> &str {

@@ -1,0 +1,23 @@
+[package]
+name = "progress-report"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+firestore-rs = { path = "../firestore-rs" }
+itoa.workspace = true
+data-structures = { path = "../data-structures" }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = [
+    "sync",
+    "parking_lot",
+    "rt",
+    "macros",
+    "time",
+] }
+tracing.workspace = true
+uuid = { workspace = true, features = ["serde"] }
+timestamp = { path = "../timestamp" }
+net-utils = { path = "../net-utils" }

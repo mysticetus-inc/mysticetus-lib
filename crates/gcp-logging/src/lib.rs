@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::fmt;
+use std::sync::Arc;
 
 use dashmap::DashMap;
 use serde::ser::SerializeMap;
@@ -14,6 +14,7 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 
 pub mod env_filter;
+mod json_serializer;
 mod live_ids;
 mod payload;
 mod registry;

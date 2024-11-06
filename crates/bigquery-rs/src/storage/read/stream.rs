@@ -2,28 +2,29 @@ use std::fmt;
 use std::io::Cursor;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll, ready};
+use std::task::{ready, Context, Poll};
 use std::time::Instant;
 
 use apache_avro::Schema;
 use futures::{Stream, StreamExt};
-use protos::bigquery_storage::ReadRowsResponse;
 use protos::bigquery_storage::read_rows_response::Rows;
+use protos::bigquery_storage::ReadRowsResponse;
 use serde::de::DeserializeSeed;
 
-use super::{Error, avro_de};
+use super::{avro_de, Error};
 
-#[derive(Debug)]
-#[pin_project]
-pub struct ReadStream<S> {
-    stream_id: usize,
-    #[pin]
-    stream: tonic::Streaming<ReadRowsResponse>,
-    schema: Arc<Schema>,
-    seed: S,
-    rows_read: usize,
-    bytes_read: usize,
-    last_yielded: Option<std::time::Instant>,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    pub struct ReadStream<S> {
+        stream_id: usize,
+        #[pin]
+        stream: tonic::Streaming<ReadRowsResponse>,
+        schema: Arc<Schema>,
+        seed: S,
+        rows_read: usize,
+        bytes_read: usize,
+        last_yielded: Option<std::time::Instant>,
+    }
 }
 
 impl<S> ReadStream<S>

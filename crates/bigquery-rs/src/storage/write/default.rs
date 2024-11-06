@@ -7,8 +7,6 @@
 //! This follows the same method of falling back to the REST API used internally by the Google
 //! written Java BigQuery Storage API. Seems like bad design to me.
 
-use gcp_auth_channel::Scope;
-use gcp_auth_channel::scopes::Scopes;
 use protos::bigquery_storage::table_field_schema::{Mode, Type};
 use protos::bigquery_storage::{TableFieldSchema, TableSchema};
 use serde::Deserialize;
@@ -36,9 +34,7 @@ pub async fn load_default_schema(
         qualified_path
     );
 
-    let (_, token) = auth
-        .get_header(Scopes::from_scope(Scope::BigQueryReadWrite))
-        .await?;
+    let token = auth.get_header().await?;
 
     let req_builder = match client {
         Some(client) => client.get(url),

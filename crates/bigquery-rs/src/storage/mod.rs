@@ -1,5 +1,4 @@
 use std::fmt;
-use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(any(feature = "storage-read", feature = "storage-write"))]
@@ -9,7 +8,7 @@ pub mod read;
 #[cfg(feature = "storage-write")]
 pub mod write;
 
-use gcp_auth_channel::{AuthChannel, AuthManager};
+use gcp_auth_channel::{Auth, AuthChannel, Scope};
 use tonic::transport::{Channel, ClientTlsConfig};
 
 use crate::Error;
@@ -27,7 +26,6 @@ const KEEPALIVE_DURATION: Duration = Duration::from_secs(120);
 #[derive(Debug, Clone)]
 pub struct BigQueryStorageClient {
     channel: AuthChannel,
-    project_id: Arc<String>,
 }
 
 async fn build_channel() -> Result<Channel, Error> {
@@ -41,47 +39,37 @@ async fn build_channel() -> Result<Channel, Error> {
         .map_err(Error::from)
 }
 
-async fn build_auth_manager() -> Result<AuthManager, Error> {
-    AuthManager::new_shared().await.map_err(Error::from)
+async fn build_auth_manager(project_id: &'static str, scope: Scope) -> Result<Auth, Error> {
+    Auth::new(project_id, scope).await.map_err(Error::from)
 }
 
 impl BigQueryStorageClient {
     /// Builds a new BQ Storage client.
-    pub async fn new<P>(project_id: P) -> Result<Self, Error>
-    where
-        P: Into<String>,
-    {
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
         let (inner_channel, auth_manager) =
-            tokio::try_join!(build_channel(), build_auth_manager(),)?;
+            tokio::try_join!(build_channel(), build_auth_manager(project_id, scope))?;
 
         let channel = AuthChannel::builder()
             .with_channel(inner_channel)
-            .with_auth_manager(auth_manager)
+            .with_auth(auth_manager)
             .build();
 
-        Ok(Self {
-            channel,
-            project_id: Arc::new(project_id.into()),
-        })
+        Ok(Self { channel })
     }
 
     /// Builds a new BQ Storage client, from an existing auth manager.
-    pub async fn from_auth_manager<P, A>(project_id: P, auth_manager: A) -> Result<Self, Error>
+    pub async fn from_auth_manager<A>(auth_manager: A) -> Result<Self, Error>
     where
-        P: Into<String>,
-        A: Into<gcp_auth_channel::AuthManager>,
+        A: Into<gcp_auth_channel::Auth>,
     {
         let channel = build_channel().await?;
 
         let channel = AuthChannel::builder()
             .with_channel(channel)
-            .with_auth_manager(auth_manager.into())
+            .with_auth(auth_manager.into())
             .build();
 
-        Ok(Self {
-            channel,
-            project_id: Arc::new(project_id.into()),
-        })
+        Ok(Self { channel })
     }
 
     /// Gets a handle to a [`ReadClient`].
@@ -127,7 +115,7 @@ impl BigQueryStorageClient {
         D: fmt::Display,
         T: fmt::Display,
     {
-        TableInfo::new(self.project_id.as_str(), dataset_id, table_id)
+        TableInfo::new(self.channel.auth().project_id(), dataset_id, table_id)
     }
 }
 
@@ -138,14 +126,11 @@ struct TableInfo {
 }
 
 impl TableInfo {
-    fn new<P, D, T>(project_id: P, dataset_id: &D, table_id: &T) -> Self
+    fn new<D, T>(project_id: &str, dataset_id: &D, table_id: &T) -> Self
     where
-        P: AsRef<str>,
         D: fmt::Display,
         T: fmt::Display,
     {
-        let project_id = project_id.as_ref();
-
         let mut parent = String::with_capacity(9 + project_id.len());
         parent.push_str("projects/");
         parent.push_str(project_id);
@@ -186,7 +171,7 @@ async fn test_read() -> Result<(), Error> {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let client = BigQueryStorageClient::new("mysticetus-oncloud").await?;
+    let client = BigQueryStorageClient::new("mysticetus-oncloud", Scope::BigQueryReadOnly).await?;
 
     let read_session = client
         .into_read_client()
@@ -291,7 +276,7 @@ impl TestTrackMark {
 async fn test_write() -> Result<(), Error> {
     tracing_subscriber::fmt().init();
 
-    let client = BigQueryStorageClient::new("mysticetus-oncloud").await?;
+    let client = BigQueryStorageClient::new("mysticetus-oncloud", Scope::BigQueryReadOnly).await?;
 
     let write_session = client
         .into_write_client()

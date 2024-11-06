@@ -65,7 +65,7 @@ hex = "0.4.3"
 
 
 [features]
-default = []
+default = ["storage", "rest"]
 
 storage = ["storage-write", "storage-read"]
 
