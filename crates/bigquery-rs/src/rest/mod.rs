@@ -1,8 +1,8 @@
+mod bindings;
 mod client;
 pub mod dataset;
+pub mod job;
 pub mod table;
-
-mod bindings;
 pub use client::BigQueryClient;
 pub mod util;
 
@@ -28,7 +28,9 @@ pub trait Identifier {
     fn insert_self(&self, partial_path: &mut String);
 }
 
-impl<T> Identifier for T
+pub struct DisplayIdentifier<T>(pub T);
+
+impl<T> Identifier for DisplayIdentifier<T>
 where
     T: std::fmt::Display,
 {
@@ -36,9 +38,15 @@ where
         if !partial_path.ends_with('/') {
             partial_path.push_str("/");
         }
-        std::fmt::Write::write_fmt(partial_path, format_args!("{self}")).expect(
+        std::fmt::Write::write_fmt(partial_path, format_args!("{}", self.0)).expect(
             "<String as fmt::Write>::write_fmt should never panic, since it's all in memory",
         )
+    }
+}
+
+impl<T: Identifier + ?Sized> Identifier for &T {
+    fn insert_self(&self, partial_path: &mut String) {
+        T::insert_self(self, partial_path);
     }
 }
 
@@ -57,7 +65,11 @@ static_assertions::assert_impl_all!(&&str: Identifier);
 
 #[tokio::test]
 async fn test_table_get() -> crate::Result<()> {
-    let client = BigQueryClient::new("mysticetus-oncloud").await?;
+    let client = BigQueryClient::new(
+        "mysticetus-oncloud",
+        gcp_auth_channel::Scope::BigQueryReadOnly,
+    )
+    .await?;
 
     let table = client
         .dataset_ref("oncloud_production")
@@ -72,7 +84,8 @@ async fn test_table_get() -> crate::Result<()> {
 
 #[tokio::test]
 async fn test_table_create() -> crate::Result<()> {
-    let client = BigQueryClient::new("mysticetus-oncloud").await?;
+    let client =
+        BigQueryClient::new("mysticetus-oncloud", gcp_auth_channel::Scope::BigQueryAdmin).await?;
 
     let table_ref = client
         .dataset("oncloud_local_mrudisel_arch")
@@ -112,7 +125,7 @@ async fn test_table_create() -> crate::Result<()> {
     let pos = util::WkbPoint::from_point(120.0, 90.0);
     let resp = table_ref.insert_rows([
         json!({"ts": "2022-01-01T00:00:00", "count": 1, "repeated": ["1", "2", "3"], "position": pos, "float": 3.1415 }),
-        json!({"ts": "2022-01-02T00:00:00", "count": 2, "repeated": ["2"], "position": null, "float": "NaN" }),                  
+        json!({"ts": "2022-01-02T00:00:00", "count": 2, "repeated": ["2"], "position": null, "float": "NaN" }),
     ]).await?;
 
     println!("{resp:#?}");

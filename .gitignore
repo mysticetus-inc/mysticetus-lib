@@ -25,4 +25,5 @@ Cargo.lock
 Cargo.lock
 
 .envrc
-rust-toolchain.toml
+
+*.json

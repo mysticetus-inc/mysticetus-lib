@@ -8,6 +8,7 @@ authors = ["mrudisel"]
 
 [dependencies]
 apache-avro = "0.17"
+itoa.workspace = true
 base64 = "0.13.0"
 bytes = { workspace = true, features = ["serde"] }
 const_format = { version = "0.2.22", features = ["const_generics"] }
@@ -23,7 +24,7 @@ gcp-auth-channel = { path = "../gcp-auth-channel", default-features = false }
 gcp_auth = { workspace = true, features = [] }
 http.workspace = true
 
-path-aware-serde = { path = "../path-aware-serde" }
+path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
 pin-project-lite.workspace = true
 
 prost.workspace = true

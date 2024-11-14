@@ -12,9 +12,9 @@ use crate::Error;
 #[allow(unused)]
 const SCOPES: &[&str] = &["https://www.googleapis.com/auth/bigquery"];
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct BigQueryClient {
-    inner: Arc<InnerClient>,
+    pub(crate) inner: Arc<InnerClient>,
 }
 
 #[derive(Debug)]
@@ -22,16 +22,6 @@ pub(super) struct InnerClient {
     client: reqwest::Client,
     auth: Auth,
     base_url: Box<str>,
-    /// the range within 'base_url' that contains the project id. This
-    /// lets us avoid an extra string, and retains quick access (vs finding with
-    /// "rsplit_once('/')")
-    project_id_range: Range<usize>,
-}
-
-impl PartialEq for InnerClient {
-    fn eq(&self, _rhs: &Self) -> bool {
-        todo!()
-    }
 }
 
 impl BigQueryClient {
@@ -42,16 +32,13 @@ impl BigQueryClient {
             .user_agent("bigquery-rs")
             .build()?;
 
-        let base_url = format!("{BASE_URL}/projects/{project_id}").into_boxed_str();
-
-        let project_id_range = (BASE_URL.len() + "/projects/".len())..base_url.len();
+        let base_url = format!("{BASE_URL}projects/{project_id}").into_boxed_str();
 
         Ok(Self {
             inner: Arc::new(InnerClient {
                 client,
                 auth,
                 base_url,
-                project_id_range,
             }),
         })
     }
@@ -59,6 +46,10 @@ impl BigQueryClient {
     #[inline]
     pub fn project_id(&self) -> &str {
         self.inner.project_id()
+    }
+
+    pub fn into_job_client(self) -> super::job::JobClient {
+        super::job::JobClient::new(self)
     }
 
     pub fn dataset<D>(&self, dataset_name: D) -> DatasetClient<D> {

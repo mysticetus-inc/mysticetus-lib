@@ -5,7 +5,7 @@ use super::client::InnerClient;
 use super::route;
 use super::table::{TableClient, TableClientRef};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct DatasetClient<D> {
     dataset_name: D,
     inner: Arc<InnerClient>,
@@ -36,7 +36,7 @@ impl<D> DatasetClient<D> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub struct DatasetClientRef<'a, D> {
     dataset_name: D,
     inner: &'a InnerClient,
