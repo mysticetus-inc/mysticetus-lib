@@ -89,6 +89,12 @@ impl WkbPointBuilder<()> {
     }
 }
 
+// used for `#[serde(skip_serializing_if = "is_false")]` attrs
+#[inline]
+pub fn is_false(b: &bool) -> bool {
+    !*b
+}
+
 impl WkbPointBuilder<f64> {
     pub fn lat(mut self, lat: f64) -> WkbPoint {
         self.dst[WkbPoint::LAT_START..].copy_from_slice(&lat.to_be_bytes());
@@ -96,232 +102,264 @@ impl WkbPointBuilder<f64> {
     }
 }
 
-pub struct Int64ValueVisitor;
+#[inline]
+fn int_try_into<T, O, E>(
+    input: T,
+    into_unexpected: impl FnOnce(T) -> serde::de::Unexpected<'static>,
+) -> Result<O, E>
+where
+    T: TryInto<O> + Copy,
+    T::Error: std::fmt::Display,
+    E: serde::de::Error,
+{
+    input
+        .try_into()
+        .map_err(|err| E::invalid_value(into_unexpected(input), &err.to_string().as_str()))
+}
 
-impl<'de> serde::de::Visitor<'de> for Int64ValueVisitor {
-    type Value = i64;
+macro_rules! define_int64_uint64_visitors {
+    ($($name:ident : $unexpected_variant:ident => $output:ty),* $(,)?) => {
+        $(
+            #[derive(Debug, Clone, Copy, Default)]
+            pub struct $name;
 
+            impl<'de> serde::de::Visitor<'de> for $name {
+                type Value = $output;
+
+                #[inline]
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("an i64 or string formatted i64")
+                }
+
+                #[inline]
+                fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    int_try_into(v, |v| de::Unexpected::$unexpected_variant(v as _))
+                }
+
+                #[inline]
+                fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: de::Error,
+                {
+                    v.parse::<$output>().map_err(|err| {
+                        E::invalid_value(de::Unexpected::Str(v), &err.to_string().as_str())
+                    })
+                }
+
+                #[inline]
+                fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+                where
+                    E: de::Error,
+                {
+                    let s = std::str::from_utf8(v).map_err(|err| {
+                        E::invalid_value(de::Unexpected::Bytes(v), &err.to_string().as_str())
+                    })?;
+                    self.visit_str(s)
+                }
+            }
+        )*
+    };
+}
+
+define_int64_uint64_visitors! {
+    Int64ValueVisitor:Signed => i64,
+    Uint64ValueVisitor:Unsigned => u64,
+}
+
+pub(crate) mod int64 {
     #[inline]
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("an i64 or string formatted i64")
+    pub fn serialize<I, S>(int: &I, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        I: itoa::Integer + Copy,
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(itoa::Buffer::new().format(*int))
     }
 
     #[inline]
-    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+    pub fn deserialize<'de, D, I>(deserializer: D) -> Result<I, D::Error>
     where
-        E: serde::de::Error,
+        I: TryFrom<i64>,
+        I::Error: std::fmt::Display,
+        D: serde::Deserializer<'de>,
     {
-        self.visit_i64(v as i64)
-    }
+        let int = deserializer.deserialize_any(super::Int64ValueVisitor)?;
 
-    #[inline]
-    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(v)
-    }
-
-    #[inline]
-    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        match v.try_into() {
-            Ok(i) => self.visit_i64(i),
-            Err(err) => Err(E::invalid_value(
-                de::Unexpected::Unsigned(v),
+        I::try_from(int).map_err(|err| {
+            serde::de::Error::invalid_value(
+                serde::de::Unexpected::Signed(int),
                 &err.to_string().as_str(),
-            )),
+            )
+        })
+    }
+
+    pub mod optional {
+        #[inline]
+        pub fn serialize<I, S>(int: &Option<I>, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            I: itoa::Integer + Copy,
+            S: serde::Serializer,
+        {
+            match *int {
+                Some(int) => serializer.serialize_some(itoa::Buffer::new().format(int)),
+                None => serializer.serialize_none(),
+            }
         }
-    }
 
-    #[inline]
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        v.parse::<i64>()
-            .map_err(|err| E::invalid_value(de::Unexpected::Str(v), &err.to_string().as_str()))
-    }
+        #[inline]
+        pub fn deserialize<'de, D, I>(deserializer: D) -> Result<Option<I>, D::Error>
+        where
+            I: TryFrom<i64>,
+            I::Error: std::fmt::Display,
+            D: serde::Deserializer<'de>,
+        {
+            let maybe_int = deserializer.deserialize_any(
+                serde_helpers::optional_visitor::OptionalVisitor::from(
+                    super::super::Int64ValueVisitor,
+                ),
+            )?;
 
-    #[inline]
-    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        let s = std::str::from_utf8(v)
-            .map_err(|err| E::invalid_value(de::Unexpected::Bytes(v), &err.to_string().as_str()))?;
-        self.visit_str(s)
+            let Some(int) = maybe_int else {
+                return Ok(None);
+            };
+
+            I::try_from(int).map(Some).map_err(|err| {
+                serde::de::Error::invalid_value(
+                    serde::de::Unexpected::Signed(int),
+                    &err.to_string().as_str(),
+                )
+            })
+        }
     }
 }
 
-pub struct OptionalInt64ValueVisitor;
-
-impl<'de> serde::de::Visitor<'de> for OptionalInt64ValueVisitor {
-    type Value = Option<i64>;
-
+pub(crate) mod uint64 {
     #[inline]
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("an optional i64 or string formatted i64")
+    pub fn serialize<I, S>(int: &I, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        I: itoa::Integer + Copy,
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(itoa::Buffer::new().format(*int))
     }
 
     #[inline]
-    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+    pub fn deserialize<'de, D, I>(deserializer: D) -> Result<I, D::Error>
     where
-        E: serde::de::Error,
+        I: TryFrom<u64>,
+        I::Error: std::fmt::Display,
+        D: serde::Deserializer<'de>,
     {
-        self.visit_i64(v as i64)
-    }
+        let uint = deserializer.deserialize_any(super::Uint64ValueVisitor)?;
 
-    #[inline]
-    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(Some(v))
-    }
-
-    #[inline]
-    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_i64(v as i64)
-    }
-
-    #[inline]
-    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        match v.try_into() {
-            Ok(i) => self.visit_i64(i),
-            Err(err) => Err(E::invalid_value(
-                de::Unexpected::Unsigned(v),
+        I::try_from(uint).map_err(|err| {
+            serde::de::Error::invalid_value(
+                serde::de::Unexpected::Unsigned(uint),
                 &err.to_string().as_str(),
-            )),
+            )
+        })
+    }
+
+    pub mod optional {
+        #[inline]
+        pub fn serialize<I, S>(int: &Option<I>, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            I: itoa::Integer + Copy,
+            S: serde::Serializer,
+        {
+            match *int {
+                Some(int) => serializer.serialize_some(itoa::Buffer::new().format(int)),
+                None => serializer.serialize_none(),
+            }
         }
-    }
 
-    #[inline]
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        v.parse::<i64>()
-            .map(Some)
-            .map_err(|err| E::invalid_value(de::Unexpected::Str(v), &err.to_string().as_str()))
-    }
+        #[inline]
+        pub fn deserialize<'de, D, I>(deserializer: D) -> Result<Option<I>, D::Error>
+        where
+            I: TryFrom<u64>,
+            I::Error: std::fmt::Display,
+            D: serde::Deserializer<'de>,
+        {
+            let maybe_uint = deserializer.deserialize_any(
+                serde_helpers::optional_visitor::OptionalVisitor::from(
+                    super::super::Uint64ValueVisitor,
+                ),
+            )?;
 
-    #[inline]
-    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        let s = std::str::from_utf8(v)
-            .map_err(|err| E::invalid_value(de::Unexpected::Bytes(v), &err.to_string().as_str()))?;
-        self.visit_str(s)
-    }
+            let Some(uint) = maybe_uint else {
+                return Ok(None);
+            };
 
-    #[inline]
-    fn visit_none<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(None)
-    }
-
-    #[inline]
-    fn visit_unit<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(None)
-    }
-
-    #[inline]
-    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        deserializer.deserialize_any(self)
+            I::try_from(uint).map(Some).map_err(|err| {
+                serde::de::Error::invalid_value(
+                    serde::de::Unexpected::Unsigned(uint),
+                    &err.to_string().as_str(),
+                )
+            })
+        }
     }
 }
 
-pub(crate) mod timeout_ms {
+pub(crate) mod duration_ms {
     use serde::Serialize;
     use timestamp::Duration;
 
@@ -373,10 +411,63 @@ pub(crate) mod timeout_ms {
         where
             D: serde::Deserializer<'de>,
         {
-            let optional =
-                deserializer.deserialize_option(super::super::OptionalInt64ValueVisitor)?;
+            let optional = deserializer.deserialize_option(
+                serde_helpers::optional_visitor::OptionalVisitor::from(
+                    super::super::Int64ValueVisitor,
+                ),
+            )?;
 
             Ok(optional.map(timestamp::Duration::from_millis_i64_saturating))
+        }
+    }
+}
+
+pub mod timestamp_ms {
+    #[inline]
+    pub fn serialize<S>(ts: &timestamp::Timestamp, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(itoa::Buffer::new().format(ts.as_millis()))
+    }
+
+    #[inline]
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<timestamp::Timestamp, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer
+            .deserialize_any(super::Int64ValueVisitor)
+            .map(timestamp::Timestamp::from_millis_saturating)
+    }
+
+    pub mod optional {
+        #[inline]
+        pub fn serialize<S>(
+            ts: &Option<timestamp::Timestamp>,
+            serializer: S,
+        ) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            match ts {
+                Some(ts) => serializer.serialize_some(itoa::Buffer::new().format(ts.as_millis())),
+                None => serializer.serialize_none(),
+            }
+        }
+
+        #[inline]
+        pub fn deserialize<'de, D>(
+            deserializer: D,
+        ) -> Result<Option<timestamp::Timestamp>, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            deserializer
+                .deserialize_any(serde_helpers::optional_visitor::OptionalVisitor::from(
+                    super::super::Int64ValueVisitor,
+                ))
+                .map(|opt| opt.map(timestamp::Timestamp::from_millis_saturating))
         }
     }
 }

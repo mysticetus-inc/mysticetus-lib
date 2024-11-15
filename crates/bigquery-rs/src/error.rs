@@ -1,7 +1,7 @@
 use std::fmt;
 
-use protos::bigquery_storage::storage_error::StorageErrorCode;
 use protos::bigquery_storage::StorageError;
+use protos::bigquery_storage::storage_error::StorageErrorCode;
 
 #[cfg(any(feature = "storage-write", feature = "storage-read"))]
 use super::storage::proto::{EncodeError, FieldPair};
@@ -81,6 +81,12 @@ impl Error {
                 )))
             }
         }
+    }
+}
+
+impl From<std::convert::Infallible> for Error {
+    fn from(value: std::convert::Infallible) -> Self {
+        match value {}
     }
 }
 

@@ -21,6 +21,7 @@ pub mod kvp;
 pub mod map_error;
 pub mod match_kvp;
 pub mod never_visitor;
+pub mod optional_visitor;
 pub mod seeded_key_capture;
 pub mod string_dst;
 pub mod string_or_value;

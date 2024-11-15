@@ -265,29 +265,3 @@ pub struct TableField<'a> {
     mode: FieldMode,
     description: Option<Cow<'a, str>>,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum FieldMode {
-    Nullable,
-    Repeated,
-    Required,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum FieldType {
-    String,
-    Bytes,
-    Integer,
-    Float,
-    Bool,
-    Timestamp,
-    Date,
-    Time,
-    DateTime,
-    Geography,
-    Numeric,
-    BigNumeric,
-    Record,
-}

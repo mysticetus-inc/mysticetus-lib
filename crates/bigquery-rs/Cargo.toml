@@ -26,7 +26,7 @@ http.workspace = true
 
 path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
 pin-project-lite.workspace = true
-
+serde-helpers = { path = "../serde-helpers" }
 prost.workspace = true
 protos = { path = "../protos", features = ["bigquery"] }
 rand.workspace = true
@@ -63,6 +63,7 @@ uuid = { workspace = true, features = ["serde", "v3", "v4", "v5"] }
 num_cpus = "1.13.1"
 static_assertions = "1.1.0"
 hex = "0.4.3"
+tokio-util = { workspace = true, features = ["io", "net", "slab", "time", "codec", "rt", "io-util"] }
 
 
 [features]

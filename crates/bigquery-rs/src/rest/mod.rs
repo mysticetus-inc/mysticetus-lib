@@ -1,9 +1,10 @@
-mod bindings;
+// mod bindings;
 mod client;
 pub mod dataset;
 pub mod job;
 pub mod table;
 pub use client::BigQueryClient;
+pub mod resources;
 pub mod util;
 
 macro_rules! route {
@@ -72,8 +73,8 @@ async fn test_table_get() -> crate::Result<()> {
     .await?;
 
     let table = client
-        .dataset_ref("oncloud_production")
-        .table_ref("geotracks")
+        .dataset("oncloud_production")
+        .table("geotracks")
         .get()
         .await?;
 

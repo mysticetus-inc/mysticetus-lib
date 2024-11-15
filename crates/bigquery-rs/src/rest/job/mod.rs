@@ -1,19 +1,26 @@
-use protos::bigquery_v2::ModelReference;
+use std::borrow::Cow;
+use std::future::{Future, IntoFuture};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
-use super::bindings::JobReference;
+use tokio::time::Interval;
+use tokio_util::sync::ReusableBoxFuture;
 
-pub struct JobClient {
-    client: super::BigQueryClient,
+use crate::rest::resources::job::{Job, JobReference, JobState, JobStatus};
+
+const DEFAULT_POLL_FREQUENCY: timestamp::Duration = timestamp::Duration::from_seconds(2);
+
+pub struct ActiveJob<'a> {
+    client: Cow<'a, super::BigQueryClient>,
+    job: Job,
+    job_ref: JobReference,
+    status: JobStatus,
 }
 
-impl JobClient {
-    pub(crate) fn new(client: super::BigQueryClient) -> Self {
-        Self { client }
-    }
-
-    pub async fn start_job(&self, job: Job) -> Result<ActiveJob, crate::Error> {
-        let url = format!("{}/jobs", self.client.inner.base_url());
-        let resp = self.client.inner.post(url, &job).await?;
+impl<'a> ActiveJob<'a> {
+    pub(crate) async fn new(client: &'a super::BigQueryClient, job: Job) -> crate::Result<Self> {
+        let url = client.inner.make_url(&["jobs"]);
+        let resp = client.inner.post(url, &job).await?;
 
         let mut job: Job = resp.json().await?;
 
@@ -28,260 +35,145 @@ impl JobClient {
             .ok_or_else(|| crate::Error::Misc(format!("job id not returned by Google")))?;
 
         Ok(ActiveJob {
-            client: self.client.clone(),
+            client: Cow::Borrowed(client),
             job,
             status,
-            poll_url: None,
             job_ref,
         })
     }
-}
 
-pub struct ActiveJob {
-    client: super::BigQueryClient,
-    job: Job,
-    job_ref: JobReference,
-    poll_url: Option<String>,
-    status: JobStatus,
-}
+    pub fn into_owned(self) -> ActiveJob<'static> {
+        ActiveJob {
+            client: Cow::Owned(self.client.into_owned()),
+            job: self.job,
+            job_ref: self.job_ref,
+            status: self.status,
+        }
+    }
 
-impl ActiveJob {
     pub fn status(&self) -> &JobStatus {
         &self.status
     }
 
-    fn get_or_insert_poll_url(&mut self) -> String {
-        match self.poll_url {
-            Some(ref url) => url.clone(),
-            None => self
-                .poll_url
-                .insert(format!(
-                    "{}/jobs/{}?location={}",
-                    self.client.inner.base_url(),
-                    self.job_ref.job_id,
-                    self.job_ref.location
-                ))
-                .clone(),
-        }
-    }
-
-    pub async fn poll_until_done<Cb>(
-        &mut self,
+    pub fn poll_with_callback<Cb>(
+        self,
         frequency: timestamp::Duration,
-        mut callback: Cb,
-    ) -> crate::Result<()>
-    where
-        Cb: FnMut(JobState) -> Result<(), crate::Error>,
-    {
-        let mut interval = tokio::time::interval(frequency.into());
+        callback: Cb,
+    ) -> ActiveJobFuture<'a, Cb> {
+        let mut url = self.client.inner.make_url(&["jobs", &self.job_ref.job_id]);
 
-        while !matches!(self.status.state, JobState::Done) {
-            let status = self.poll_job().await?;
-            callback(status)?;
+        url.query_pairs_mut()
+            .append_pair("location", &self.job_ref.location)
+            .finish();
 
-            if status == JobState::Done {
-                break;
-            }
+        let client = (&*self.client).clone();
 
-            interval.tick().await;
+        ActiveJobFuture {
+            request_fut: ReusableBoxFuture::new(get_job(url.clone(), client)),
+            url,
+            poll_interval: tokio::time::interval(frequency.into()),
+            state: State::Requesting,
+            callback,
+            job: self,
         }
-
-        Ok(())
     }
 
-    pub async fn poll_job(&mut self) -> Result<JobState, crate::Error> {
-        if matches!(self.status.state, JobState::Done) {
-            return Ok(self.status.state);
-        }
-
-        let url = self.get_or_insert_poll_url();
-        self.job = self.client.inner.get(url).await?.json().await?;
-
-        self.status = self
-            .job
-            .status
-            .take()
-            .ok_or_else(|| crate::Error::Misc(format!("job status not returned by Google")))?;
-
-        Ok(self.status.state)
+    pub fn poll(self, frequency: timestamp::Duration) -> ActiveJobFuture<'a> {
+        self.poll_with_callback(frequency, noop_callback)
     }
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Job {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    kind: Option<Box<str>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    etag: Option<Box<str>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    id: Option<Box<str>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    self_link: Option<Box<str>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    user_email: Option<Box<str>>,
-    configuration: JobConfiguration,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    job_reference: Option<JobReference>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    statistics: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    status: Option<JobStatus>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    principal_subject: Option<Box<str>>,
+async fn get_job(url: reqwest::Url, client: super::BigQueryClient) -> crate::Result<Job> {
+    client
+        .inner
+        .get(url)
+        .await?
+        .json()
+        .await
+        .map_err(crate::Error::from)
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobStatus {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error_result: Option<ErrorProto>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    errors: Vec<ErrorProto>,
-    state: JobState,
+impl<'a> IntoFuture for ActiveJob<'a> {
+    type Output = crate::Result<JobStatus>;
+    type IntoFuture = ActiveJobFuture<'a>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        self.poll(DEFAULT_POLL_FREQUENCY)
+    }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum JobState {
-    Pending,
-    Running,
+#[inline]
+fn noop_callback(_: JobState) -> Result<(), std::convert::Infallible> {
+    Ok(())
+}
+
+pin_project_lite::pin_project! {
+    pub struct ActiveJobFuture<'a, Cb = fn(JobState) -> Result<(), std::convert::Infallible>> {
+        job: ActiveJob<'a>,
+        url: reqwest::Url,
+        request_fut: ReusableBoxFuture<'a, crate::Result<Job>>,
+        #[pin]
+        poll_interval: Interval,
+        state: State,
+        callback: Cb,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum State {
     Done,
+    Requesting,
+    Waiting,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ErrorProto {
-    reason: Box<str>,
-    location: Box<str>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    debug_info: Option<Box<str>>,
-    message: Box<str>,
-}
+impl<Cb, E> Future for ActiveJobFuture<'_, Cb>
+where
+    Cb: FnMut(JobState) -> Result<(), E>,
+    crate::Error: From<E>,
+{
+    type Output = crate::Result<JobStatus>;
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfiguration {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    job_type: Option<JobType>,
-    #[serde(default, skip_serializing_if = "is_false")]
-    dry_run: bool,
-    #[serde(
-        default,
-        rename = "jobTimeoutMs",
-        with = "crate::rest::util::timeout_ms::optional",
-        skip_serializing_if = "Option::is_none"
-    )]
-    job_timeout: Option<timestamp::Duration>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    labels: Option<std::collections::HashMap<Box<str>, Box<str>>>,
-    #[serde(flatten)]
-    kind: JobConfigurationKind,
-}
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut this = self.project();
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum JobConfigurationKind {
-    Query(JobConfigurationQuery),
-    Load(JobConfigurationLoad),
-    Copy(JobConfigurationTableCopy),
-    Extract(JobConfigurationExtract),
-}
+        loop {
+            match *this.state {
+                State::Done => return Poll::Ready(Ok(this.job.status.take())),
+                State::Requesting => {
+                    this.job.job = std::task::ready!(this.request_fut.poll(cx))?;
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationQuery {}
+                    this.job.status = this.job.job.status.take().ok_or_else(|| {
+                        crate::Error::Misc(format!("job status not returned by Google"))
+                    })?;
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationLoad {}
+                    (this.callback)(this.job.status.state)?;
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationTableCopy {}
+                    if this.job.status.state == JobState::Done {
+                        *this.state = State::Done;
+                    } else {
+                        // reset so we start the interval after a request finishes
+                        this.poll_interval.reset();
+                        *this.state = State::Waiting;
+                    }
+                }
+                State::Waiting => {
+                    std::task::ready!(this.poll_interval.as_mut().poll_tick(cx));
+                    // kick off a new request once this interval timer ticks
+                    let url = this.url.clone();
+                    let client = (&*this.job.client).clone();
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationExtract {
-    destination_uris: Vec<Box<str>>,
-    #[serde(flatten)]
-    kind: ExtractKind,
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(untagged)]
-#[non_exhaustive]
-pub enum ExtractKind {
-    Table(TableExtract),
-    // TODO: Model
-    // Model,
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TableExtract {
-    source_table: TableReference,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    compression: Option<Compression>,
-    #[serde(flatten)]
-    format: TableExtractFormat,
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Compression {
-    Deflate,
-    Gzip,
-    Snappy,
-    Zstd,
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "destinationFormat")]
-pub enum TableExtractFormat {
-    Csv {
-        #[serde(default, skip_serializing_if = "is_false")]
-        print_header: bool,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        field_delimiter: Option<Box<str>>,
-    },
-    NewlineDelimitedJson,
-    Parquet,
-    Avro {
-        #[serde(
-            default,
-            rename = "useAvroLogicalTypes",
-            skip_serializing_if = "is_false"
-        )]
-        use_avro_logical_types: bool,
-    },
-}
-
-fn is_false(b: &bool) -> bool {
-    !*b
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TableReference {
-    project_id: Box<str>,
-    dataset_id: Box<str>,
-    table_id: Box<str>,
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum JobType {
-    Query,
-    Load,
-    Extract,
-    Copy,
-    Unknown,
+                    *this.state = State::Requesting;
+                    this.request_fut.set(get_job(url, client));
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::rest::resources::TableReference;
+    use crate::rest::resources::job::*;
 
     fn build_test_job() -> Job {
         Job {
@@ -324,21 +216,20 @@ mod tests {
             "mysticetus-boem",
             gcp_auth_channel::Scope::BigQueryAdmin,
         )
-        .await?
-        .into_job_client();
+        .await?;
 
         let job = build_test_job();
 
-        let mut active_job = client.start_job(job).await?;
+        let active_job = client.start_job(job).await?;
 
         let freq = timestamp::Duration::from_seconds(10);
 
         let log_status = |status| {
             println!("{status:#?}");
-            Ok(())
+            Ok(()) as Result<(), std::convert::Infallible>
         };
 
-        active_job.poll_until_done(freq, log_status).await?;
+        active_job.poll_with_callback(freq, log_status).await?;
 
         Ok(())
     }
