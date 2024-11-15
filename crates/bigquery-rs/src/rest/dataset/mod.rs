@@ -25,6 +25,10 @@ impl<D> DatasetClient<D> {
         }
     }
 
+    pub fn client(&self) -> super::BigQueryClient {
+        super::BigQueryClient { inner: Arc::clone(&self.inner) }
+    }
+
     pub fn table<T>(&self, table_name: T) -> TableClient<D, T>
     where
         D: Clone,
