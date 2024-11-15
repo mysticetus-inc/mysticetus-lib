@@ -108,7 +108,7 @@ pub struct JobConfiguration<S> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub labels: Option<std::collections::HashMap<Box<str>, S>>,
     #[serde(flatten)]
-    pub kind: JobConfigurationKind,
+    pub kind: JobConfigurationKind<S>,
 }
 
 impl<S> JobConfiguration<S> {
