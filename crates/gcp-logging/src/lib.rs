@@ -5,8 +5,8 @@ use dashmap::DashMap;
 use serde::ser::SerializeMap;
 use subscriber::SubscriberHandle;
 use trace_layer::ActiveTraces;
-use tracing::field::{Field, Visit};
 use tracing::Subscriber;
+use tracing::field::{Field, Visit};
 use tracing_subscriber::fmt::format::Writer;
 use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields, SubscriberBuilder};
 use tracing_subscriber::layer::SubscriberExt;
@@ -14,7 +14,7 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 
 pub mod env_filter;
-mod json_serializer;
+// mod json_serializer;
 mod live_ids;
 mod payload;
 mod registry;
