@@ -90,39 +90,48 @@ impl<'a> ListBuilder<'a> {
         self.insert_query("maxResults", max.clamp(1, DEFAULT_MAX_PER_PAGE))
     }
 
-    pub fn get(self) -> Result<ListStream<'a>, Error> {
+    pub fn get(self) -> ListStream<'a> {
         let ListBuilder { shared, builder } = self;
 
-        let mut request = builder.build()?;
+        let (url, fut) = match builder.build() {
+            Ok(mut request) => {
+                let shared_clone = shared.clone();
+                let url = request.url().clone();
 
-        println!("{request:#?}");
+                let fut =  ReusableBoxFuture::new(async move {
+                    let header = shared_clone.auth.get_header().await?;
+        
+                    request.headers_mut().insert(header::AUTHORIZATION, header);
+                    crate::execute_and_validate_with_backoff(&shared_clone.client, request)
+                        .await?
+                        .json()
+                        .await
+                        .map_err(Error::from)
+                });
 
-        Ok(ListStream {
-            url: request.url().clone(),
-            shared: shared.clone(),
+                (Some(url), fut)
+            },
+            Err(error) => {
+                (None, ReusableBoxFuture::new(std::future::ready(Err(Error::from(error)))))
+            },
+        };
+
+        ListStream {
+            url,
+            shared,
             state: State::Requesting,
-            fut: ReusableBoxFuture::new(async move {
-                let header = shared.auth.get_header().await?;
-
-                request.headers_mut().insert(header::AUTHORIZATION, header);
-                crate::execute_and_validate_with_backoff(&shared.client, request)
-                    .await?
-                    .json()
-                    .await
-                    .map_err(Error::from)
-            }),
-        })
+            fut,
+        }
     }
 
     pub async fn get_all(self) -> Result<List, Error> {
         use futures::StreamExt;
 
-        let stream = self.get()?;
+        let stream = self.get();
         futures::pin_mut!(stream);
 
         let mut dst = match stream.next().await {
-            Some(Ok(list)) => list,
-            Some(Err(err)) => return Err(err),
+            Some(result) => result?,
             None => return Ok(List::default()),
         };
 
@@ -143,7 +152,7 @@ impl<'a> ListBuilder<'a> {
 pin_project! {
     #[project = ListStreamProjection]
     pub struct ListStream<'a> {
-        url: reqwest::Url,
+        url: Option<reqwest::Url>,
         shared: Cow<'a, Client>,
         state: State,
         #[pin]
@@ -214,10 +223,12 @@ impl ListStreamProjection<'_, '_> {
         token: String,
         cx: &mut Context<'_>,
     ) -> Option<Result<List, Error>> {
+        let url = self.url.as_ref().expect("this will be Some unless the initial request fails");
+
         self.fut
             .as_mut()
             .get_mut()
-            .set(request_next_page(self.shared.clone(), &self.url, token));
+            .set(request_next_page(self.shared.clone(), url, token));
 
         // since we need to poll once, we need to handle the case where the future completes
         // instantly. I cant imagine that happening in reality (since its a networking
