@@ -8,26 +8,13 @@ mod error;
 mod path;
 mod ser;
 
+#[cfg(feature = "json")]
+pub mod json;
+
 pub use de::Deserializer;
 pub use error::Error;
 pub use path::{Path, Segment};
 pub use ser::Serializer;
-
-/// Convenience method for deserializing a type from json.c
-#[cfg(feature = "json")]
-pub fn deserialize_json<'de, I, O>(reader: I) -> Result<O, Error<serde_json::Error>>
-where
-    O: serde::Deserialize<'de>,
-    I: serde_json::de::Read<'de>,
-{
-    let mut json_de = serde_json::Deserializer::new(reader);
-
-    let output = <O as DeserializeExt<'de>>::deserialize_path_aware(&mut json_de)?;
-
-    json_de.end().map_err(|err| Error::new(err, None))?;
-
-    Ok(output)
-}
 
 /// Extension trait for types that implement [`serde::Deserialize`].
 pub trait DeserializeExt<'de>

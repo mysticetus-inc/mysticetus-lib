@@ -7,8 +7,9 @@ use std::str::FromStr;
 use serde::{Serialize, Serializer};
 
 /// A path within a data structure.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Path {
+    #[default]
     /// At the root of the data structure.
     Root,
     /// A path to a nested field.
@@ -88,12 +89,6 @@ impl Serialize for Path {
         } else {
             serializer.collect_str(self)
         }
-    }
-}
-
-impl Default for Path {
-    fn default() -> Self {
-        Self::Root
     }
 }
 
