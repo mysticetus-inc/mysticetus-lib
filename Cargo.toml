@@ -29,7 +29,6 @@ members = [
     # "crates/spanner-rs/google-sql",
     "crates/spanner-rs/spanner-rs-macros",
     "crates/spanner-rs/spanner-rs-inspect",
-    "crates/static-manager",
     "crates/timestamp",
 ]
 

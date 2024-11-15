@@ -4,7 +4,7 @@ use tiny_skia::Pixmap;
 
 use crate::coords::Zoom;
 use crate::tiles::Tile;
-use crate::{Error, MapStyle};
+use crate::{Config, Error};
 
 const TILE_CACHE_BUCKET: &str = "mysticetus-mapbox-tile-cache";
 
@@ -44,11 +44,11 @@ impl TileCache {
 
     pub async fn try_load_tile(
         &mut self,
-        style: MapStyle,
+        config: &Config,
         zoom: Zoom,
         tile: Tile,
     ) -> Result<Option<(Tile, Pixmap)>, Error> {
-        let path = build_tile_path(style, zoom, tile);
+        let path = build_tile_path(&config.style_id, zoom, tile);
 
         let bytes = match self.gcs.read(&path).content_to_bytes_opt(1234).await? {
             Some(bytes) => bytes,
@@ -60,12 +60,11 @@ impl TileCache {
         Ok(Some((tile, map)))
     }
 
-    pub fn upload_tile(&self, style: MapStyle, zoom: Zoom, tile: Tile, png_bytes: Bytes) {
+    pub fn upload_tile(&self, config: &Config, zoom: Zoom, tile: Tile, png_bytes: Bytes) {
         let mut gcs = self.gcs.clone();
+        let path = build_tile_path(&config.style_id, zoom, tile);
 
         tokio::spawn(async move {
-            let path = build_tile_path(style, zoom, tile);
-
             if let Err(error) = gcs
                 .write(&path)
                 .content_len(png_bytes.len() as u64)
@@ -81,16 +80,14 @@ impl TileCache {
     }
 }
 
-fn build_tile_path(style: MapStyle, zoom: Zoom, tile: Tile) -> String {
+fn build_tile_path(style_id: &str, zoom: Zoom, tile: Tile) -> String {
     let mut buf = itoa::Buffer::new();
 
     const PATH_SEP_LEN: usize = 4;
     const UNDERSCORE_SEP_LEN: usize = 3;
 
-    let style_str = style.as_str();
-
     let component_len =
-        crate::sum_n_digits(&[zoom.as_mapbox_zoom(), tile.x, tile.y]) + style_str.len();
+        crate::sum_n_digits(&[zoom.as_mapbox_zoom(), tile.x, tile.y]) + style_id.len();
 
     let cap = (2 * component_len) + PATH_SEP_LEN + UNDERSCORE_SEP_LEN + TILE_EXT.len();
 
@@ -99,7 +96,7 @@ fn build_tile_path(style: MapStyle, zoom: Zoom, tile: Tile) -> String {
     macro_rules! push_parts {
         ($sep:literal => $trailing:expr) => {
             // leading path
-            dst.push_str(style_str);
+            dst.push_str(style_id);
             dst.push_str($sep);
             dst.push_str(buf.format(zoom.as_mapbox_zoom()));
             dst.push_str($sep);

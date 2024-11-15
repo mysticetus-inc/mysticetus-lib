@@ -1,6 +1,7 @@
 use crate::tiles::Tile;
-use crate::{MapGeometry, MapStyle};
+use crate::{Config, Zoom};
 
+/*
 mod base_urls {
     use crate::{MapStyle, Zoom};
 
@@ -67,48 +68,53 @@ mod base_urls {
         }
     }
 }
+*/
 
-/// Partial mapbox tile URL, containing everything up to the zoom level, which comes right before
-/// the x/y tile indices. This also includes the style + mapbox username, etc. __Does__ include a
-/// trailing '/'
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PartialUrl(&'static str);
+pub(crate) fn build_tile_url(config: &Config, zoom: Zoom, tile: Tile) -> String {
+    const BASE_URL: &str = "https://api.mapbox.com/styles/v1";
+    const PATH_PART: &str = "tiles/512";
+    const MULT_PARAM: &str = "@2x";
+    const ACCESS_TOKEN_QP: &str = "?access_token=";
 
-impl PartialUrl {
-    pub(crate) fn new(geometry: &MapGeometry, style: MapStyle) -> Self {
-        Self(base_urls::get_partial_url(geometry.tile.zoom, style))
-    }
+    let mut buf = itoa::Buffer::new();
 
-    #[cfg(feature = "benchmarking")]
-    pub fn bench_new(zoom: crate::Zoom, style: MapStyle) -> Self {
-        Self(base_urls::get_partial_url(zoom, style))
-    }
-
-    pub fn complete_url(&self, tile: Tile) -> String {
-        const MULT_PARAM: &str = "@2x";
-        const ACCESS_TOKEN_QP: &str = "?access_token=";
-
-        let mut buf = itoa::Buffer::new();
-
-        let capacity = self.0.len()
+    let capacity = BASE_URL.len() + 1 // base + trailing slash
+            + config.username.len() + 1 // username + slash
+            + config.style_id.len() + 1 // style id + slash
+            + PATH_PART.len() + 1 // const path param + trailing slash
+            + crate::n_digits(zoom as u8 as u32) + 1 // zoom len + trailing slash
             + crate::n_digits(tile.x) + 1 // x + trailing slash
             + crate::n_digits(tile.y) // y
             + MULT_PARAM.len()
             + ACCESS_TOKEN_QP.len()
-            + crate::MAPBOX_ACCESS_TOKEN.len(); // token query param + token itself
+            + config.access_token.len(); // token query param + token itself
 
-        let mut dst = String::with_capacity(capacity);
+    let mut dst = String::with_capacity(capacity);
 
-        dst.push_str(self.0);
-        dst.push_str(buf.format(tile.x));
-        dst.push_str("/");
-        dst.push_str(buf.format(tile.y));
-        dst.push_str(MULT_PARAM);
-        dst.push_str(ACCESS_TOKEN_QP);
-        dst.push_str(crate::MAPBOX_ACCESS_TOKEN);
-
-        debug_assert_eq!(dst.capacity(), capacity, "capacity math is off");
-
-        dst
+    macro_rules! push_w_slash {
+        ($value:expr) => {
+            dst.push_str($value);
+            dst.push('/');
+        };
     }
+
+    push_w_slash!(BASE_URL);
+    push_w_slash!(&config.username);
+    push_w_slash!(&config.style_id);
+    push_w_slash!(PATH_PART);
+    push_w_slash!(buf.format(zoom as u8));
+    push_w_slash!(buf.format(tile.x));
+
+    dst.push_str(buf.format(tile.y));
+    dst.push_str(MULT_PARAM);
+    dst.push_str(ACCESS_TOKEN_QP);
+    dst.push_str(&config.access_token);
+
+    debug_assert_eq!(
+        dst.capacity(),
+        capacity,
+        "map_render::util::build_tile_url capacity math is off"
+    );
+
+    dst
 }

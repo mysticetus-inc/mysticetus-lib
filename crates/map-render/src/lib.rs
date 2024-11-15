@@ -10,8 +10,10 @@ pub mod feature;
 pub mod map_geometry;
 use std::path::Path;
 
+mod config;
 mod util;
 
+pub use config::Config;
 pub use error::Error;
 use loader::CacheStats;
 pub use map_geometry::MapGeometry;
@@ -23,31 +25,10 @@ pub use loader::TileLoader;
 
 const TILE_SIZE: u32 = 1024;
 
-const MAPBOX_ACCESS_TOKEN: &str = env!("MAPBOX_ACCESS_TOKEN");
-
 #[cfg(feature = "benchmarking")]
 pub mod bench_support {
     pub use crate::tiles::Tile;
     pub use crate::util::PartialUrl;
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum MapStyle {
-    #[default]
-    Base,
-    WithEnc,
-}
-
-impl MapStyle {
-    pub fn as_str(&self) -> &'static str {
-        const ENC_STYLE_ID: &str = env!("MAPBOX_ENC_STYLE_ID");
-        const BASE_STYLE_ID: &str = env!("MAPBOX_BASE_STYLE_ID");
-
-        match self {
-            Self::Base => BASE_STYLE_ID,
-            Self::WithEnc => ENC_STYLE_ID,
-        }
-    }
 }
 
 mod tiles;
@@ -64,14 +45,21 @@ pub struct Map {
     cache_stats: CacheStats,
     geometry: MapGeometry,
     image: Pixmap,
+    config: Config,
 }
 
 impl Map {
-    fn from_parts(cache_stats: CacheStats, geometry: MapGeometry, image: Pixmap) -> Self {
+    fn from_parts(
+        cache_stats: CacheStats,
+        geometry: MapGeometry,
+        image: Pixmap,
+        config: Config,
+    ) -> Self {
         Self {
             cache_stats,
             geometry,
             image,
+            config,
         }
     }
 
@@ -121,8 +109,8 @@ impl Map {
 #[cfg(feature = "axum")]
 impl axum::response::IntoResponse for Map {
     fn into_response(self) -> axum::response::Response {
-        use axum::http::header::{HeaderValue, CONTENT_TYPE};
         use axum::http::StatusCode;
+        use axum::http::header::{CONTENT_TYPE, HeaderValue};
 
         const PNG_HEADER: HeaderValue = HeaderValue::from_static("image/png");
 

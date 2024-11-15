@@ -3,24 +3,22 @@ use std::sync::Arc;
 use bytes::Bytes;
 use gcp_auth_channel::Auth;
 use tiny_skia::Pixmap;
-use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::sync::Semaphore;
+use tokio::sync::mpsc::{self, UnboundedSender};
 
 use crate::cache::TileCache;
 use crate::coords::Zoom;
 use crate::tiles::Tile;
-use crate::util::PartialUrl;
-use crate::{Error, Map, MapGeometry, MapStyle};
+use crate::{Config, Error, Map, MapGeometry};
 
 const DEFUALT_TILE_CONCURRENCY: usize = 16;
 
 #[derive(Debug, Clone)]
 pub struct TileLoader {
     geometry: MapGeometry,
-    style: MapStyle,
     client: reqwest::Client,
     cache: TileCache,
-    partial_url: PartialUrl,
+    config: Config,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -44,16 +42,10 @@ impl CacheStats {
 }
 
 impl TileLoader {
-    pub fn new(
-        client: reqwest::Client,
-        auth: Auth,
-        style: MapStyle,
-        geometry: MapGeometry,
-    ) -> Self {
+    pub fn new(client: reqwest::Client, auth: Auth, config: Config, geometry: MapGeometry) -> Self {
         Self {
-            partial_url: PartialUrl::new(&geometry, style),
+            config,
             geometry,
-            style,
             cache: TileCache::from_parts(client.clone(), auth),
             client,
         }
@@ -95,7 +87,12 @@ impl TileLoader {
                 image.draw_pixmap(pos.x, pos.y, tile_image.as_ref(), &paint, ident, None);
             }
 
-            Ok(Map::from_parts(cache_stats, loader.geometry, image))
+            Ok(Map::from_parts(
+                cache_stats,
+                loader.geometry,
+                image,
+                loader.config,
+            ))
         }
 
         match inner(self, &semaphore).await {
@@ -114,10 +111,9 @@ impl TileLoader {
         result_tx: UnboundedSender<Result<(Tile, Pixmap, Cache), Error>>,
     ) {
         let fut = load_tile(
-            self.partial_url.clone(),
+            self.config.clone(),
             self.client.clone(),
             self.cache.clone(),
-            self.style,
             self.geometry.tile.zoom,
             tile,
         );
@@ -143,26 +139,25 @@ impl TileLoader {
 /// Loads a single tile, trying first from the GCS cache and finally falling back to
 /// grabbing a new one from mapbox.
 async fn load_tile(
-    partial_url: PartialUrl,
+    config: Config,
     client: reqwest::Client,
     mut cache: TileCache,
-    style: MapStyle,
     zoom: Zoom,
     tile: Tile,
 ) -> Result<(Tile, Pixmap, Cache), Error> {
     // try getting from the GCS cache first, fallback on mapbox.
-    match cache.try_load_tile(style, zoom, tile).await {
+    match cache.try_load_tile(&config, zoom, tile).await {
         Ok(Some((tile, map))) => return Ok((tile, map, Cache::Hit)),
         Ok(None) => (),
         Err(error) => error!(message = "error getting tile from cache", ?error),
     }
 
-    let url = partial_url.complete_url(tile);
+    let url = crate::util::build_tile_url(&config, zoom, tile);
 
     let (tile_pixmap, png_bytes) = load_tile_from_mapbox(client, url).await?;
 
     // Only try and upload if we know that the bytes are a valid PNG.
-    cache.upload_tile(style, zoom, tile, png_bytes);
+    cache.upload_tile(&config, zoom, tile, png_bytes);
 
     Ok((tile, tile_pixmap, Cache::Miss)) as crate::Result<(Tile, Pixmap, Cache)>
 }
@@ -192,7 +187,15 @@ async fn load_tile_from_mapbox(
 }
 #[tokio::test]
 async fn test_basic_render() -> crate::Result<()> {
+    use shared::Shared;
+
     use crate::feature::point::{Circle, DrawPoint};
+
+    const CONFIG: Config = Config {
+        username: Shared::Static(env!("MAPBOX_USERNAME")),
+        access_token: Shared::Static(env!("MAPBOX_ACCESS_TOKEN")),
+        style_id: Shared::Static(env!("MAPBOX_ENC_STYLE_ID")),
+    };
 
     tracing_subscriber::fmt::init();
 
@@ -225,7 +228,7 @@ async fn test_basic_render() -> crate::Result<()> {
         .await
         .unwrap();
 
-    let mut base = TileLoader::new(client, auth, MapStyle::Base, geom)
+    let mut base = TileLoader::new(client, auth, CONFIG, geom)
         .build_base_map()
         .await?;
 

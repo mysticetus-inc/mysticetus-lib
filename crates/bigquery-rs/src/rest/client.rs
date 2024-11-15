@@ -151,6 +151,5 @@ where
     T: serde::de::DeserializeOwned,
 {
     let bytes = response.bytes().await?;
-    path_aware_serde::deserialize_json(serde_json::de::SliceRead::new(&bytes))
-        .map_err(crate::Error::from)
+    path_aware_serde::json::deserialize_slice(&bytes).map_err(crate::Error::from)
 }
