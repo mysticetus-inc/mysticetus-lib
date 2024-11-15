@@ -18,7 +18,10 @@ pub struct ActiveJob<'a> {
 }
 
 impl<'a> ActiveJob<'a> {
-    pub(crate) async fn new(client: &'a super::BigQueryClient, job: Job) -> crate::Result<Self> {
+    pub(crate) async fn new<S>(client: &'a super::BigQueryClient, job: Job<S>) -> crate::Result<Self>
+    where 
+        Job<S>: serde::Serialize,
+    {
         let url = client.inner.make_url(&["jobs"]);
         let resp = client.inner.post(url, &job).await?;
 

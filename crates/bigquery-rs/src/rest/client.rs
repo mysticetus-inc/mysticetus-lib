@@ -55,7 +55,10 @@ impl BigQueryClient {
         self.inner.project_id()
     }
 
-    pub async fn start_job(&self, job: Job) -> crate::Result<super::job::ActiveJob<'_>> {
+    pub async fn start_job<S>(&self, job: Job<S>) -> crate::Result<super::job::ActiveJob<'_>> 
+    where 
+        Job<S>: serde::Serialize,
+    {
         super::job::ActiveJob::new(self, job).await
     }
 

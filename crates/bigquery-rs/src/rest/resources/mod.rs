@@ -11,8 +11,9 @@ pub struct TableReference<S = Box<str>> {
     pub table_id: S,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize, thiserror::Error)]
 #[serde(rename_all = "camelCase")]
+#[error("{message}: {reason}")]
 pub struct ErrorProto<S = Box<str>> {
     pub reason: S,
     pub location: S,

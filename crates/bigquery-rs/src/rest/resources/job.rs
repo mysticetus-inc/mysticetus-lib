@@ -48,6 +48,22 @@ pub struct JobStatus<S = Box<str>> {
 }
 
 impl<S> JobStatus<S> {
+    pub fn len(&self) -> usize {
+        self.error_result.is_some() as usize + self.errors.len()
+    }
+
+    pub fn first_error(&self) -> Option<&ErrorProto<S>> {
+        self.error_result.as_ref().or_else(|| self.errors.first())
+    }
+
+    pub fn into_errors(mut self) -> Vec<ErrorProto<S>> {
+        if let Some(result) = self.error_result {
+            self.errors.insert(0, result);
+        }
+
+        self.errors
+    }
+    
     pub(crate) fn take(&mut self) -> Self {
         Self {
             errors: std::mem::take(&mut self.errors),
