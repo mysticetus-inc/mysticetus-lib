@@ -2,8 +2,8 @@ use std::io::{Cursor, Read, Seek};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use apache_avro::types::Value;
 use apache_avro::Schema;
+use apache_avro::types::Value;
 use bytes::Bytes;
 use serde::de::{self, IntoDeserializer};
 use serde::forward_to_deserialize_any;
@@ -881,12 +881,9 @@ impl<'a, 'de> de::EnumAccess<'de> for AvroDeserializer<'a> {
     {
         let value = seed.deserialize(self)?;
 
-        Ok((
-            value,
-            VariantAccess {
-                _marker: PhantomData,
-            },
-        ))
+        Ok((value, VariantAccess {
+            _marker: PhantomData,
+        }))
     }
 }
 

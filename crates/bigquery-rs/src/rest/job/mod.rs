@@ -18,14 +18,17 @@ pub struct ActiveJob<'a> {
 }
 
 impl<'a> ActiveJob<'a> {
-    pub(crate) async fn new<S>(client: &'a super::BigQueryClient, job: Job<S>) -> crate::Result<Self>
-    where 
+    pub(crate) async fn new<S>(
+        client: &'a super::BigQueryClient,
+        job: Job<S>,
+    ) -> crate::Result<Self>
+    where
         Job<S>: serde::Serialize,
     {
         let url = client.inner.make_url(&["jobs"]);
         let resp = client.inner.post(url, &job).await?;
 
-        let mut job: Job = resp.json().await?;
+        let mut job: Job = super::client::deserialize_json(resp).await?;
 
         let status = job
             .status
@@ -87,13 +90,8 @@ impl<'a> ActiveJob<'a> {
 }
 
 async fn get_job(url: reqwest::Url, client: super::BigQueryClient) -> crate::Result<Job> {
-    client
-        .inner
-        .get(url)
-        .await?
-        .json()
-        .await
-        .map_err(crate::Error::from)
+    let resp = client.inner.get(url).await?;
+    super::client::deserialize_json(resp).await
 }
 
 impl<'a> IntoFuture for ActiveJob<'a> {

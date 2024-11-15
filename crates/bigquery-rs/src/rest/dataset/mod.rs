@@ -26,7 +26,9 @@ impl<D> DatasetClient<D> {
     }
 
     pub fn client(&self) -> super::BigQueryClient {
-        super::BigQueryClient { inner: Arc::clone(&self.inner) }
+        super::BigQueryClient {
+            inner: Arc::clone(&self.inner),
+        }
     }
 
     pub fn table<T>(&self, table_name: T) -> TableClient<D, T>
@@ -61,8 +63,8 @@ impl<D: AsRef<str>> DatasetClient<D> {
         D: super::Identifier,
     {
         let url = route!(self.inner; "datasets" self.dataset_name "tables");
-        let table: Table = self.inner.post(url, table).await?.json().await?;
-        Ok(table)
+        let resp = self.inner.post(url, table).await?;
+        super::client::deserialize_json(resp).await
     }
 }
 
@@ -81,14 +83,13 @@ fn req_table_list<'a, D: ?Sized + AsRef<str>>(
             builder = builder.query(&[("pageToken", &token)]);
         }
 
-        builder
+        let resp = builder
             .query(&[("maxResults", max_page_size)])
             .send()
             .await?
-            .error_for_status()?
-            .json()
-            .await
-            .map_err(crate::Error::from)
+            .error_for_status()?;
+
+        super::client::deserialize_json(resp).await
     }
 }
 

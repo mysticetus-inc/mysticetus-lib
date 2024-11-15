@@ -21,9 +21,6 @@ pub enum Error {
     Status(#[from] tonic::Status),
     #[error("Arrow is not a supported format")]
     ArrowNotSupported,
-    #[cfg(any(feature = "storage-read", feature = "storage-write"))]
-    #[error(transparent)]
-    Avro(#[from] apache_avro::Error),
     #[error("internal error")]
     InternalError,
     #[error(transparent)]
@@ -38,7 +35,8 @@ pub enum Error {
     #[error("at '{path}': {error}")]
     PathAwareError {
         path: path_aware_serde::Path,
-        error: Box<Error>,
+        #[source]
+        error: FormatError,
     },
     #[error(transparent)]
     CommitError(#[from] CommitError),
@@ -47,6 +45,54 @@ pub enum Error {
     #[cfg(feature = "storage-write")]
     #[error(transparent)]
     Encode(#[from] EncodeError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum FormatError {
+    #[cfg(any(feature = "storage-read", feature = "storage-write"))]
+    #[error(transparent)]
+    Avro(#[from] apache_avro::Error),
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    Other(#[from] Box<Error>),
+}
+
+impl From<apache_avro::Error> for Error {
+    fn from(error: apache_avro::Error) -> Self {
+        Self::PathAwareError {
+            path: Default::default(),
+            error: FormatError::Avro(error),
+        }
+    }
+}
+
+impl From<FormatError> for Error {
+    fn from(error: FormatError) -> Self {
+        Self::PathAwareError {
+            path: Default::default(),
+            error,
+        }
+    }
+}
+
+impl From<Error> for FormatError {
+    fn from(value: Error) -> Self {
+        Self::Other(Box::new(value))
+    }
+}
+
+impl<E> From<path_aware_serde::Error<E>> for Error
+where
+    FormatError: From<E>,
+{
+    fn from(value: path_aware_serde::Error<E>) -> Self {
+        let (error, path) = value.into_inner();
+        Self::PathAwareError {
+            path: path.unwrap_or_default(),
+            error: FormatError::from(error),
+        }
+    }
 }
 
 impl Error {
@@ -87,20 +133,6 @@ impl Error {
 impl From<std::convert::Infallible> for Error {
     fn from(value: std::convert::Infallible) -> Self {
         match value {}
-    }
-}
-
-impl From<path_aware_serde::Error<Error>> for Error {
-    fn from(path_err: path_aware_serde::Error<Error>) -> Self {
-        let (error, path_opt) = path_err.into_inner();
-
-        match path_opt {
-            Some(path) => Self::PathAwareError {
-                path,
-                error: Box::new(error),
-            },
-            None => error,
-        }
     }
 }
 

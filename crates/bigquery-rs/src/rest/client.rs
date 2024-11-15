@@ -55,8 +55,8 @@ impl BigQueryClient {
         self.inner.project_id()
     }
 
-    pub async fn start_job<S>(&self, job: Job<S>) -> crate::Result<super::job::ActiveJob<'_>> 
-    where 
+    pub async fn start_job<S>(&self, job: Job<S>) -> crate::Result<super::job::ActiveJob<'_>>
+    where
         Job<S>: serde::Serialize,
     {
         super::job::ActiveJob::new(self, job).await
@@ -144,4 +144,13 @@ impl InnerClient {
             .error_for_status()
             .map_err(Error::from)
     }
+}
+
+pub(crate) async fn deserialize_json<T>(response: reqwest::Response) -> crate::Result<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let bytes = response.bytes().await?;
+    path_aware_serde::deserialize_json(serde_json::de::SliceRead::new(&bytes))
+        .map_err(crate::Error::from)
 }
