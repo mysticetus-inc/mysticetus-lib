@@ -1,5 +1,12 @@
-use super::{ErrorProto, TableReference};
+use std::collections::HashMap;
+
+use super::ErrorProto;
 use crate::rest::util;
+
+pub mod copy;
+pub mod extract;
+pub mod load;
+pub mod query;
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +30,16 @@ pub struct Job<S = Box<str>> {
     pub status: Option<JobStatus<S>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub principal_subject: Option<S>,
+}
+
+impl<S, Config> From<Config> for Job<S>
+where
+    JobConfiguration<S>: From<Config>,
+{
+    #[inline]
+    fn from(value: Config) -> Self {
+        JobConfiguration::from(value).into_job()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -63,7 +80,7 @@ impl<S> JobStatus<S> {
 
         self.errors
     }
-    
+
     pub(crate) fn take(&mut self) -> Self {
         Self {
             errors: std::mem::take(&mut self.errors),
@@ -106,7 +123,7 @@ pub struct JobConfiguration<S> {
     )]
     pub job_timeout: Option<timestamp::Duration>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub labels: Option<std::collections::HashMap<Box<str>, S>>,
+    pub labels: Option<HashMap<Box<str>, S>>,
     #[serde(flatten)]
     pub kind: JobConfigurationKind<S>,
 }
@@ -129,95 +146,60 @@ impl<S> JobConfiguration<S> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum JobConfigurationKind<S = Box<str>> {
-    Query(JobConfigurationQuery),
-    Load(JobConfigurationLoad),
-    Copy(JobConfigurationTableCopy),
-    Extract(JobConfigurationExtract<S>),
-}
+impl<S, Kind> From<Kind> for JobConfiguration<S>
+where
+    JobConfigurationKind<S>: From<Kind>,
+{
+    #[inline]
+    fn from(value: Kind) -> Self {
+        let kind = JobConfigurationKind::from(value);
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationQuery {}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationLoad {}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationTableCopy {}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct JobConfigurationExtract<S = Box<str>> {
-    pub destination_uris: Vec<S>,
-    #[serde(flatten)]
-    pub kind: ExtractKind<S>,
-}
-
-impl<S> JobConfigurationExtract<S> {
-    pub fn new(destination_uris: impl Into<Vec<S>>, kind: impl Into<ExtractKind<S>>) -> Self {
-        Self {
-            destination_uris: destination_uris.into(),
-            kind: kind.into(),
+        JobConfiguration {
+            job_type: Some(kind.job_type()),
+            dry_run: false,
+            job_timeout: None,
+            labels: None,
+            kind,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(untagged)]
-#[non_exhaustive]
-pub enum ExtractKind<S = Box<str>> {
-    Table(TableExtract<S>),
-    // TODO: Model
-    // Model,
+#[serde(rename_all = "camelCase")]
+pub enum JobConfigurationKind<S = Box<str>> {
+    Query(query::JobConfigurationQuery<S>),
+    Load(load::JobConfigurationLoad<S>),
+    Copy(copy::JobConfigurationTableCopy<S>),
+    Extract(extract::JobConfigurationExtract<S>),
 }
 
-impl<S> From<TableExtract<S>> for ExtractKind<S> {
-    fn from(value: TableExtract<S>) -> Self {
-        Self::Table(value)
+impl<S> JobConfigurationKind<S> {
+    pub fn job_type(&self) -> JobType {
+        match self {
+            Self::Copy(_) => JobType::Copy,
+            Self::Extract(_) => JobType::Extract,
+            Self::Load(_) => JobType::Load,
+            Self::Query(_) => JobType::Query,
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TableExtract<S = Box<str>> {
-    pub source_table: TableReference<S>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub compression: Option<Compression>,
-    #[serde(flatten)]
-    pub format: TableExtractFormat<S>,
+macro_rules! impl_from_job_config_kinds {
+    ($($module_name:ident :: $name:ident -> $variant:ident),* $(,)?) => {
+        $(
+            impl<S> From<$module_name::$name<S>> for JobConfigurationKind<S> {
+                #[inline]
+                fn from(value: $module_name::$name<S>) -> Self {
+                    Self::$variant(value)
+                }
+            }
+        )*
+    };
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Compression {
-    Deflate,
-    Gzip,
-    Snappy,
-    Zstd,
-}
-
-#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE", tag = "destinationFormat")]
-pub enum TableExtractFormat<S = Box<str>> {
-    Csv {
-        #[serde(default, skip_serializing_if = "util::is_false")]
-        print_header: bool,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        field_delimiter: Option<S>,
-    },
-    NewlineDelimitedJson,
-    Parquet,
-    Avro {
-        #[serde(
-            default,
-            rename = "useAvroLogicalTypes",
-            skip_serializing_if = "util::is_false"
-        )]
-        use_avro_logical_types: bool,
-    },
+impl_from_job_config_kinds! {
+    query::JobConfigurationQuery -> Query,
+    load::JobConfigurationLoad -> Load,
+    copy::JobConfigurationTableCopy -> Copy,
+    extract::JobConfigurationExtract -> Extract,
 }

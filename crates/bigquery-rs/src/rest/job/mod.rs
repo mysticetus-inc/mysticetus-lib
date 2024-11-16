@@ -174,41 +174,29 @@ where
 #[cfg(test)]
 mod tests {
     use crate::rest::resources::TableReference;
+    use crate::rest::resources::job::extract::*;
     use crate::rest::resources::job::*;
 
     fn build_test_job() -> Job {
-        Job {
-            kind: None,
-            etag: None,
-            id: None,
-            self_link: None,
-            user_email: None,
-            job_reference: None,
-            statistics: None,
-            status: None,
-            principal_subject: None,
-            configuration: JobConfiguration {
-                job_type: None,
-                dry_run: false,
-                job_timeout: Some(timestamp::Duration::from_seconds(180)),
-                labels: None,
-                kind: JobConfigurationKind::Extract(JobConfigurationExtract {
-                    destination_uris: vec!["gs://boem-backups/effort-test".into()],
-                    kind: ExtractKind::Table(TableExtract {
-                        source_table: TableReference {
-                            project_id: "mysticetus-boem".into(),
-                            dataset_id: "main".into(),
-                            table_id: "effort".into(),
-                        },
-                        compression: Some(Compression::Gzip),
-                        format: TableExtractFormat::Csv {
-                            print_header: true,
-                            field_delimiter: None,
-                        },
-                    }),
-                }),
-            },
-        }
+        let mut job = Job::from(JobConfigurationExtract {
+            destination_uris: vec!["gs://boem-backups/effort-test".into()],
+            kind: ExtractKind::Table(TableExtract {
+                source_table: TableReference {
+                    project_id: "mysticetus-boem".into(),
+                    dataset_id: "main".into(),
+                    table_id: "effort".into(),
+                },
+                compression: Some(Compression::Gzip),
+                format: TableExtractFormat::Csv {
+                    print_header: true,
+                    field_delimiter: None,
+                },
+            }),
+        });
+
+        job.configuration.job_timeout = Some(timestamp::Duration::from_seconds(180));
+
+        job
     }
 
     #[tokio::test]
@@ -291,8 +279,7 @@ mod tests {
           "user_email": "mrudisel@mysticetus.com"
         }"#;
 
-        let job: Job =
-            path_aware_serde::deserialize_json(serde_json::de::StrRead::new(JSON_JOB)).unwrap();
+        let job: Job = path_aware_serde::json::deserialize_str(JSON_JOB).unwrap();
         println!("{job:#?}");
     }
 }
