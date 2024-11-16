@@ -151,13 +151,26 @@ pub enum FieldMode {
     Required,
 }
 
+impl FieldMode {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Nullable => "Nullable",
+            Self::Repeated => "Repeated",
+            Self::Required => "Required",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum FieldType {
     String,
     Bytes,
+    #[serde(alias = "INT64")]
     Integer,
+    #[serde(alias = "FLOAT64")]
     Float,
+    #[serde(alias = "BOOLEAN")]
     Bool,
     Timestamp,
     Date,
@@ -166,7 +179,30 @@ pub enum FieldType {
     Geography,
     Numeric,
     BigNumeric,
+    Json,
+    #[serde(alias = "STRUCT")]
     Record,
+}
+
+impl FieldType {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::String => "String",
+            Self::Bytes => "Bytes",
+            Self::Integer => "Int64",
+            Self::Float => "Float64",
+            Self::Bool => "Bool",
+            Self::Timestamp => "Timestamp",
+            Self::Date => "Date",
+            Self::Time => "Time",
+            Self::DateTime => "DateTime",
+            Self::Geography => "Geography",
+            Self::Numeric => "Numeric",
+            Self::BigNumeric => "BigNumeric",
+            Self::Json => "Json",
+            Self::Record => "Struct",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
