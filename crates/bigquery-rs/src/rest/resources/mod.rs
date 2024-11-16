@@ -22,3 +22,9 @@ pub struct ErrorProto<S = Box<str>> {
     pub debug_info: Option<S>,
     pub message: S,
 }
+
+impl<S: AsRef<str>> ErrorProto<S> {
+    pub fn is_not_found(&self) -> bool {
+        self.reason.as_ref() == "notFound"
+    }
+}

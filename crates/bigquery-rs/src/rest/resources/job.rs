@@ -81,6 +81,21 @@ impl<S> JobStatus<S> {
         self.errors
     }
 
+    pub fn is_not_found(&self) -> bool
+    where
+        S: AsRef<str>,
+    {
+        if self
+            .error_result
+            .as_ref()
+            .is_some_and(|err| err.is_not_found())
+        {
+            return true;
+        }
+
+        self.errors.iter().any(ErrorProto::is_not_found)
+    }
+
     pub(crate) fn take(&mut self) -> Self {
         Self {
             errors: std::mem::take(&mut self.errors),

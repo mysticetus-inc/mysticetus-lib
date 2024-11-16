@@ -47,6 +47,19 @@ pub enum Error {
     Encode(#[from] EncodeError),
 }
 
+impl Error {
+    pub fn is_not_found(&self) -> bool {
+        match self {
+            Self::Io(io) => matches!(io.kind(), std::io::ErrorKind::NotFound),
+            #[cfg(any(feature = "rest", feature = "storage-write"))]
+            Self::Reqwest(req) => matches!(req.status(), Some(reqwest::StatusCode::NOT_FOUND)),
+            #[cfg(any(feature = "storage-read", feature = "storage-write"))]
+            Self::Status(status) => matches!(status.code(), tonic::Code::NotFound),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum FormatError {
     #[cfg(any(feature = "storage-read", feature = "storage-write"))]
