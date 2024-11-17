@@ -26,7 +26,7 @@ pub struct MissingField {
 }
 
 impl MissingField {
-    pub(crate) fn new<T>(
+    pub fn new<T>(
         field: &'static str,
         value: impl std::fmt::Debug + Send + Sync + 'static,
     ) -> Self {
@@ -39,7 +39,7 @@ impl MissingField {
 }
 
 impl Error {
-    pub(crate) fn missing_field<T>(
+    pub fn missing_field<T>(
         field: &'static str,
         value: impl std::fmt::Debug + Send + Sync + 'static,
     ) -> Self {
