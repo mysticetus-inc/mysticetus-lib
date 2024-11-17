@@ -241,6 +241,7 @@ where
     pub fn deserialize_with_path_errors<D>(deserializer: D) -> Result<Self, Error<D::Error>>
     where
         D: de::Deserializer<'de> + 'de,
+        D::Error: 'static,
     {
         PathDeserializer::new(deserializer).deserialize_map(FeatureCollectionVisitor::new())
     }

@@ -454,6 +454,7 @@ where
     ) -> Result<Self, Error<D::Error>>
     where
         D: de::Deserializer<'de> + 'de,
+        D::Error: 'static,
     {
         PathDeserializer::new(deserializer).deserialize_map(FeatureVisitor::new())
     }
