@@ -124,11 +124,18 @@ where
     }
 }
 
-impl<E> std::error::Error for Error<E> where E: fmt::Display + fmt::Debug {}
+impl<E> std::error::Error for Error<E>
+where
+    E: std::error::Error + 'static,
+{
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.error)
+    }
+}
 
 impl<E> de::Error for Error<E>
 where
-    E: de::Error,
+    E: de::Error + 'static,
 {
     fn custom<T>(msg: T) -> Self
     where
@@ -143,7 +150,7 @@ where
 
 impl<E> ser::Error for Error<E>
 where
-    E: ser::Error,
+    E: ser::Error + 'static,
 {
     fn custom<T>(msg: T) -> Self
     where

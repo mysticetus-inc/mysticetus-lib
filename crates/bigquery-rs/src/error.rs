@@ -1,65 +1,61 @@
-use std::fmt;
+use crate::resources::ErrorProto;
 
-use protos::bigquery_storage::StorageError;
-use protos::bigquery_storage::storage_error::StorageErrorCode;
-
-#[cfg(any(feature = "storage-write", feature = "storage-read"))]
-use super::storage::proto::{EncodeError, FieldPair};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] gcp_auth::Error),
-    // #[cfg(any(feature = "storage-read", feature = "storage-write"))]
-    #[error(transparent)]
-    Transport(#[from] Box<dyn std::error::Error + Send + Sync>),
-    #[error(transparent)]
-    InvalidHeaderValue(#[from] http::header::InvalidHeaderValue),
-    #[error(transparent)]
-    InvalidHeaderName(#[from] http::header::InvalidHeaderName),
-    #[cfg(any(feature = "storage-read", feature = "storage-write"))]
-    #[error(transparent)]
-    Status(#[from] tonic::Status),
-    #[error("Arrow is not a supported format")]
-    ArrowNotSupported,
-    #[error("internal error")]
-    InternalError,
-    #[error(transparent)]
-    InvalidTimestamp(#[from] timestamp::Error),
-    #[error("{0}")]
-    Misc(String),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[cfg(any(feature = "rest", feature = "storage-write"))]
+    Auth(#[from] gcp_auth_channel::Error),
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
-    #[error("at '{path}': {error}")]
-    PathAwareError {
-        path: path_aware_serde::Path,
-        #[source]
-        error: FormatError,
+    #[error(transparent)]
+    MissingField(#[from] MissingField),
+    #[error(transparent)]
+    Json(#[from] path_aware_serde::Error<serde_json::Error>),
+    #[error("{main}")]
+    JobError {
+        main: ErrorProto,
+        misc: Vec<ErrorProto>,
     },
-    #[error(transparent)]
-    CommitError(#[from] CommitError),
-    #[error("created write session returned no schema, cannot serialize data without it")]
-    NoSchemaReturned,
-    #[cfg(feature = "storage-write")]
-    #[error(transparent)]
-    Encode(#[from] EncodeError),
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("expected valid value for `{ty}.{field}`, not {value:?}")]
+pub struct MissingField {
+    ty: &'static str,
+    field: &'static str,
+    value: Box<dyn std::fmt::Debug + Send + Sync>,
+}
+
+impl MissingField {
+    pub(crate) fn new<T>(
+        field: &'static str,
+        value: impl std::fmt::Debug + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            field,
+            ty: std::any::type_name::<T>(),
+            value: Box::from(value),
+        }
+    }
 }
 
 impl Error {
+    pub(crate) fn missing_field<T>(
+        field: &'static str,
+        value: impl std::fmt::Debug + Send + Sync + 'static,
+    ) -> Self {
+        Self::MissingField(MissingField::new::<T>(field, value))
+    }
+
     pub fn is_not_found(&self) -> bool {
         match self {
-            Self::Io(io) => matches!(io.kind(), std::io::ErrorKind::NotFound),
-            #[cfg(any(feature = "rest", feature = "storage-write"))]
             Self::Reqwest(req) => matches!(req.status(), Some(reqwest::StatusCode::NOT_FOUND)),
-            #[cfg(any(feature = "storage-read", feature = "storage-write"))]
-            Self::Status(status) => matches!(status.code(), tonic::Code::NotFound),
+            Self::JobError { main, .. } => main.is_not_found(),
             _ => false,
         }
     }
 }
 
+/*
 #[derive(Debug, thiserror::Error)]
 pub enum FormatError {
     #[cfg(any(feature = "storage-read", feature = "storage-write"))]
@@ -107,41 +103,7 @@ where
         }
     }
 }
-
-impl Error {
-    #[cfg(any(feature = "storage-read", feature = "storage-write"))]
-    pub(crate) fn try_from_raw_status(mut status: protos::rpc::Status) -> Result<(), Self> {
-        use std::fmt::Write;
-
-        match tonic::Code::from_i32(status.code) {
-            tonic::Code::Ok => Ok(()),
-            other_code => {
-                if !status.details.is_empty() {
-                    status.message.push_str("\n- Misc error details:\n");
-                }
-
-                for item in status.details {
-                    status.message.push('\n');
-                    status.message.push_str(item.type_url.as_str());
-                    status.message.push('\n');
-
-                    let mut buf = bytes::Bytes::from(item.value);
-
-                    while !buf.is_empty() {
-                        if let Ok(ok) = FieldPair::from_buf(&mut buf) {
-                            write!(&mut status.message, "{ok:?}").expect("");
-                        }
-                    }
-                }
-
-                Err(Error::Status(tonic::Status::new(
-                    other_code,
-                    status.message,
-                )))
-            }
-        }
-    }
-}
+*/
 
 impl From<std::convert::Infallible> for Error {
     fn from(value: std::convert::Infallible) -> Self {
@@ -149,119 +111,7 @@ impl From<std::convert::Infallible> for Error {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum CommitError {
-    Many(Vec<StorageError>),
-    One(StorageError),
-}
-
-impl fmt::Display for CommitError {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Many(many) => formatter
-                .debug_list()
-                .entries(many.iter().map(DisplayStorageError))
-                .finish(),
-            Self::One(err) => write!(formatter, "{}", DisplayStorageError(err)),
-        }
-    }
-}
-
-impl std::error::Error for CommitError {}
-
-pub struct DisplayStorageError<'a>(&'a StorageError);
-
-impl fmt::Debug for DisplayStorageError<'_> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, formatter)
-    }
-}
-
-fn parse_error_code(code: i32) -> Option<StorageErrorCode> {
-    match code {
-        c if c == StorageErrorCode::Unspecified as i32 => Some(StorageErrorCode::Unspecified),
-        c if c == StorageErrorCode::TableNotFound as i32 => Some(StorageErrorCode::TableNotFound),
-        c if c == StorageErrorCode::StreamAlreadyCommitted as i32 => {
-            Some(StorageErrorCode::StreamAlreadyCommitted)
-        }
-        c if c == StorageErrorCode::StreamNotFound as i32 => Some(StorageErrorCode::StreamNotFound),
-        c if c == StorageErrorCode::InvalidStreamType as i32 => {
-            Some(StorageErrorCode::InvalidStreamType)
-        }
-        c if c == StorageErrorCode::InvalidStreamState as i32 => {
-            Some(StorageErrorCode::InvalidStreamState)
-        }
-        c if c == StorageErrorCode::StreamFinalized as i32 => {
-            Some(StorageErrorCode::StreamFinalized)
-        }
-        c if c == StorageErrorCode::SchemaMismatchExtraFields as i32 => {
-            Some(StorageErrorCode::SchemaMismatchExtraFields)
-        }
-        c if c == StorageErrorCode::OffsetAlreadyExists as i32 => {
-            Some(StorageErrorCode::OffsetAlreadyExists)
-        }
-        c if c == StorageErrorCode::OffsetOutOfRange as i32 => {
-            Some(StorageErrorCode::OffsetOutOfRange)
-        }
-        _ => None,
-    }
-}
-
-impl fmt::Display for DisplayStorageError<'_> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(code) = parse_error_code(self.0.code) {
-            write!(formatter, "Error type {code:?}: ")?;
-        } else {
-            write!(formatter, "Error code {}: ", self.0.code)?;
-        }
-
-        write!(
-            formatter,
-            "Entity: {}, Error: {}",
-            self.0.entity, self.0.error_message
-        )
-    }
-}
-
-impl CommitError {
-    pub fn from_raw_errors(mut errors: Vec<StorageError>) -> Result<(), Self> {
-        if errors.is_empty() {
-            return Ok(());
-        }
-
-        match errors.len() {
-            0 => Ok(()),
-            1 => Err(Self::One(errors.pop().unwrap())),
-            _ => Err(Self::Many(errors)),
-        }
-    }
-
-    pub fn num_errors(&self) -> usize {
-        match self {
-            Self::Many(many) => many.len(),
-            Self::One(_) => 1,
-        }
-    }
-}
-
-impl serde::de::Error for Error {
-    fn custom<T>(msg: T) -> Self
-    where
-        T: fmt::Display,
-    {
-        Self::Misc(msg.to_string())
-    }
-}
-
-impl serde::ser::Error for Error {
-    fn custom<T>(msg: T) -> Self
-    where
-        T: fmt::Display,
-    {
-        Self::Misc(msg.to_string())
-    }
-}
-
+/*
 impl From<tokio::task::JoinError> for Error {
     fn from(error: tokio::task::JoinError) -> Self {
         error!("internal task error: {error}");
@@ -302,3 +152,4 @@ impl From<tonic::transport::Error> for Error {
         Self::Transport(Box::new(value))
     }
 }
+*/

@@ -27,6 +27,7 @@ where
     fn deserialize_path_aware<D>(deserializer: D) -> Result<Self, Error<D::Error>>
     where
         D: serde::Deserializer<'de>,
+        D::Error: 'static,
     {
         Self::deserialize(deserializer.make_path_aware())
     }
@@ -58,6 +59,7 @@ where
     fn serialize_path_aware<S>(&self, serializer: S) -> Result<S::Ok, Error<S::Error>>
     where
         S: serde::Serializer,
+        S::Error: 'static,
     {
         self.serialize(serializer.make_path_aware())
     }

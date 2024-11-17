@@ -9,106 +9,93 @@
     const_swap
 )]
 
-#[macro_use]
-extern crate const_format;
-
-#[macro_use]
-extern crate tracing;
-
-#[cfg(any(feature = "storage-read", feature = "storage-write"))]
-pub mod storage;
-// pub use storage::{BigQueryReadSession, BigQueryStorageClient};
-
 mod error;
-#[cfg(feature = "rest")]
-pub mod rest;
 pub use error::Error;
-
-const PROJECT_ID: &str = "mysticetus-oncloud";
-
-const DATASET_ID: &str = "oncloud_local_mrudisel_arch";
-
-const PARENT_PATH: &str = formatcp!("projects/{}", PROJECT_ID);
-
-use serde::{Deserialize, Serialize};
 
 /// Type alias to [`core::result::Result<T, Error>`].
 pub type Result<T> = core::result::Result<T, Error>;
 
-mod private {
-    /// Sealed trait for use throughout the crate
-    pub trait Sealed {}
+// mod bindings;
+mod client;
+pub mod dataset;
+pub mod job;
+pub mod table;
+pub use client::BigQueryClient;
+pub mod resources;
+pub mod util;
+
+macro_rules! route {
+    ($inner:expr; $($arg:expr)*) => {{
+        let mut url = $inner.base_url().to_string();
+        $(
+            $crate::Identifier::insert_self(&$arg, &mut url);
+        )+
+
+        url
+    }};
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Point {
-    pub lat: f64,
-    pub lon: f64,
+pub(self) use route;
+
+/// Trait describing an identifier for a table or dataset.
+///
+/// This aims to somewhat merge the traits [`AsRef<str>`] and [`std::fmt::Display`],
+/// that way both types + strings can be used seamlessly.
+pub trait Identifier {
+    /// insert the component into the path/url that's being constructed.
+    fn insert_self(&self, partial_path: &mut String);
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct TrackMark {
-    #[serde(flatten)]
-    pub point: Point,
+pub struct DisplayIdentifier<T>(pub T);
 
-    pub timestamp: f64,
+impl<T> Identifier for DisplayIdentifier<T>
+where
+    T: std::fmt::Display,
+{
+    fn insert_self(&self, partial_path: &mut String) {
+        if !partial_path.ends_with('/') {
+            partial_path.push_str("/");
+        }
+        std::fmt::Write::write_fmt(partial_path, format_args!("{}", self.0)).expect(
+            "<String as fmt::Write>::write_fmt should never panic, since it's all in memory",
+        )
+    }
 }
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct GeoTrack {
-    guid: String,
-    #[serde(rename = "type")]
-    geo_type: String,
-    group_id: u64,
-    pk: u64,
-    vessel: Option<String>,
-
-    #[serde(deserialize_with = "serde_json::Value::deserialize")]
-    blob: serde_json::Value,
-
-    station_id: Option<String>,
-    name: Option<String>,
+impl<T: Identifier + ?Sized> Identifier for &T {
+    fn insert_self(&self, partial_path: &mut String) {
+        T::insert_self(self, partial_path);
+    }
 }
 
-/*
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-pub async fn try_create_session() -> Result<(), Box<dyn std::error::Error>> {
-    // Match the number of threads available on a cloud run instance
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(4)
-        .build_global()?;
+impl Identifier for str {
+    fn insert_self(&self, partial_path: &mut String) {
+        if !partial_path.ends_with('/') {
+            partial_path.push_str("/");
+        }
 
-    let client = BigQueryStorageClient::init(PROJECT_ID).await?;
+        partial_path.push_str(self)
+    }
+}
 
-    let mut session = client.session_builder()
-        .dataset_id(DATASET_ID)
-        //.table("geotracks")
-        //.fields(vec!["guid", "type", "group_id", "pk", "vessel", "blob", "station_id", "name"])
-        //.filter("type = 'Polygon' AND vessel LIKE 'OCS%'")
-        .table("trackmarks")
-        .fields(vec!["lat", "lon", "timestamp"])
-        .filter("timestamp > 0 AND vessel = 'Track Stri'")
-        .max_stream_count(10u16)
-        .create()
+static_assertions::assert_impl_all!(&str: Identifier);
+static_assertions::assert_impl_all!(&&str: Identifier);
+
+#[tokio::test]
+async fn test_table_get() -> crate::Result<()> {
+    let client = BigQueryClient::new(
+        "mysticetus-oncloud",
+        gcp_auth_channel::Scope::BigQueryReadOnly,
+    )
+    .await?;
+
+    let table = client
+        .dataset("oncloud_production")
+        .table("geotracks")
+        .get()
         .await?;
 
-    println!("created session");
-    let start = std::time::Instant::now();
-
-    let rows: Vec<TrackMark> = session.read_rows().await?;
-
-    let elapsed = start.elapsed();
-
-    let n_rows = rows.len();
-
-    println!("recieved {} rows total", n_rows);
-    println!("took {} ms", elapsed.as_millis());
-    println!("{} track marks per second", n_rows as f64 / (elapsed.as_millis() * 1000) as f64);
-
-    println!("{:#?}", rows[0]);
-
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    println!("{table:#?}");
 
     Ok(())
 }
-*/

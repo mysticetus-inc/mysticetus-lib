@@ -65,6 +65,7 @@ macro_rules! impl_simple_serializer_fns {
 impl<'t, 'e, S> ser::Serializer for Serializer<'t, 'e, S>
 where
     S: ser::Serializer,
+    S::Error: 'static,
 {
     type Ok = S::Ok;
     type Error = crate::Error<S::Error>;

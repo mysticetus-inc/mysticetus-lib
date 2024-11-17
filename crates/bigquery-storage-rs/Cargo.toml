@@ -1,0 +1,55 @@
+[package]
+name = "bigquery-storage-rs"
+edition = "2021"
+version.workspace = true
+
+[dependencies]
+# needed to get table schemas for certain gRPC operations
+reqwest = { workspace = true, features = ["json"] }
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+protos = { path = "../protos", features = ["bigquery"] }
+net-utils = { path = "../net-utils", features = ["tonic"] }
+tokio = { workspace = true, features = [
+    "sync",
+    "parking_lot",
+    "time",
+    "bytes",
+    "net",
+    "socket2",
+    "rt",
+    "process",
+    "macros",
+    "signal",
+    "fs",
+    "rt-multi-thread",
+] }
+tonic = { workspace = true, features = ["transport"] }
+tracing.workspace = true
+bytes.workspace = true
+http.workspace = true
+apache-avro.workspace = true
+typenum.workspace = true
+futures.workspace = true
+pin-project-lite.workspace = true
+rand.workspace = true
+num_cpus.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+path-aware-serde = { path = "../path-aware-serde" }
+
+timestamp = { path = "../timestamp" }
+
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true, features = [
+    "json",
+    "parking_lot",
+    "time",
+] }
+
+
+[features]
+read = []
+write = []
+full = ["read", "write"]
