@@ -48,7 +48,7 @@ impl BigQueryClient {
     }
 
     #[inline]
-    pub fn project_id(&self) -> &str {
+    pub fn project_id(&self) -> &'static str {
         self.inner.project_id()
     }
 
