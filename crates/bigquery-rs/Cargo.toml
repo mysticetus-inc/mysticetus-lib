@@ -28,6 +28,7 @@ reqwest = { workspace = true, features = [
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
+shared.workspace = true
 timestamp = { path = "../timestamp" }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing.workspace = true

@@ -1,143 +1,123 @@
-use std::cell::RefCell;
-use std::sync::Arc;
+use shared::arc_or_ref::ArcOrRef;
 
 use super::client::InnerClient;
-use super::{Identifier, route};
+use crate::BigQueryClient;
 use crate::resources::table::Table;
 use crate::resources::table_data::TableDataInsertAllResponse;
 
-// pub mod schema_builder;
+mod insert_rows;
+pub use insert_rows::InsertRowOptions;
 
 #[derive(Debug, Clone)]
-pub struct TableClient<D, T> {
+pub struct TableClient<'a, D, T> {
     dataset_name: D,
     table_name: T,
-    inner: Arc<InnerClient>,
+    client: ArcOrRef<'a, InnerClient>,
 }
 
-impl<D, T> TableClient<D, T> {
+impl<'a, D, T> TableClient<'a, D, T> {
     #[inline]
-    pub(super) const fn from_parts(
+    pub(super) fn from_parts(
         dataset_name: D,
         table_name: T,
-        inner: Arc<InnerClient>,
+        client: impl Into<ArcOrRef<'a, InnerClient>>,
     ) -> Self {
         Self {
             dataset_name,
             table_name,
-            inner,
+            client: client.into(),
         }
     }
 
-    /*
-    pub fn builder(&self) -> schema_builder::TableBuilder<'_, &D, &T> {
-        schema_builder::TableBuilder::init(&self.inner, &self.dataset_name, &self.table_name)
+    #[inline]
+    pub fn client(&self) -> BigQueryClient {
+        BigQueryClient {
+            inner: self.client.as_arc_ref().clone(),
+        }
     }
-    */
+
+    #[inline]
+    pub fn into_client(self) -> BigQueryClient {
+        BigQueryClient {
+            inner: self.client.into_arc(),
+        }
+    }
+
+    #[inline]
+    pub fn into_owned(self) -> TableClient<'static, D, T> {
+        TableClient {
+            dataset_name: self.dataset_name,
+            table_name: self.table_name,
+            client: self.client.into_owned(),
+        }
+    }
 
     pub async fn insert_rows<A>(&self, rows: A) -> crate::Result<TableDataInsertAllResponse>
     where
         A: IntoIterator,
         A::Item: serde::Serialize,
-        D: Identifier,
-        T: Identifier,
+        D: AsRef<str>,
+        T: AsRef<str>,
     {
-        let url =
-            route!(self.inner; "datasets" self.dataset_name "tables" self.table_name "insertAll");
-
-        let payload = InsertRows {
-            skip_invalid_rows: false,
-            ignore_unknown_values: false,
-            trace_id: uuid::Uuid::new_v4(),
-            rows: RowIter(RefCell::new(Some(rows))),
-        };
-
-        self.inner
-            .post(url, payload)
-            .await?
-            .json()
+        self.insert_rows_opt(rows, InsertRowOptions::default())
             .await
-            .map_err(crate::Error::from)
+    }
+
+    pub async fn insert_rows_opt<A>(
+        &self,
+        rows: A,
+        options: InsertRowOptions,
+    ) -> crate::Result<TableDataInsertAllResponse>
+    where
+        A: IntoIterator,
+        A::Item: serde::Serialize,
+        D: AsRef<str>,
+        T: AsRef<str>,
+    {
+        let url = crate::util::append_to_path(self.client.base_url(), &[
+            "datasets",
+            self.dataset_name.as_ref(),
+            "tables",
+            self.table_name.as_ref(),
+            "insertAll",
+        ]);
+
+        let payload = insert_rows::InsertRows::new(options, rows);
+
+        let resp = self.client.post(url, payload).await?;
+
+        crate::client::deserialize_json(resp).await
     }
 
     pub async fn get(&self) -> crate::Result<Table>
     where
-        D: Identifier,
-        T: Identifier,
+        D: AsRef<str>,
+        T: AsRef<str>,
     {
-        let url = route!(self.inner; "datasets" self.dataset_name "tables" self.table_name);
+        let url = crate::util::append_to_path(self.client.base_url(), &[
+            "datasets",
+            self.dataset_name.as_ref(),
+            "tables",
+            self.table_name.as_ref(),
+        ]);
 
-        let table = self.inner.get(url).await?.json().await?;
-        Ok(table)
+        let resp = self.client.get(url).await?;
+        super::client::deserialize_json(resp).await
     }
 
     pub async fn delete(&self) -> crate::Result<()>
     where
-        D: Identifier,
-        T: Identifier,
+        D: AsRef<str>,
+        T: AsRef<str>,
     {
-        let url = route!(self.inner; "datasets" self.dataset_name "tables" self.table_name);
+        let url = crate::util::append_to_path(self.client.base_url(), &[
+            "datasets",
+            self.dataset_name.as_ref(),
+            "tables",
+            self.table_name.as_ref(),
+        ]);
 
-        self.inner.delete(url).await?;
+        self.client.delete(url).await?;
         Ok(())
-    }
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase", bound = "")]
-struct InsertRows<R>
-where
-    R: IntoIterator,
-    R::Item: serde::Serialize,
-{
-    #[serde(skip_serializing_if = "is_false")]
-    skip_invalid_rows: bool,
-    #[serde(skip_serializing_if = "is_false")]
-    ignore_unknown_values: bool,
-    trace_id: uuid::Uuid,
-    rows: RowIter<R>,
-}
-
-fn is_false(b: &bool) -> bool {
-    !*b
-}
-
-struct RowIter<R>(RefCell<Option<R>>);
-
-#[derive(serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RowWrapper<R> {
-    insert_id: uuid::Uuid,
-    json: R,
-}
-
-impl<R> serde::Serialize for RowIter<R>
-where
-    R: IntoIterator,
-    R::Item: serde::Serialize,
-{
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        use serde::ser::SerializeSeq;
-        let rows = self.0.take().expect("serialize called twice").into_iter();
-        let (low, high) = rows.size_hint();
-
-        let len_hint = match high {
-            Some(high) => Some(high),
-            _ if low > 0 => Some(low),
-            _ => None,
-        };
-        let mut seq_ser = serializer.serialize_seq(len_hint)?;
-
-        for json in rows {
-            seq_ser.serialize_element(&RowWrapper {
-                json,
-                insert_id: uuid::Uuid::new_v4(),
-            })?;
-        }
-
-        seq_ser.end()
     }
 }

@@ -71,4 +71,4 @@ regex = "1.11.0"
 num_cpus = "1.16.0"
 static-casing = { git = "https://github.com/mrudisel/static-casing" }
 owned-range-bounds = { git = "https://github.com/mrudisel/owned-range-bounds" }
-shared = { git = "https://github.com/mrudisel/shared" }
+shared = { git = "https://github.com/mrudisel/shared", branch = "main" }

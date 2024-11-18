@@ -8,11 +8,8 @@ use super::dataset::DatasetClient;
 use super::resources::job::Job;
 use crate::Error;
 
-#[allow(unused)]
-const SCOPES: &[&str] = &["https://www.googleapis.com/auth/bigquery"];
-
 /// The Base URL for this service, missing the project id (which is the next path component)
-pub const BASE_URL: &str = "https://bigquery.googleapis.com/bigquery/v2/projects";
+pub(crate) const BASE_URL: &str = "https://bigquery.googleapis.com/bigquery/v2/projects";
 
 #[derive(Debug, Clone)]
 pub struct BigQueryClient {
@@ -20,7 +17,7 @@ pub struct BigQueryClient {
 }
 
 #[derive(Debug)]
-pub(super) struct InnerClient {
+pub(crate) struct InnerClient {
     client: reqwest::Client,
     auth: Auth,
     base_url: Url,
@@ -62,8 +59,12 @@ impl BigQueryClient {
         super::job::ActiveJob::new(self, job).await
     }
 
-    pub fn dataset<D>(&self, dataset_name: D) -> DatasetClient<D> {
-        DatasetClient::from_parts(dataset_name, Arc::clone(&self.inner))
+    pub fn dataset<D>(&self, dataset_name: D) -> DatasetClient<'_, D> {
+        DatasetClient::from_parts(dataset_name, &self.inner)
+    }
+
+    pub fn into_dataset<D>(self, dataset_name: D) -> DatasetClient<'static, D> {
+        DatasetClient::from_parts(dataset_name, self.inner)
     }
 }
 
