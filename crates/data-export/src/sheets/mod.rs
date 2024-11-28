@@ -58,7 +58,7 @@ impl BaseSheet<'static> {
 }
 
 impl<'xlsx> BaseSheet<'xlsx> {
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> String {
         self.sheet.as_sheet().name()
     }
 

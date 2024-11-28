@@ -121,7 +121,7 @@ impl<'sheet> Cell<'sheet> {
         self.add_col_term(string.len());
 
         self.sheet
-            .write_string(*self.row, self.col, string, format_ref!(self))?;
+            .write_string_with_format(*self.row, self.col, string, format_ref!(self))?;
 
         Ok(())
     }
@@ -129,7 +129,7 @@ impl<'sheet> Cell<'sheet> {
     fn write_num_inner(&mut self, float: f64, digits: usize) -> Result<(), Error> {
         self.add_col_term(digits);
         self.sheet
-            .write_number(*self.row, self.col, float, format_ref!(self))?;
+            .write_number_with_format(*self.row, self.col, float, format_ref!(self))?;
         Ok(())
     }
 
@@ -160,7 +160,7 @@ impl<'sheet> Cell<'sheet> {
     pub fn write_boolean(&mut self, b: bool) -> Result<(), Error> {
         self.add_col_term(if b { 4 } else { 5 });
         self.sheet
-            .write_boolean(*self.row, self.col, b, format_ref!(self))?;
+            .write_boolean_with_format(*self.row, self.col, b, format_ref!(self))?;
         Ok(())
     }
 
@@ -195,7 +195,7 @@ impl<'sheet> Cell<'sheet> {
         self.add_col_term(self.buf.len());
 
         self.sheet
-            .write_string(*self.row, self.col, &*self.buf, format_ref!(self))?;
+            .write_string_with_format(*self.row, self.col, &*self.buf, format_ref!(self))?;
 
         Ok(())
     }

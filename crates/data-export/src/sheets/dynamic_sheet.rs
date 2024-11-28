@@ -97,7 +97,7 @@ where
         }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> String {
         self.base.name()
     }
 

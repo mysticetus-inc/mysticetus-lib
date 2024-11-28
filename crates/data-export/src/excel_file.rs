@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 
@@ -8,23 +9,14 @@ use crate::sheets;
 #[must_use = "must be written to a file/buffer"]
 pub struct ExcelFile {
     book: rust_xlsxwriter::Workbook,
+    index: HashMap<Box<str>, usize>,
 }
 
 impl fmt::Debug for ExcelFile {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        struct DebugSheets<'a>(&'a Vec<rust_xlsxwriter::Worksheet>);
-
-        impl fmt::Debug for DebugSheets<'_> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_list()
-                    .entries(self.0.iter().map(|sheet| sheet.name()))
-                    .finish()
-            }
-        }
-
         formatter
             .debug_struct("ExcelFile")
-            .field("sheets", &DebugSheets(self.book.worksheets()))
+            .field("index", &self.index)
             .finish_non_exhaustive()
     }
 }
@@ -33,6 +25,7 @@ impl ExcelFile {
     pub fn new() -> Self {
         Self {
             book: rust_xlsxwriter::Workbook::new(),
+            index: HashMap::new(),
         }
     }
 
@@ -42,7 +35,16 @@ impl ExcelFile {
     }
 
     #[inline]
-    pub fn write_to<P: AsRef<Path>>(self, path: P) -> Result<(), Error> {
+    pub fn write_to<W: std::io::Write + std::io::Seek + Send>(
+        mut self,
+        writer: W,
+    ) -> Result<(), Error> {
+        self.book.save_to_writer(writer)?;
+        Ok(())
+    }
+
+    #[inline]
+    pub fn write_to_file<P: AsRef<Path>>(self, path: P) -> Result<(), Error> {
         fn inner(
             mut book: rust_xlsxwriter::Workbook,
             path: &Path,
@@ -53,23 +55,16 @@ impl ExcelFile {
         inner(self.book, path.as_ref()).map_err(Error::from)
     }
 
-    pub fn sort_sheets_by<F>(&mut self, mut sort_fn: F)
-    where
-        F: FnMut(&str, &str) -> std::cmp::Ordering,
-    {
-        self.book
-            .worksheets_mut()
-            .sort_by(|a, b| sort_fn(a.name(), b.name()));
-    }
-    pub fn sort_sheets_by_name(&mut self) {
-        self.sort_sheets_by(|a, b| a.cmp(b));
-    }
-
     pub fn append_sheet<S>(&mut self, sheet: S)
     where
         S: sheets::IntoSheet,
     {
-        self.book.push_worksheet(sheet.into_sheet());
+        let sheet = sheet.into_sheet();
+        self.index.insert(
+            sheet.name().into_boxed_str(),
+            self.book.worksheets_mut().len(),
+        );
+        self.book.worksheets_mut().push(sheet);
     }
 
     fn get_or_insert_sheet(&mut self, sheet_name: &str) -> &mut rust_xlsxwriter::Worksheet {
@@ -78,16 +73,15 @@ impl ExcelFile {
         // edge-case of the current borrow-checker, need to use indexes to avoid the borrow-checker
         // from thinking the mutable borrow lasts the entire function, therefore making the
         // needed push illegal
-        if let Some(index) = sheets
-            .iter_mut()
-            .position(|sheet| sheet.name() == sheet_name)
-        {
+        if let Some(index) = self.index.get(sheet_name).copied() {
             &mut sheets[index]
         } else {
             let mut new = rust_xlsxwriter::Worksheet::new();
+            let name = crate::clean_sheet_name(sheet_name.into());
             // 'clean_sheet_name' ensures the name is a valid excel sheet name
-            new.set_name(crate::clean_sheet_name(sheet_name.into()))
-                .unwrap();
+            new.set_name(&*name).unwrap();
+            self.index
+                .insert(name.into_owned().into_boxed_str(), sheets.len());
             sheets.push(new);
             sheets.last_mut().unwrap()
         }
@@ -102,6 +96,20 @@ impl ExcelFile {
         C: crate::content::ColHeader + ?Sized,
     {
         sheets::DynamicSheet::existing(self.get_base_sheet(sheet))
+    }
+}
+
+impl<S> Extend<S> for ExcelFile
+where
+    S: crate::sheets::IntoSheet,
+{
+    fn extend<T>(&mut self, iter: T)
+    where
+        T: IntoIterator<Item = S>,
+    {
+        for sheet in iter {
+            self.append_sheet(sheet);
+        }
     }
 }
 

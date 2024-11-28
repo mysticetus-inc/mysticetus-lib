@@ -9,4 +9,6 @@ edition = "2021"
 thiserror.workspace = true
 # data-structures = { path = "../data-structures" }
 num-traits = "0.2.15"
-rust_xlsxwriter = { git = "https://github.com/mrudisel/rust_xlsxwriter" }
+# rust_xlsxwriter = { git = "https://github.com/mrudisel/rust_xlsxwriter" }
+
+rust_xlsxwriter = "0.79"
