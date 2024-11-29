@@ -26,6 +26,12 @@ impl CellContent for str {
     }
 }
 
+impl CellContent for std::fmt::Arguments<'_> {
+    fn format(&self, cell: &mut Cell<'_>) -> Result<(), Error> {
+        cell.write_args(*self)
+    }
+}
+
 impl CellContent for String {
     fn format(&self, cell: &mut Cell<'_>) -> Result<(), Error> {
         cell.write_str(self.as_str())
