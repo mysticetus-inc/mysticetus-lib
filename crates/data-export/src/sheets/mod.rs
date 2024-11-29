@@ -1,5 +1,8 @@
 mod dynamic_sheet;
+mod simple;
+
 pub use dynamic_sheet::DynamicSheet;
+pub use simple::SimpleSheet;
 
 use crate::cell::Cell;
 use crate::col_fmt::ColSums;

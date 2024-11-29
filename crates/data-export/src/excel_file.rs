@@ -97,6 +97,10 @@ impl ExcelFile {
     {
         sheets::DynamicSheet::existing(self.get_base_sheet(sheet))
     }
+
+    pub fn get_simple_sheet(&mut self, sheet: &str) -> sheets::SimpleSheet<'_> {
+        sheets::SimpleSheet::new(self.get_base_sheet(sheet))
+    }
 }
 
 impl<S> Extend<S> for ExcelFile
