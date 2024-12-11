@@ -9,7 +9,7 @@ use std::task::{Context, Poll};
 use gcp_auth::Token;
 use http::HeaderValue;
 
-#[cfg(debug_assertions)]
+#[cfg(any(debug_assertions, feature = "local-gcloud"))]
 mod local_gcloud_provider;
 
 mod pending;
@@ -178,6 +178,7 @@ impl Auth {
     /// Panics if `gcloud` was not found, or if there was an error trying to find it (via `which`).
     ///
     /// **Should only be used locally**
+    #[cfg(any(debug_assertions, feature = "local-gcloud"))]
     pub fn new_gcloud(project_id: &'static str, scope: Scope) -> Self {
         match local_gcloud_provider::LocalGCloudProvider::try_load() {
             Ok(Some(provider)) => Self::new_from_provider(project_id, Arc::from(provider), scope),
@@ -187,7 +188,7 @@ impl Auth {
     }
 
     // the gcp_auth gcloud provider is broken, so we try to use our own in tests
-    #[cfg(debug_assertions)]
+    #[cfg(any(debug_assertions, feature = "local-gcloud"))]
     pub async fn new(project_id: &'static str, scope: Scope) -> crate::Result<Self> {
         println!("looking for local gcloud provider");
         let provider = match local_gcloud_provider::LocalGCloudProvider::try_load() {
@@ -207,7 +208,7 @@ impl Auth {
         Ok(Self::new_from_provider(project_id, provider, scope))
     }
 
-    #[cfg(not(debug_assertions))]
+    #[cfg(not(any(debug_assertions, feature = "local-gcloud")))]
     pub async fn new(project_id: &'static str, scope: Scope) -> crate::Result<Self> {
         let provider = gcp_auth::provider().await?;
         Ok(Self::new_from_provider(project_id, provider, scope))

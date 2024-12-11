@@ -36,3 +36,4 @@ retry = ["tower/retry"]
 # todo: return dep:serde_json when i figure out testing
 # emulator = ["dep:serde", "dep:serde_json"]
 emulator = ["dep:serde"]
+local-gcloud = []
