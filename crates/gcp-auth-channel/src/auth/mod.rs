@@ -174,6 +174,18 @@ impl Auth {
         }
     }
 
+    /// Gets an [`Auth`] instance that only uses a local `gcloud` cli installation.
+    /// Panics if `gcloud` was not found, or if there was an error trying to find it (via `which`).
+    ///
+    /// **Should only be used locally**
+    pub fn new_gcloud(project_id: &'static str, scope: Scope) -> Self {
+        match local_gcloud_provider::LocalGCloudProvider::try_load() {
+            Ok(Some(provider)) => Self::new_from_provider(project_id, Arc::from(provider), scope),
+            Ok(None) => panic!("gcloud cli not found"),
+            Err(error) => panic!("error trying to find gcloud: {error}"),
+        }
+    }
+
     // the gcp_auth gcloud provider is broken, so we try to use our own in tests
     #[cfg(debug_assertions)]
     pub async fn new(project_id: &'static str, scope: Scope) -> crate::Result<Self> {
