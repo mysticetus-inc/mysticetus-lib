@@ -1,7 +1,6 @@
 #![deny(clippy::suspicious, clippy::complexity, clippy::perf, clippy::style)]
 #![feature(
     maybe_uninit_uninit_array,
-    const_mut_refs,
     const_trait_impl,
     unboxed_closures,
     fn_traits
@@ -11,7 +10,7 @@
 #[macro_use]
 extern crate tracing;
 
-use std::net::SocketAddr;
+use std::{future::Future, net::SocketAddr};
 
 pub mod active;
 pub mod backoff;
@@ -24,6 +23,7 @@ pub mod timeout;
 pub use active::Active;
 pub use memory::MemoryUsage;
 pub use shutdown::Shutdown;
+use tokio::net::TcpListener;
 
 /// Lazily loads environment variable(s). This is a macro rather than a function to
 /// statically format (via [`concat!`])
@@ -46,7 +46,9 @@ macro_rules! lazy_env {
 /// Loads a token from the environment at compile time, and pre-formats a static [`HeaderValue`].
 #[macro_export]
 macro_rules! env_bearer_auth {
-    ($env:literal) => {{ ::axum::http::header::HeaderValue::from_static(concat!("Bearer ", env!($env))) }};
+    ($env:literal) => {{
+        ::axum::http::header::HeaderValue::from_static(concat!("Bearer ", env!($env)))
+    }};
 }
 
 /// Shorthand to grab + parse the $PORT environment variable.
@@ -85,4 +87,31 @@ pub fn addr_and_buf() -> (SocketAddr, String) {
     ));
 
     (addr, buf)
+}
+
+pub async fn initialize_listener_and_state<State, StateErr, OutputErr>(
+    initialize_state_future: impl Future<Output = Result<State, StateErr>>,
+) -> Result<(SocketAddr, TcpListener, State), OutputErr>
+where
+    OutputErr: From<std::io::Error> + From<StateErr>,
+{
+    use futures::future::{try_select, Either};
+
+    let addr = addr();
+
+    let listener_future = std::pin::pin!(TcpListener::bind(addr));
+    let state_future = std::pin::pin!(initialize_state_future);
+
+    match try_select(listener_future, state_future).await {
+        Ok(Either::Left((listener, state_fut))) => {
+            let state = state_fut.await.map_err(OutputErr::from)?;
+            Ok((addr, listener, state))
+        }
+        Ok(Either::Right((state, listener_fut))) => {
+            let listener = listener_fut.await.map_err(OutputErr::from)?;
+            Ok((addr, listener, state))
+        }
+        Err(Either::Left((error, _))) => Err(OutputErr::from(error)),
+        Err(Either::Right((error, _))) => Err(OutputErr::from(error)),
+    }
 }
