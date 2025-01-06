@@ -49,9 +49,9 @@ uuid = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
 tonic = { workspace = true, features = [
     "transport",
-    "tls",
-    "tls-roots",
-    "tls-webpki-roots",
+    #    "tls",
+    #    "tls-roots",
+    #    "tls-webpki-roots",
 ] }
 base64 = "0.13.0"
 parking_lot = "0.12.0"
