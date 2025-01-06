@@ -21,7 +21,7 @@ const FIRESTORE_DOMAIN: &str = "firestore.googleapis.com";
 
 async fn build_channel() -> crate::Result<Channel> {
     let channel = Channel::from_static(FIRESTORE_DST_URL)
-        // .tls_config(ClientTlsConfig::new().domain_name(FIRESTORE_DOMAIN))?
+        .tls_config(ClientTlsConfig::new().domain_name(FIRESTORE_DOMAIN))?
         .timeout(Duration::from_secs(60))
         .tcp_keepalive(Some(Duration::from_secs(30)))
         .connect_timeout(Duration::from_secs(5))
