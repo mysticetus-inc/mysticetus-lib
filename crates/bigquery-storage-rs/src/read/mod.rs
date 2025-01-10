@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use std::sync::{Arc, LazyLock};
 
 use gcp_auth_channel::Scope;
+use gcp_auth_channel::channel::headers::WithHeaders;
 use http::HeaderValue;
 
 pub mod avro_de;
@@ -189,14 +190,9 @@ where
             }),
         };
 
-        let mut channel = self
-            .client
-            .channel
-            .clone()
-            .attach_header()
-            .static_key(super::GOOG_REQ_PARAMS_KEY)
-            .value(table_header)
-            .with_scope(Scope::BigQueryReadOnly);
+        let mut channel = self.client.channel.clone().wrap_service(|svc| {
+            WithHeaders::new(svc, [(super::GOOG_REQ_PARAMS_KEY, table_header)])
+        });
 
         let mut client = BigQueryReadClient::new(&mut channel);
 

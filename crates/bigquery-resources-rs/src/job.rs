@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::ErrorProto;
-use crate::{Error, util};
+use crate::util;
 
 pub mod copy;
 pub mod extract;
@@ -65,19 +65,16 @@ pub struct JobStatus<S = Box<str>> {
 }
 
 impl JobStatus {
-    pub fn into_result(mut self) -> Result<(), Error> {
+    pub fn into_result<E>(
+        mut self,
+        to_err: impl FnOnce(ErrorProto, Vec<ErrorProto>) -> E,
+    ) -> Result<(), E> {
         match (self.error_result, self.errors.len()) {
             (None, 0) => Ok(()),
-            (Some(main), _) => Err(Error::JobError {
-                main,
-                misc: self.errors,
-            }),
+            (Some(main), _) => Err(to_err(main, self.errors)),
             (None, _) => {
                 let main = self.errors.swap_remove(0);
-                Err(Error::JobError {
-                    main,
-                    misc: self.errors,
-                })
+                Err(to_err(main, self.errors))
             }
         }
     }
@@ -115,7 +112,7 @@ impl<S> JobStatus<S> {
         self.errors.iter().any(ErrorProto::is_not_found)
     }
 
-    pub(crate) fn take(&mut self) -> Self {
+    pub fn take(&mut self) -> Self {
         Self {
             errors: std::mem::take(&mut self.errors),
             error_result: self.error_result.take(),
@@ -236,4 +233,12 @@ impl_from_job_config_kinds! {
     load::JobConfigurationLoad -> Load,
     copy::JobConfigurationTableCopy -> Copy,
     extract::JobConfigurationExtract -> Extract,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub enum JobCreationMode {
+    #[serde(rename = "JOB_CREATION_REQUIRED")]
+    Required,
+    #[serde(rename = "JOB_CREATION_OPTIONAL")]
+    Optional,
 }

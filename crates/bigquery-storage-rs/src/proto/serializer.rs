@@ -1,20 +1,22 @@
 use std::mem::transmute;
 
 use bytes::{BufMut, BytesMut};
-use serde::{ser, Serialize, Serializer};
+use protos::bigquery_storage::table_field_schema::Mode;
+use serde::{Serialize, Serializer, ser};
 
+use super::EncodeError;
 use super::encode::{Varint, WireType};
-use super::{EncodeError, FieldIndex, Schemas};
+use crate::write::{FieldInfo, Schema};
 
 #[derive(Debug)]
 pub struct ProtoSerializer<'a> {
     row: &'a mut BytesMut,
-    schemas: &'a Schemas,
+    schema: &'a Schema,
 }
 
 impl<'a> ProtoSerializer<'a> {
-    pub fn new(row: &'a mut BytesMut, schemas: &'a Schemas) -> Self {
-        Self { row, schemas }
+    pub fn new(row: &'a mut BytesMut, schema: &'a Schema) -> Self {
+        Self { row, schema }
     }
 
     pub fn serialize_row<T>(&mut self, row: &T) -> Result<(), EncodeError>
@@ -30,7 +32,7 @@ impl ser::Error for EncodeError {
     where
         T: std::fmt::Display,
     {
-        Self::Misc(msg.to_string())
+        Self::Misc(msg.to_string().into_boxed_str())
     }
 }
 
@@ -226,7 +228,7 @@ impl ser::SerializeMap for ProtoMapSerializer<'_, '_> {
         T: Serialize + ?Sized,
     {
         if self.key_buf.is_empty() {
-            return Err(EncodeError::Misc("invalid/missing key".to_owned()));
+            return Err(EncodeError::Misc("invalid/missing key".into()));
         }
 
         let mut serializer = ProtoValueSerializer::new(&self.key_buf, self.parent)?;
@@ -328,10 +330,7 @@ impl ser::SerializeTupleStruct for &mut ProtoSerializer<'_> {
 #[derive(Debug)]
 pub struct ProtoValueSerializer<'a> {
     buf: &'a mut BytesMut,
-    field_index: &'a FieldIndex,
-    field_name: &'a str,
-    #[allow(unused)]
-    schemas: &'a Schemas,
+    field: &'a FieldInfo,
 }
 
 impl<'a> ProtoValueSerializer<'a> {
@@ -340,16 +339,14 @@ impl<'a> ProtoValueSerializer<'a> {
         S: AsRef<str>,
     {
         let field_name = field.as_ref();
-        let field_index = parent
-            .schemas
-            .get_field_index(field_name)
-            .ok_or_else(|| EncodeError::MissingField(field_name.to_owned()))?;
+        let field = parent
+            .schema
+            .get_field(field_name)
+            .ok_or_else(|| EncodeError::MissingField(field_name.into()))?;
 
         Ok(Self {
-            field_index,
-            field_name,
+            field,
             buf: parent.row,
-            schemas: &parent.schemas,
         })
     }
 
@@ -359,30 +356,30 @@ impl<'a> ProtoValueSerializer<'a> {
     {
         let src = src.as_ref();
 
-        if !src.is_empty() || self.field_index.is_required() {
-            self.field_index.encode_tag(&mut self.buf);
+        if !src.is_empty() || matches!(self.field.mode(), Mode::Required) {
+            self.field.encode_tag(&mut self.buf);
             Varint::from_unsigned(src.len()).encode(&mut self.buf);
             self.buf.extend_from_slice(src);
         }
     }
 
     fn serialize_varint(&mut self, varint: Varint) {
-        self.field_index.encode_tag(&mut self.buf);
+        self.field.encode_tag(&mut self.buf);
         varint.encode(&mut self.buf);
     }
 
     fn serialize_bits64(&mut self, bits: u64) {
-        self.field_index.encode_tag(&mut self.buf);
+        self.field.encode_tag(&mut self.buf);
         self.buf.put_u64_le(bits);
     }
 
     fn serialize_bits32(&mut self, bits: u32) {
-        self.field_index.encode_tag(&mut self.buf);
+        self.field.encode_tag(&mut self.buf);
         self.buf.put_u32_le(bits);
     }
 
     fn serialize_signed(&mut self, signed: isize) {
-        match self.field_index.wire_type() {
+        match self.field.field().wire_type() {
             WireType::Varint => self.serialize_varint(Varint::from_signed(signed)),
             // SAFETY: simple bitcasting
             WireType::Bits64 => self.serialize_bits64(unsafe { transmute(signed as i64) }),
@@ -396,7 +393,7 @@ impl<'a> ProtoValueSerializer<'a> {
     }
 
     fn serialize_unsigned(&mut self, unsigned: usize) {
-        match self.field_index.wire_type() {
+        match self.field.field().wire_type() {
             WireType::Varint => self.serialize_varint(Varint::from_unsigned(unsigned)),
             WireType::Bits64 => self.serialize_bits64(unsigned as u64),
             WireType::LengthDelimited => self.serialize_length_delimited(unsigned.to_string()),
@@ -450,7 +447,7 @@ impl<'a> Serializer for &mut ProtoValueSerializer<'a> {
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        match self.field_index.wire_type() {
+        match self.field.field().wire_type() {
             WireType::Varint => self.serialize_varint(Varint::from_signed(v as isize)),
             WireType::Bits64 => self.serialize_bits64((v as f64).to_bits()),
             WireType::LengthDelimited => self.serialize_length_delimited(v.to_string()),
@@ -464,7 +461,7 @@ impl<'a> Serializer for &mut ProtoValueSerializer<'a> {
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        match self.field_index.wire_type() {
+        match self.field.field().wire_type() {
             WireType::Varint => self.serialize_varint(Varint::from_signed(v as isize)),
             WireType::Bits64 => self.serialize_bits64(v.to_bits()),
             WireType::LengthDelimited => self.serialize_length_delimited(v.to_string()),
@@ -485,7 +482,7 @@ impl<'a> Serializer for &mut ProtoValueSerializer<'a> {
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
-        match self.field_index.wire_type() {
+        match self.field.field().wire_type() {
             WireType::Varint => self.serialize_varint(Varint::from_unsigned(v as usize)),
             WireType::Bits64 => self.serialize_bits64(v as u64),
             WireType::LengthDelimited => {
@@ -503,7 +500,7 @@ impl<'a> Serializer for &mut ProtoValueSerializer<'a> {
     }
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-        match self.field_index.wire_type() {
+        match self.field.field().wire_type() {
             WireType::Varint => self.serialize_varint(Varint::from_bool(v)),
             WireType::Bits64 => self.serialize_bits64(v as u64),
             WireType::LengthDelimited => {
@@ -518,8 +515,8 @@ impl<'a> Serializer for &mut ProtoValueSerializer<'a> {
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-        if self.field_index.is_required() {
-            return Err(EncodeError::MissingField(self.field_name.to_owned()));
+        if matches!(self.field.mode(), Mode::Required) {
+            return Err(EncodeError::MissingField(self.field.name().into()));
         }
 
         Ok(())

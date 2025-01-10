@@ -1,7 +1,10 @@
+use bigquery_resources_rs::DatasetReference;
+use bigquery_resources_rs::query::{QueryRequest, QueryString};
 use shared::arc_or_ref::ArcOrRef;
 
 use super::client::InnerClient;
 use crate::BigQueryClient;
+use crate::query::QueryBuilder;
 use crate::resources::table::Table;
 use crate::table::TableClient;
 
@@ -25,6 +28,26 @@ impl<'a, D> DatasetClient<'a, D> {
             dataset_name,
             client: client.into(),
         }
+    }
+
+    pub fn query<S>(&self, query: QueryString) -> QueryBuilder<S>
+    where
+        for<'d> S: From<&'static str> + From<D>,
+        D: Clone,
+    {
+        let mut request = QueryRequest::new(query);
+
+        request.default_dataset = Some(DatasetReference {
+            project_id: S::from(self.client.project_id()),
+            dataset_id: S::from(self.dataset_name.clone()),
+        });
+
+        QueryBuilder::new(
+            BigQueryClient {
+                inner: self.client.clone().into_arc(),
+            },
+            request,
+        )
     }
 
     #[inline]

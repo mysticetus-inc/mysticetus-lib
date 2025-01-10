@@ -9,8 +9,12 @@ pub mod dataset;
 pub mod job;
 pub mod table;
 pub use client::BigQueryClient;
-pub mod resources;
 pub mod util;
+
+pub mod query;
+
+// Re-export the shared resource/type crate
+pub use bigquery_resources_rs as resources;
 
 #[tokio::test]
 async fn test_table_get() -> crate::Result<()> {

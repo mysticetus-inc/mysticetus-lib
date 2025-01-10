@@ -7,6 +7,7 @@ version.workspace = true
 # needed to get table schemas for certain gRPC operations
 reqwest = { workspace = true, features = ["json"] }
 gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+bigquery-resources-rs = { path = "../bigquery-resources-rs" }
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 protos = { path = "../protos", features = ["bigquery"] }
@@ -37,9 +38,15 @@ rand.workspace = true
 num_cpus.workspace = true
 uuid = { workspace = true, features = ["v4"] }
 path-aware-serde = { path = "../path-aware-serde" }
-
+prost.workspace = true
 timestamp = { path = "../timestamp" }
-
+smallvec = { workspace = true, features = [
+    "const_generics",
+    "const_new",
+    "union",
+] }
+fxhash.workspace = true
+bitflags = "2.6.0"
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true, features = [
@@ -50,6 +57,8 @@ tracing-subscriber = { workspace = true, features = [
 
 
 [features]
+default = ["full"]
+
 read = []
 write = []
 full = ["read", "write"]

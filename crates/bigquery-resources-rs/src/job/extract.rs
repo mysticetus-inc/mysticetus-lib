@@ -1,5 +1,4 @@
-use crate::resources::TableReference;
-use crate::util;
+use crate::{TableReference, util};
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

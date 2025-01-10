@@ -1,59 +1,91 @@
 /// basic protobuf encoding/decoding types/functions.
 use std::fmt;
 
+use bigquery_resources_rs::table::FieldType;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct Field {
-    field_number: u8,
-    wire_type: WireType,
+    packed: u8,
+}
+
+impl fmt::Debug for Field {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Field")
+            .field("wire_type", &self.wire_type())
+            .field("field_number", &self.field_number())
+            .finish()
+    }
+}
+
+pub const fn field_type_to_wire_type(ft: FieldType) -> WireType {
+    match ft {
+        FieldType::String => WireType::LengthDelimited,
+        FieldType::Bytes => WireType::LengthDelimited,
+        FieldType::Integer => WireType::Varint,
+        FieldType::Float => WireType::Bits64,
+        FieldType::Bool => WireType::Varint,
+        FieldType::Timestamp => WireType::Bits64,
+        FieldType::Date => WireType::Varint,
+        FieldType::Time => WireType::LengthDelimited,
+        FieldType::DateTime => WireType::LengthDelimited,
+        FieldType::Geography => WireType::LengthDelimited,
+        FieldType::Numeric => WireType::LengthDelimited,
+        FieldType::BigNumeric => WireType::LengthDelimited,
+        FieldType::Json => WireType::LengthDelimited,
+        FieldType::Record => WireType::LengthDelimited,
+        FieldType::Range => WireType::LengthDelimited,
+        FieldType::Interval => WireType::LengthDelimited,
+    }
 }
 
 impl Field {
     pub const fn wire_type(&self) -> WireType {
-        self.wire_type
-    }
-
-    pub const fn new(field_number: u8, wire_type: WireType) -> Self {
-        Self {
-            field_number,
-            wire_type,
+        match WireType::from_byte(self.packed) {
+            Ok(wt) => wt,
+            Err(_) => {
+                panic!("Field.packed should always be valid (checked when Field is constructed)")
+            }
         }
     }
 
-    /*
+    pub const fn field_number(&self) -> u8 {
+        self.packed >> 3
+    }
+
+    pub fn from_schema_field(field: &crate::write::FieldInfo) -> Result<Self, super::EncodeError> {
+        let wire_type = field.wire_type()?;
+        Ok(Self::new(field.index(), wire_type))
+    }
+
+    #[inline]
+    pub const fn new(field_number: u8, wire_type: WireType) -> Self {
+        let packed = (field_number << 3) | (wire_type as u8);
+        Self { packed }
+    }
+
+    #[inline]
     pub const fn from_byte(byte: u8) -> Result<Self, DecodeError> {
-        let field_number = byte >> 3;
         match WireType::from_byte(byte) {
-            Ok(wire_type) => Ok(Self {
-                field_number,
-                wire_type,
-            }),
+            Ok(_) => Ok(Self { packed: byte }),
             Err(err) => Err(err),
         }
     }
-    */
 
     pub fn parse_from_buf<B>(buf: &mut B) -> Result<(Self, RawProtoValue), DecodeError>
     where
         B: Buf,
     {
         let byte = buf.get_u8();
-        let field_number = byte >> 3;
         match WireType::from_byte_and_parse(byte, buf) {
-            Ok((wire_type, value)) => Ok((
-                Self {
-                    field_number,
-                    wire_type,
-                },
-                value,
-            )),
+            Ok((_, value)) => Ok((Self { packed: byte }, value)),
             Err(err) => Err(err),
         }
     }
 
     pub const fn to_byte(&self) -> u8 {
-        (self.field_number << 3) | self.wire_type as u8
+        self.packed
     }
 }
 
@@ -68,7 +100,9 @@ impl fmt::Display for FieldPair {
         write!(
             formatter,
             "{} ({:?}): {:?}",
-            self.field.field_number, self.field.wire_type, self.value,
+            self.field.field_number(),
+            self.field.wire_type(),
+            self.value,
         )
     }
 }
@@ -219,7 +253,9 @@ pub enum RawProtoValue {
     Varint(Varint),
     Bits64(u64),
     LengthDelimited(Bytes),
+    #[deprecated = "deprecated in the proto spec, here for completeness"]
     StartGroup,
+    #[deprecated = "deprecated in the proto spec, here for completeness"]
     EndGroup,
     Bits32(u32),
 }
@@ -304,7 +340,9 @@ impl RawProtoValue {
                 dst.put_slice(delim.as_ref());
                 encoded_len + delim.len()
             }
+            #[allow(deprecated)]
             Self::StartGroup => todo!("start groups not supported"),
+            #[allow(deprecated)]
             Self::EndGroup => todo!("end groups not supported"),
             Self::Bits32(int) => {
                 dst.put_u32_le(*int);
@@ -469,8 +507,8 @@ pub mod zigzag {
 
     #[test]
     fn test_zigzag() {
-        use rand::Rng;
         use rand::distributions::Standard;
+        use rand::Rng;
 
         const TESTS: usize = 10000;
 
@@ -538,10 +576,7 @@ mod tests {
         #[test]
         fn test_varint() {
             const PAIR: FieldPair = FieldPair {
-                field: Field {
-                    field_number: 1,
-                    wire_type: WireType::Varint,
-                },
+                field: Field::new(1, WireType::Varint),
                 value: RawProtoValue::Varint(Varint(150)),
             };
 
@@ -553,10 +588,7 @@ mod tests {
         #[test]
         fn test_length_delimited() {
             const PAIR: FieldPair = FieldPair {
-                field: Field {
-                    field_number: 2,
-                    wire_type: WireType::LengthDelimited,
-                },
+                field: Field::new(2, WireType::LengthDelimited),
                 value: RawProtoValue::LengthDelimited(Bytes::from_static(b"testing")),
             };
 
@@ -573,10 +605,7 @@ mod tests {
         #[test]
         fn test_packed_varints() {
             let pair = FieldPair {
-                field: Field {
-                    field_number: 4,
-                    wire_type: WireType::LengthDelimited,
-                },
+                field: Field::new(4, WireType::LengthDelimited),
                 value: RawProtoValue::LengthDelimited(Bytes::from_static(&ENCODED_PAIR[2..])),
             };
 

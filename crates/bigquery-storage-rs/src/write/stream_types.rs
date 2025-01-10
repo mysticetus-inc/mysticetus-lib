@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
-use gcp_auth_channel::Scope;
+use gcp_auth_channel::channel::headers::{Http, WithHeaders};
+use gcp_auth_channel::{AuthChannel, Scope};
 use protos::bigquery_storage::big_query_write_client::BigQueryWriteClient;
 use protos::bigquery_storage::write_stream::Type;
 use protos::bigquery_storage::{BatchCommitWriteStreamsRequest, FinalizeWriteStreamResponse};
+use tonic::transport::Channel;
 use typenum::marker_traits::Bit;
 use typenum::{B0, B1};
 
@@ -115,7 +117,7 @@ impl FinalizeStream for Pending {
         Ok(PendingStream {
             inner: session.inner,
             rows: resp.row_count as usize,
-            client: session.client,
+            channel: session.channel,
         })
     }
 }
@@ -124,7 +126,7 @@ impl FinalizeStream for Pending {
 pub struct PendingStream {
     inner: Arc<WriteSessionInner>,
     rows: usize,
-    client: BigQueryStorageClient,
+    channel: AuthChannel<WithHeaders<Channel, Http>>,
 }
 
 impl PendingStream {
@@ -167,12 +169,7 @@ impl PendingStream {
             write_streams,
         };
 
-        let mut client = BigQueryWriteClient::new(
-            self.client
-                .channel
-                .clone()
-                .with_scope(Scope::BigQueryReadWrite),
-        );
+        let mut client = BigQueryWriteClient::new(self.channel);
 
         let resp = client.batch_commit_write_streams(req).await?.into_inner();
 

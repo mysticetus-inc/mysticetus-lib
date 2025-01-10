@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
+use bigquery_resources_rs::query::{QueryRequest, QueryString};
 use gcp_auth_channel::{Auth, Scope};
 use http::header::HeaderValue;
 use reqwest::{IntoUrl, Response, Url};
 
 use super::dataset::DatasetClient;
-use super::resources::job::Job;
 use crate::Error;
+use crate::query::QueryBuilder;
+use crate::resources::job::Job;
 
 /// The Base URL for this service, missing the project id (which is the next path component)
 pub(crate) const BASE_URL: &str = "https://bigquery.googleapis.com/bigquery/v2/projects";
@@ -24,27 +26,34 @@ pub(crate) struct InnerClient {
 }
 
 impl BigQueryClient {
-    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
-        let auth = Auth::new(project_id, scope).await?;
-
-        let client = reqwest::Client::builder()
-            .user_agent("bigquery-rs")
-            .build()?;
-
+    pub fn new_from_parts(auth: Auth, client: reqwest::Client) -> Self {
         let mut base_url = Url::parse(BASE_URL).expect("base url is valid");
 
         base_url
             .path_segments_mut()
             .expect("can be a base")
-            .push(project_id);
+            .push(auth.project_id());
 
-        Ok(Self {
+        Self {
             inner: Arc::new(InnerClient {
                 client,
                 auth,
                 base_url,
             }),
-        })
+        }
+    }
+
+    pub fn new_from_auth(auth: Auth) -> Result<Self, Error> {
+        let client = reqwest::Client::builder()
+            .user_agent("bigquery-rs")
+            .build()?;
+
+        Ok(Self::new_from_parts(auth, client))
+    }
+
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        let auth = Auth::new(project_id, scope).await?;
+        Self::new_from_auth(auth)
     }
 
     #[inline]
@@ -57,6 +66,10 @@ impl BigQueryClient {
         Job<S>: serde::Serialize,
     {
         super::job::ActiveJob::new(self, job).await
+    }
+
+    pub fn query<S>(&self, query: QueryString) -> QueryBuilder<S> {
+        QueryBuilder::new(self.clone(), QueryRequest::new(query))
     }
 
     pub fn dataset<D>(&self, dataset_name: D) -> DatasetClient<'_, D> {

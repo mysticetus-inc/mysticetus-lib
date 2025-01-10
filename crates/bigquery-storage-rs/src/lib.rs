@@ -1,4 +1,4 @@
-#![feature(const_swap, seek_stream_len)]
+#![feature(const_swap, seek_stream_len, hash_raw_entry)]
 use std::fmt;
 use std::time::Duration;
 
@@ -9,6 +9,8 @@ pub mod read;
 #[cfg(feature = "write")]
 pub mod write;
 
+pub type Result<T> = core::result::Result<T, Error>;
+
 pub use error::Error;
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
 use tonic::transport::{Channel, ClientTlsConfig};
@@ -17,7 +19,8 @@ const BQ_HOST: &str = "https://bigquerystorage.googleapis.com";
 const BQ_DOMAIN: &str = "bigquerystorage.googleapis.com";
 
 #[cfg(any(feature = "write", feature = "read"))]
-const GOOG_REQ_PARAMS_KEY: &str = "x-goog-request-params";
+const GOOG_REQ_PARAMS_KEY: http::HeaderName =
+    http::HeaderName::from_static("x-goog-request-params");
 
 const KEEPALIVE_DURATION: Duration = Duration::from_secs(120);
 
@@ -27,7 +30,7 @@ pub struct BigQueryStorageClient {
     channel: AuthChannel,
 }
 
-async fn build_channel() -> Result<Channel, Error> {
+async fn build_channel() -> Result<Channel> {
     Channel::from_static(BQ_HOST)
         .user_agent("bigquery-rs")?
         .concurrency_limit(5000)
@@ -38,13 +41,13 @@ async fn build_channel() -> Result<Channel, Error> {
         .map_err(Error::from)
 }
 
-async fn build_auth_manager(project_id: &'static str, scope: Scope) -> Result<Auth, Error> {
+async fn build_auth_manager(project_id: &'static str, scope: Scope) -> Result<Auth> {
     Auth::new(project_id, scope).await.map_err(Error::from)
 }
 
 impl BigQueryStorageClient {
     /// Builds a new BQ Storage client.
-    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self> {
         let (inner_channel, auth_manager) =
             tokio::try_join!(build_channel(), build_auth_manager(project_id, scope))?;
 
@@ -57,7 +60,7 @@ impl BigQueryStorageClient {
     }
 
     /// Builds a new BQ Storage client, from an existing auth manager.
-    pub async fn from_auth_manager<A>(auth_manager: A) -> Result<Self, Error>
+    pub async fn from_auth_manager<A>(auth_manager: A) -> Result<Self>
     where
         A: Into<gcp_auth_channel::Auth>,
     {
@@ -166,7 +169,7 @@ pub struct TrackMark {
 #[cfg(feature = "read")]
 #[ignore = "longrunning test"]
 #[tokio::test(flavor = "multi_thread")]
-async fn test_read() -> Result<(), Error> {
+async fn test_read() -> Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .init();
@@ -221,7 +224,7 @@ async fn test_read() -> Result<(), Error> {
 pub struct TsAsMs(timestamp::Timestamp);
 
 impl serde::Serialize for TsAsMs {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
@@ -273,7 +276,7 @@ impl TestTrackMark {
 
 #[cfg(feature = "write")]
 #[tokio::test(flavor = "multi_thread")]
-async fn test_write() -> Result<(), Error> {
+async fn test_write() -> Result<()> {
     tracing_subscriber::fmt().init();
 
     let client = BigQueryStorageClient::new("mysticetus-oncloud", Scope::BigQueryReadOnly).await?;
@@ -286,7 +289,7 @@ async fn test_write() -> Result<(), Error> {
         .get_default_stream::<TestTrackMark>()
         .await?;
 
-    println!("{:#?}", write_session.get_schemas());
+    println!("{:#?}", write_session.schema());
 
     let mut rng = rand::thread_rng();
 

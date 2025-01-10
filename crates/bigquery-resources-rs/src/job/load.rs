@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use crate::resources::TableReference;
-use crate::resources::table::TableSchema;
-use crate::util;
+use crate::table::TableSchema;
+use crate::{TableReference, util};
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

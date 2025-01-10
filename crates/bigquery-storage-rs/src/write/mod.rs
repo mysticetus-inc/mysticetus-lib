@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, PoisonError, RwLock};
 
 use bytes::BytesMut;
-use gcp_auth_channel::Scope;
+use gcp_auth_channel::channel::headers::{Http, WithHeaders};
+use gcp_auth_channel::{AuthChannel, Scope};
 use http::HeaderValue;
 use net_utils::bidirec::{self, Bidirec};
 use protos::bigquery_storage::append_rows_request::{MissingValueInterpretation, ProtoData, Rows};
@@ -13,17 +15,21 @@ use protos::bigquery_storage::{
     self, AppendRowsRequest, AppendRowsResponse, FinalizeWriteStreamRequest, ProtoRows,
     ProtoSchema, WriteStream,
 };
+use tonic::transport::Channel;
 
 use super::{BigQueryStorageClient, Error};
 
-mod append;
+mod append_rows;
 mod builder;
 mod default;
+mod schema;
 mod stream_types;
+mod write2;
 
+pub(crate) use schema::{FieldInfo, Schema};
 pub use stream_types::{Buffered, Committed, Default, Pending, PendingStream};
 
-use super::proto::{ProtoSerializer, Schemas};
+use super::proto::ProtoSerializer;
 
 #[derive(Debug, Clone)]
 pub struct WriteClient(BigQueryStorageClient);
@@ -58,7 +64,7 @@ impl WriteClient {
 #[derive(Debug, Clone)]
 pub struct WriteSession<W, R> {
     inner: Arc<WriteSessionInner>,
-    client: BigQueryStorageClient,
+    channel: AuthChannel<WithHeaders<Channel, Http>>,
     #[allow(dead_code)]
     // stream_type is currently only used as a marker, but that may change in the future.
     stream_type: W,
@@ -68,28 +74,37 @@ pub struct WriteSession<W, R> {
 impl<W, R> WriteSession<W, R> {
     fn new_inner(
         mut write_stream: WriteStream,
-        client: BigQueryStorageClient,
+        channel: AuthChannel,
         stream_type: W,
+        schema: Option<Schema>,
     ) -> Result<Self, Error> {
         let header_str = format!("write_stream={}", write_stream.name);
         let stream_header = HeaderValue::from_str(&header_str)?;
 
-        let table_schema = write_stream.table_schema.take().ok_or(Error::Internal(
-            crate::error::InternalError::NoSchemaReturned,
-        ))?;
+        let channel = channel.wrap_service(|svc| {
+            WithHeaders::new(svc, [(super::GOOG_REQ_PARAMS_KEY, stream_header)])
+        });
 
-        let schemas = Schemas::new_with_type_name::<R>(table_schema)?;
+        let schema = match schema {
+            Some(schema) => schema,
+            None => {
+                let table_schema = write_stream.table_schema.take().ok_or_else(|| {
+                    Error::Internal(crate::error::InternalError::NoSchemaReturned)
+                })?;
+
+                Schema::from_table_schema(table_schema)?
+            }
+        };
 
         Ok(Self {
             inner: Arc::new(WriteSessionInner {
                 write_stream,
-                stream_header,
                 // generate a unique trace id for this write session
                 trace: uuid::Uuid::new_v4().to_string(),
-                offsets: offset::OffsetTracker::new(),
-                schemas: Mutex::new(Arc::new(schemas)),
+                offset: AtomicUsize::new(0),
+                schema: RwLock::new(schema),
             }),
-            client,
+            channel,
             stream_type,
             _row_type_marker: std::marker::PhantomData,
         })
@@ -149,17 +164,13 @@ mod offset {
     }
 }
 
-/// Bundles up all of the shared data to put behind a single [`Arc`], rather than one per field.
-/// Also, not generic over any type, so any internal code can be optimized without any
-/// monomorphization (as long as the serialization occurs outside of one of its methods, that
-/// may change).
+/// Bundles up all of the shared data to put behind a single [`Arc`].
 #[derive(Debug)]
 struct WriteSessionInner {
     write_stream: WriteStream,
     trace: String,
-    schemas: Mutex<Arc<Schemas>>,
-    offsets: offset::OffsetTracker,
-    stream_header: HeaderValue,
+    schema: RwLock<Schema>,
+    offset: AtomicUsize,
 }
 
 impl<W, R> WriteSession<W, R>
@@ -169,16 +180,7 @@ where
     async fn get_row_append_context(
         &self,
     ) -> Result<Bidirec<AppendRowsRequest, AppendRowsResponse>, Error> {
-        let channel = self
-            .client
-            .channel
-            .clone()
-            .attach_header()
-            .static_key(super::GOOG_REQ_PARAMS_KEY)
-            .value(self.inner.stream_header.clone())
-            .with_scope(Scope::BigQueryReadWrite);
-
-        let mut client = BigQueryWriteClient::new(channel);
+        let mut client = BigQueryWriteClient::new(self.channel.clone());
 
         let (req, partial) = bidirec::build_parts();
 
@@ -187,18 +189,18 @@ where
         Ok(handle)
     }
 
-    pub(crate) fn get_schemas(&self) -> Arc<Schemas> {
-        match self.inner.schemas.lock() {
-            Ok(lock) => Arc::clone(&*lock),
-            Err(poisoned) => Arc::clone(&*poisoned.into_inner()),
-        }
+    pub(crate) fn schema(&self) -> std::sync::RwLockReadGuard<'_, Schema> {
+        self.inner
+            .schema
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
     }
 
-    fn handle_resp_inner(&self, resp: AppendRowsResponse) -> Result<i64, Error> {
+    fn handle_resp_inner(&self, resp: AppendRowsResponse) -> Result<(), Error> {
         if let Some(new_schema) = resp.updated_schema {
-            let new = Schemas::new_with_type_name::<R>(new_schema).map(Arc::new)?;
+            let new = Schema::from_table_schema(new_schema)?;
 
-            let mut guard = match self.inner.schemas.lock() {
+            let mut guard = match self.inner.schema.write() {
                 Ok(guard) => guard,
                 Err(pois) => pois.into_inner(),
             };
@@ -210,7 +212,9 @@ where
             Some(Response::AppendResult(AppendResult {
                 offset: Some(offset),
             })) => {
-                return Ok(self.inner.offsets.set_append_offset(offset.value));
+                self.inner
+                    .offset
+                    .store(offset.value as usize, std::sync::atomic::Ordering::SeqCst);
             }
             Some(Response::Error(status)) => {
                 Error::try_from_raw_status(status)?;
@@ -218,7 +222,7 @@ where
             _ => (),
         }
 
-        Ok(self.inner.offsets.append_offset())
+        Ok(())
     }
 
     /// Takes an [`IntoIterator`] of rows, serializing them in order and appends them to the table.
@@ -229,74 +233,28 @@ where
     /// serialized rows go over a slightly reduced limit (8MB). In a future version this'll be
     /// replaced by a unified [`append::RowAppendContext`]-based implementation that'll handle
     /// splitting the payload up internally.
-    pub async fn append_rows<I>(&self, rows: I) -> Result<i64, Error>
+    pub async fn append_rows<I>(&self, rows: I) -> Result<(), Error>
     where
         I: IntoIterator<Item = R>,
+        I::IntoIter: Send + 'static,
     {
-        let row_iter = rows.into_iter();
-        let (low, high) = row_iter.size_hint();
+        /*
+        let mut client = BigQueryWriteClient::new(self.channel.clone());
 
-        let mut rows = Vec::with_capacity(high.unwrap_or(low));
-
-        let schemas = self.get_schemas();
-
-        let mut row_size_sum = 0_usize;
-
-        for row in row_iter {
-            let mut row_buf = row_size_sum
-                .checked_div(rows.len())
-                .map(BytesMut::with_capacity)
-                .unwrap_or_default();
-
-            ProtoSerializer::new(&mut row_buf, &schemas).serialize_row(&row)?;
-
-            row_size_sum += row_buf.len();
-
-            rows.push(row_buf.freeze());
-        }
-
-        // BQ throws errors if it gets empty rows (plus it's doing IO for no reason), so bail early
-        if rows.is_empty() {
-            return Ok(0);
-        }
-
-        if row_size_sum > 8 * 1024_usize.pow(3) {
-            return Err(Error::Status(tonic::Status::internal(
-                "serialized rows are over the temp 8MB limit",
-            )));
-        }
-
-        let req = AppendRowsRequest {
-            rows: Some(Rows::ProtoRows(ProtoData {
-                writer_schema: Some(ProtoSchema {
-                    proto_descriptor: Some(schemas.proto().clone()),
-                }),
-                rows: Some(ProtoRows {
-                    serialized_rows: rows,
-                }),
-            })),
-            default_missing_value_interpretation: MissingValueInterpretation::DefaultValue as i32,
-            missing_value_interpretations: HashMap::new(),
+        let base_msg = AppendRowsRequest {
             write_stream: self.inner.write_stream.name.clone(),
-            offset: None,
-            trace_id: self.inner.trace.clone(),
+            ..AppendRowsRequest::default()
         };
 
-        let channel = self
-            .client
-            .channel
-            .clone()
-            .attach_header()
-            .static_key(super::GOOG_REQ_PARAMS_KEY)
-            .value(self.inner.stream_header.clone())
-            .with_scope(Scope::BigQueryReadWrite);
+        let encoder = append_row_encoder::AppendRowsEncoder::new_iter(
+            Arc::clone(&self.inner),
+            base_msg,
+            rows,
+        );
 
-        let mut client = BigQueryWriteClient::new(channel);
+        let (handle, sink) = net_utils::infallible::into_infallible(futures::stream::iter(encoder));
 
-        let mut stream = client
-            .append_rows(net_utils::once::Once::new(req))
-            .await?
-            .into_inner();
+        let mut stream = client.append_rows(sink).await?.into_inner();
 
         let mut last_message = None;
         while let Some(message) = stream.message().await? {
@@ -307,71 +265,7 @@ where
             .ok_or_else(|| Error::Status(tonic::Status::internal("append_rows never responded")))?;
 
         self.handle_resp_inner(last_message)
-    }
-}
-
-impl<W, R> WriteSession<W, R>
-where
-    W: stream_types::WriteStreamType<CanFlush = typenum::B1>,
-{
-    /// Flushes the stream, returning the offset of the flushed rows.
-    pub async fn flush(&self) -> Result<Option<usize>, Error> {
-        let value = match self.inner.offsets.get_pending_offset() {
-            Some(offset) => offset,
-            None => return Ok(None),
-        };
-
-        let req = bigquery_storage::FlushRowsRequest {
-            write_stream: self.inner.write_stream.name.clone(),
-            offset: Some(protos::protobuf::Int64Value { value }),
-        };
-
-        let channel = self
-            .client
-            .channel
-            .clone()
-            .with_scope(Scope::BigQueryReadWrite);
-
-        let mut client = BigQueryWriteClient::new(channel);
-
-        let resp = client.flush_rows(req).await?.into_inner();
-
-        let new_offset = self.inner.offsets.set_commit_offset(resp.offset);
-
-        Ok(Some(new_offset.abs_diff(resp.offset) as usize))
-    }
-}
-
-impl<W, R> WriteSession<W, R>
-where
-    W: stream_types::FinalizeStream,
-{
-    /// Finalizes the stream. If this is a [`Pending`] stream, the returned [`PendingStream`]
-    /// must be committed.
-    ///
-    /// To do so from one call, use [`WriteSession::finalize_and_commit`].
-    pub async fn finalize(self) -> Result<W::Ok, Error> {
-        let req = FinalizeWriteStreamRequest {
-            name: self.inner.write_stream.name.clone(),
-        };
-
-        let channel = self
-            .client
-            .channel
-            .clone()
-            .with_scope(Scope::BigQueryReadWrite);
-
-        let mut client = BigQueryWriteClient::new(channel);
-
-        let resp = client.finalize_write_stream(req).await?.into_inner();
-
-        W::on_finalized(self, resp)
-    }
-}
-
-impl<R> WriteSession<Pending, R> {
-    /// Provides a shortcut for finalizing + committing a [`Pending`] stream.
-    pub async fn finalize_and_commit(self) -> Result<usize, Error> {
-        self.finalize().await?.commit().await
+        */
+        todo!()
     }
 }

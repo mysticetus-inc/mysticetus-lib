@@ -142,12 +142,18 @@ where
 
         let write_stream = WriteStream {
             name: qual_path,
-            table_schema: Some(schema),
             r#type: stream_types::Default::to_type() as i32,
             ..Default::default()
         };
 
-        WriteSession::new_inner(write_stream, self.client, stream_types::Default)
+        let schema = super::Schema::from_table_schema(schema)?;
+
+        WriteSession::new_inner(
+            write_stream,
+            self.client.channel,
+            stream_types::Default,
+            Some(schema),
+        )
     }
 }
 
@@ -160,6 +166,6 @@ where
     /// Creates the [`WriteSession`] for this stream.
     pub async fn create<R>(mut self) -> Result<WriteSession<W, R>, Error> {
         let write_stream = self.create_inner(String::new()).await?;
-        WriteSession::new_inner(write_stream, self.client, self.stream_type)
+        WriteSession::new_inner(write_stream, self.client.channel, self.stream_type, None)
     }
 }

@@ -1,0 +1,14 @@
+[package]
+name = "bigquery-resources-rs"
+edition = "2021"
+version.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+timestamp = { path = "../timestamp" }
+serde_json = { workspace = true, features = ["raw_value"] }
+thiserror.workspace = true
+itoa.workspace = true
+serde-helpers = { path = "../serde-helpers" }
+uuid = { workspace = true, features = ["serde"] }
+path-aware-serde = { path = "../path-aware-serde" }

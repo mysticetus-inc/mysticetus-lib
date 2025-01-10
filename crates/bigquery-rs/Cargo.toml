@@ -10,6 +10,7 @@ authors = ["mrudisel"]
 itoa.workspace = true
 bytes = { workspace = true, features = ["serde"] }
 futures.workspace = true
+bigquery-resources-rs = { path = "../bigquery-resources-rs" }
 gcp-auth-channel = { path = "../gcp-auth-channel", default-features = false }
 http.workspace = true
 path-aware-serde = { path = "../path-aware-serde", features = ["json"] }

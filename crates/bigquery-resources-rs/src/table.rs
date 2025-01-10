@@ -120,6 +120,45 @@ pub struct TableFieldSchema<S> {
     pub range_element_type: Option<RangeElementType>,
 }
 
+impl<S> TableFieldSchema<S> {
+    pub const fn new(name: S, ty: FieldType, mode: FieldMode) -> Self {
+        Self {
+            name,
+            ty,
+            mode,
+            rounding_mode: None,
+            range_element_type: None,
+            max_length: None,
+            description: None,
+            default_value_expression: None,
+            scale: None,
+            precision: None,
+        }
+    }
+
+    pub fn map_as_ref<T: ?Sized>(&self) -> TableFieldSchema<&T>
+    where
+        S: AsRef<T>,
+    {
+        self.map(AsRef::as_ref)
+    }
+
+    pub fn map<'a, T: 'a>(&'a self, mut map_fn: impl FnMut(&'a S) -> T) -> TableFieldSchema<T> {
+        TableFieldSchema {
+            name: map_fn(&self.name),
+            ty: self.ty,
+            mode: self.mode,
+            description: self.description.as_ref().map(&mut map_fn),
+            max_length: self.max_length,
+            precision: self.precision,
+            scale: self.scale,
+            rounding_mode: self.rounding_mode,
+            default_value_expression: self.default_value_expression.as_ref().map(map_fn),
+            range_element_type: self.range_element_type,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RoundingMode {
@@ -182,6 +221,8 @@ pub enum FieldType {
     Json,
     #[serde(alias = "STRUCT")]
     Record,
+    Range,
+    Interval,
 }
 
 impl FieldType {
@@ -201,6 +242,8 @@ impl FieldType {
             Self::BigNumeric => "BigNumeric",
             Self::Json => "Json",
             Self::Record => "Struct",
+            Self::Range => "Range",
+            Self::Interval => "Interval",
         }
     }
 }
