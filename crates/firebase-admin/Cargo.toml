@@ -1,0 +1,21 @@
+[package]
+name = "firebase-admin"
+edition = "2021"
+version.workspace = true
+
+[dependencies]
+bytes.workspace = true
+http.workspace = true
+http-body.workspace = true
+tower.workspace = true
+fxhash.workspace = true
+tokio.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
+thiserror.workspace = true
+axum.workspace = true
+jsonwebtoken.workspace = true
+timestamp = { path = "../timestamp" }
+reqwest = { workspace = true, features = ["json"] }
+tracing.workspace = true
