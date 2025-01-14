@@ -1,22 +1,47 @@
+use std::fmt;
 use std::sync::Arc;
 
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
 use protos::spanner::spanner_client::SpannerClient;
-use shared::Shared;
 use tonic::transport::ClientTlsConfig;
 
 use crate::info::Database;
-use crate::pool::SessionPool;
 use crate::session::Session;
+
+pub mod pool;
+
+#[cfg(feature = "admin")]
+pub mod admin;
+#[cfg(feature = "emulator")]
+pub mod emulator;
+
+mod session;
+
+use pool::SessionPool;
 
 const DOMAIN: &str = "spanner.googleapis.com";
 const ENDPOINT: &str = "https://spanner.googleapis.com";
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Client {
+    parts: Arc<ClientParts>,
+    session_pool: SessionPool,
+}
+
+impl fmt::Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("info", &self.parts.info)
+            .field("channel", &self.parts.channel)
+            .field("session_pool", &self.session_pool)
+            .finish()
+    }
+}
+
+pub(crate) struct ClientParts {
     pub(crate) info: Database,
     pub(crate) channel: AuthChannel,
-    pub(crate) session_pool: Arc<SessionPool>,
+    pub(crate) role: Option<Box<str>>,
 }
 
 async fn build_channel() -> crate::Result<tonic::transport::Channel> {
@@ -38,11 +63,16 @@ impl Client {
         Database::builder(project_id)
     }
 
-    pub(crate) fn from_parts(database: Database, channel: AuthChannel) -> Self {
-        Self {
-            info: database,
+    pub(crate) fn from_parts(info: Database, channel: AuthChannel, role: Option<Box<str>>) -> Self {
+        let parts = Arc::new(ClientParts {
+            info,
             channel,
-            session_pool: Arc::new(SessionPool::new()),
+            role,
+        });
+
+        Self {
+            session_pool: SessionPool::new(Arc::clone(&parts)),
+            parts,
         }
     }
 
@@ -52,19 +82,19 @@ impl Client {
     /// Returns the new emulator client + the running docker/emulator process
     pub async fn replicate_db_setup_emulator(
         &self,
-        emulator_options: crate::emulator::EmulatorOptions,
-        instance_compute: crate::admin::InstanceCompute,
-    ) -> crate::Result<(crate::emulator::Emulator, Self)> {
+        emulator_options: emulator::EmulatorOptions,
+        instance_compute: admin::InstanceCompute,
+    ) -> crate::Result<(emulator::Emulator, Self)> {
         use anyhow::anyhow;
         use timestamp::Duration;
 
         let mut admin_client = self.admin_client();
-        let db_info = self.info.clone();
+        let db_info = self.parts.info.clone();
 
         let load_ddl_task =
             tokio::spawn(async move { admin_client.get_database_ddl(&db_info).await });
 
-        let emulator = crate::emulator::Emulator::start(emulator_options).await?;
+        let emulator = emulator::Emulator::start(emulator_options).await?;
 
         let ddl = load_ddl_task
             .await
@@ -72,7 +102,7 @@ impl Client {
 
         let emulator_client = emulator
             .create_database(
-                self.info.clone(),
+                self.parts.info.clone(),
                 instance_compute,
                 ddl,
                 Some(Duration::from_seconds(30)),
@@ -82,22 +112,11 @@ impl Client {
         Ok((emulator, emulator_client))
     }
 
-    /// Create a new [`Client`] to interact with a different database. Clones
-    /// the underlying gRPC channel, rather than expecting an entirely new client to
-    /// be constructed
-    pub fn with_database<S>(&self, database: Database<S>) -> Self
-    where
-        S: AsRef<str>,
-        Shared<str>: From<S>,
-    {
-        Self {
-            info: database.into_shared(),
-            channel: self.channel.clone(),
-            session_pool: Arc::clone(&self.session_pool),
-        }
-    }
-
-    pub(crate) async fn new_load_auth<F, E>(info: Database, load_auth: F) -> crate::Result<Self>
+    pub(crate) async fn new_load_auth<F, E>(
+        info: Database,
+        role: Option<Box<str>>,
+        load_auth: F,
+    ) -> crate::Result<Self>
     where
         F: std::future::Future<Output = Result<Auth, E>>,
         E: Into<crate::Error>,
@@ -113,14 +132,14 @@ impl Client {
             .with_channel(channel)
             .build();
 
-        Ok(Self {
-            channel,
-            info,
-            session_pool: Arc::new(SessionPool::new()),
-        })
+        Ok(Self::from_parts(info, channel, role))
     }
 
-    pub(crate) async fn new_loaded(info: Database, auth: Auth) -> crate::Result<Self> {
+    pub(crate) async fn new_loaded(
+        info: Database,
+        auth: Auth,
+        role: Option<Box<str>>,
+    ) -> crate::Result<Self> {
         let channel = build_channel().await?;
 
         let channel = AuthChannel::builder()
@@ -128,14 +147,14 @@ impl Client {
             .with_channel(channel)
             .build();
 
-        Ok(Self {
-            channel,
-            info,
-            session_pool: Arc::new(SessionPool::new()),
-        })
+        Ok(Self::from_parts(info, channel, role))
     }
 
-    pub(crate) async fn new_inner(info: Database, scope: Scope) -> crate::Result<Self> {
+    pub(crate) async fn new_inner(
+        info: Database,
+        scope: Scope,
+        role: Option<Box<str>>,
+    ) -> crate::Result<Self> {
         let project_id = info.project_id();
         let load_auth_fut = async move {
             gcp_auth_channel::Auth::new(project_id, scope)
@@ -143,7 +162,7 @@ impl Client {
                 .map_err(crate::Error::from)
         };
 
-        Self::new_load_auth(info, load_auth_fut).await
+        Self::new_load_auth(info, role, load_auth_fut).await
     }
 
     pub async fn new(
@@ -151,18 +170,27 @@ impl Client {
         instance_name: &str,
         database_name: &str,
         scope: Scope,
+        role: Option<Box<str>>,
     ) -> crate::Result<Self> {
         let info = Database::new(project_id, instance_name, database_name);
 
-        Self::new_inner(info, scope).await
+        Self::new_inner(info, scope, role).await
+    }
+
+    pub(crate) fn parts(&self) -> &Arc<ClientParts> {
+        &self.parts
     }
 
     pub fn database_info(&self) -> &Database {
-        &self.info
+        &self.parts.info
     }
 
-    pub fn admin_client(&self) -> crate::admin::SpannerAdmin {
-        crate::admin::SpannerAdmin::from_channel(self.channel.clone())
+    pub(crate) fn channel(&self) -> &AuthChannel {
+        &self.parts.channel
+    }
+
+    pub fn admin_client(&self) -> admin::SpannerAdmin {
+        admin::SpannerAdmin::from_channel(self.parts.channel.clone())
     }
 
     /*
@@ -210,12 +238,12 @@ impl Client {
     */
 
     pub(crate) fn grpc(&self) -> SpannerClient<AuthChannel> {
-        SpannerClient::new(self.channel.clone())
+        SpannerClient::new(self.parts.channel.clone())
     }
 
     async fn create_session_inner(&self, role: Option<String>) -> crate::Result<Session> {
         let req = protos::spanner::CreateSessionRequest {
-            database: self.info.qualified_database().to_owned(),
+            database: self.parts.info.qualified_database().to_owned(),
             session: Some(protos::spanner::Session {
                 creator_role: role.unwrap_or_else(String::new),
                 ..Default::default()

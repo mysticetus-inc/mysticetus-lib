@@ -218,8 +218,8 @@ impl Emulator {
     }
 
     #[cfg(feature = "admin")]
-    pub fn admin_client(&self) -> crate::admin::SpannerAdmin {
-        crate::admin::SpannerAdmin::from_channel(self.channel.clone())
+    pub fn admin_client(&self) -> crate::client::admin::SpannerAdmin {
+        crate::client::admin::SpannerAdmin::from_channel(self.channel.clone())
     }
 
     pub fn take_stdout(&mut self) -> Option<tokio::process::ChildStdout> {
@@ -230,7 +230,7 @@ impl Emulator {
     pub async fn create_database(
         &self,
         database: crate::Database,
-        instance_compute: crate::admin::InstanceCompute,
+        instance_compute: crate::client::admin::InstanceCompute,
         ddl_statements: Vec<String>,
         timeout: Option<Duration>,
     ) -> crate::Result<crate::Client> {
@@ -251,6 +251,7 @@ impl Emulator {
         Ok(crate::Client::from_parts(
             database,
             admin_client.into_channel(),
+            None,
         ))
     }
 

@@ -26,7 +26,10 @@ itoa.workspace = true
 longrunning = { path = "../../longrunning" }
 static-casing.workspace = true
 http-body.workspace = true
-
+deadpool = { version = "0.12", default-features = false, features = [
+    "unmanaged",
+    "rt_tokio_1",
+] }
 serde_json = { workspace = true, optional = true }
 shared.workspace = true
 spanner-rs-macros = { path = "../spanner-rs-macros" }

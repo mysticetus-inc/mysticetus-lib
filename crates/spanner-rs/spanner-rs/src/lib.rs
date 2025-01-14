@@ -8,15 +8,11 @@
 #[macro_use]
 extern crate tracing;
 
-#[cfg(feature = "admin")]
-pub mod admin;
 mod batch_write;
 mod client;
 pub mod column;
 mod connection;
 pub mod convert;
-#[cfg(feature = "emulator")]
-pub mod emulator;
 pub mod error;
 pub mod info;
 pub mod insertable;
@@ -24,7 +20,6 @@ pub mod key_set;
 #[doc(hidden)]
 pub mod macros;
 pub mod pk;
-pub mod pool;
 pub mod queryable;
 pub mod results;
 pub mod serde;
@@ -77,9 +72,9 @@ pub mod __macro_internals {
     // re-export for macro usage
     pub use {generic_array, static_casing, typenum};
 
+    use crate::Field;
     use crate::convert::{FromSpanner, SpannerEncode};
     use crate::error::ConvertError;
-    use crate::Field;
 
     #[inline]
     #[doc(hidden)]
@@ -175,7 +170,8 @@ mod private {
         };
     }
 
-    // impl_sealed_to_key!(A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9, J: 10, K: 11, L: 12, M: 13, N: 14, O: 15, P: 16);
+    // impl_sealed_to_key!(A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9, J: 10, K: 11, L:
+    // 12, M: 13, N: 14, O: 15, P: 16);
 
     // Spanner itself limits primary keys to 16 columns
     spanner_rs_macros::impl_pk_sealed!(SealedToKey; T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);

@@ -339,10 +339,11 @@ impl<'a> Database<&'a str> {
                 None => return Err("expected a path separator '/'"),
             };
 
-        if let Err(error) = util::check_ident(
-            util::slice(bytes, instance_id_start, instance_id_end),
-            &[b'-'],
-        ) {
+        if let Err(error) =
+            util::check_ident(util::slice(bytes, instance_id_start, instance_id_end), &[
+                b'-',
+            ])
+        {
             return Err(error);
         }
 
@@ -355,10 +356,9 @@ impl<'a> Database<&'a str> {
             return Err("expected an intermediate '/databases/' component");
         }
 
-        if let Err(error) = util::check_ident(
-            util::slice(bytes, database_start, bytes.len()),
-            &[b'-', b'\\', b'_'],
-        ) {
+        if let Err(error) = util::check_ident(util::slice(bytes, database_start, bytes.len()), &[
+            b'-', b'\\', b'_',
+        ]) {
             return Err(error);
         }
 
@@ -505,7 +505,7 @@ impl<S: AsRef<str>> Database<S> {
     where
         Shared<str>: From<S>,
     {
-        crate::Client::new_inner(self.into_shared(), scope).await
+        crate::Client::new_inner(self.into_shared(), scope, None).await
     }
 
     #[inline]
@@ -513,7 +513,7 @@ impl<S: AsRef<str>> Database<S> {
     where
         Shared<str>: From<S>,
     {
-        crate::Client::new_loaded(self.into_shared(), auth).await
+        crate::Client::new_loaded(self.into_shared(), auth, None).await
     }
 
     #[inline]
@@ -523,7 +523,7 @@ impl<S: AsRef<str>> Database<S> {
         F: std::future::Future<Output = Result<Auth, E>>,
         E: Into<crate::Error>,
     {
-        crate::Client::new_load_auth(self.into_shared(), load_fut).await
+        crate::Client::new_load_auth(self.into_shared(), None, load_fut).await
     }
 
     #[inline]
@@ -671,7 +671,7 @@ mod util {
 
 #[cfg(test)]
 mod tests {
-    use super::{Database, Project, DATABASE_PREFIX, INSTANCE_PREFIX, PROJECTS_PREFIX};
+    use super::{DATABASE_PREFIX, Database, INSTANCE_PREFIX, PROJECTS_PREFIX, Project};
 
     const TEST_PROJECT_ID: &str = "test-project-id";
     const TEST_INSTANCE: &str = "test-instance";

@@ -139,7 +139,7 @@ impl SessionPool {
         let mut scoped = client.grpc();
 
         let req = spanner::ListSessionsRequest {
-            database: client.info.qualified_database().to_owned(),
+            database: client.database_info().qualified_database().to_owned(),
             page_size: 100,
             page_token: String::new(),
             filter: String::new(),
@@ -266,7 +266,7 @@ impl SessionPool {
         }
 
         let req = spanner::BatchCreateSessionsRequest {
-            database: client.info.qualified_database().to_owned(),
+            database: client.database_info().qualified_database().to_owned(),
             session_count: n as i32,
             session_template: role.map(|creator_role| spanner::Session {
                 creator_role,
@@ -419,8 +419,8 @@ pub(crate) mod queue {
     use std::task::{Context, Poll};
 
     use crossbeam::queue::ArrayQueue;
-    use tokio::sync::futures::Notified;
     use tokio::sync::Notify;
+    use tokio::sync::futures::Notified;
 
     pub(crate) struct Borrowed<'a, T> {
         item: T,
@@ -516,13 +516,10 @@ pub(crate) mod queue {
             timeout: timestamp::Duration,
         ) -> Result<Borrowed<'_, T>, WaitForBorrowedTimeout<'_, T>> {
             self.borrow().ok_or_else(|| {
-                tokio::time::timeout(
-                    timeout.into(),
-                    WaitForBorrowed {
-                        notified: self.notify_new.notified(),
-                        queue: self,
-                    },
-                )
+                tokio::time::timeout(timeout.into(), WaitForBorrowed {
+                    notified: self.notify_new.notified(),
+                    queue: self,
+                })
             })
         }
 
