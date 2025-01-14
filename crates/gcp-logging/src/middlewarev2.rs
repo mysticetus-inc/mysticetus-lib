@@ -10,7 +10,6 @@ use http_body::Body;
 use tower::{Layer, Service};
 use tracing::Span;
 
-use crate::response_error::ResponseError;
 use crate::subscriber::SubscriberHandle;
 
 #[derive(Debug, Clone)]
@@ -39,10 +38,6 @@ impl<S> Layer<S> for TraceLayer {
 pub struct TraceService<S> {
     svc: S,
     handle: SubscriberHandle,
-}
-
-pub trait InspectResponse {
-    fn inspect_response(&self, span: &Span, response: &axum::response::Response);
 }
 
 impl<S, Rb> tower::Service<http::Request<Rb>> for TraceService<S>
@@ -109,7 +104,7 @@ where
 
         let elapsed = this.start.elapsed();
 
-        let mut response = resp.into_response();
+        let response = resp.into_response();
 
         if let Some(span_id) = this.span.id() {
             this.handle.update_trace(
@@ -119,8 +114,6 @@ where
                 get_response_size(&response),
             );
         }
-
-        if let Some(ResponseError(error)) = response.extensions_mut().remove() {}
 
         Poll::Ready(Ok(response))
     }
