@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use bigquery_resources_rs::ErrorProto;
 use bigquery_resources_rs::query::{QueryRequest, QueryString};
 use gcp_auth_channel::{Auth, Scope};
 use http::header::HeaderValue;
@@ -127,22 +128,32 @@ impl InnerClient {
 
     #[inline]
     pub(crate) async fn delete(&self, url: impl IntoUrl) -> Result<Response, Error> {
-        self.request(reqwest::Method::DELETE, url)
+        let resp = self
+            .request(reqwest::Method::DELETE, url)
             .await?
             .send()
-            .await?
-            .error_for_status()
-            .map_err(Error::from)
+            .await?;
+
+        if !resp.status().is_success() {
+            Err(handle_error(resp).await)
+        } else {
+            Ok(resp)
+        }
     }
 
     #[inline]
     pub(crate) async fn get(&self, url: impl IntoUrl) -> Result<Response, Error> {
-        self.request(reqwest::Method::GET, url)
+        let resp = self
+            .request(reqwest::Method::GET, url)
             .await?
             .send()
-            .await?
-            .error_for_status()
-            .map_err(Error::from)
+            .await?;
+
+        if !resp.status().is_success() {
+            Err(handle_error(resp).await)
+        } else {
+            Ok(resp)
+        }
     }
 
     #[inline]
@@ -150,14 +161,102 @@ impl InnerClient {
     where
         S: serde::Serialize,
     {
-        self.request(reqwest::Method::POST, url)
+        let resp = self
+            .request(reqwest::Method::POST, url)
             .await?
             .json(&payload)
             .send()
-            .await?
-            .error_for_status()
-            .map_err(Error::from)
+            .await?;
+
+        if !resp.status().is_success() {
+            Err(handle_error(resp).await)
+        } else {
+            Ok(resp)
+        }
     }
+}
+
+pub(crate) async fn handle_error(response: reqwest::Response) -> crate::Error {
+    let status = response.status();
+    let text = match response.text().await {
+        Ok(text) => text,
+        Err(error) => return error.into(),
+    };
+
+    fn try_deserialize_json_error(
+        text: &str,
+        status: u16,
+    ) -> Result<Option<crate::Error>, path_aware_serde::Error<serde_json::Error>> {
+        fn handle_error_proto_array(mut array: Vec<ErrorProto>, status: u16) -> crate::Error {
+            match array.len() {
+                0 => ErrorProto::new("no error information given".into())
+                    .with_status(status)
+                    .into(),
+                1.. => {
+                    let main = array.remove(0);
+                    crate::Error::JobError { main, misc: array }
+                }
+            }
+        }
+
+        if text.starts_with('[') {
+            let errors: Vec<ErrorProto> = path_aware_serde::json::deserialize_str(text)?;
+            Ok(Some(handle_error_proto_array(errors, status)))
+        } else if text.starts_with('{') {
+            // check for a nested object with an errors array,
+            // within the first 5 chars. That should handle
+            // whitespace between the opening brace and the key
+            //
+            // i.e '{\s+"errors":[...]}'
+
+            let stop_looking_after = text.ceil_char_boundary(5 + "\"errors\":".len());
+            match text[..stop_looking_after].find("\"errors\":") {
+                Some(_) => {
+                    #[derive(serde::Deserialize)]
+                    struct Errors {
+                        errors: Vec<ErrorProto>,
+                    }
+
+                    let Errors { errors } = path_aware_serde::json::deserialize_str(text)?;
+
+                    Ok(Some(handle_error_proto_array(errors, status)))
+                }
+                None => {
+                    let main = path_aware_serde::json::deserialize_str::<ErrorProto>(text)?
+                        .with_status(status);
+                    Ok(Some(crate::Error::from(main)))
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    match try_deserialize_json_error(&text, status.as_u16()) {
+        Ok(Some(error)) => return error,
+        // this is if the response is text based and not json
+        Ok(None) => (),
+        // if we failed to deserialize the json, log it
+        Err(error) => tracing::warn!(
+            message = "failed to deserialize error json, falling back to raw text",
+            ?error
+        ),
+    }
+
+    ErrorProto::new(text.into_boxed_str())
+        .with_status(status.as_u16())
+        .into()
+}
+
+pub(crate) async fn handle_json_response<T>(response: reqwest::Response) -> crate::Result<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    if !response.status().is_success() {
+        return Err(handle_error(response).await);
+    }
+
+    deserialize_json(response).await
 }
 
 pub(crate) async fn deserialize_json<T>(response: reqwest::Response) -> crate::Result<T>

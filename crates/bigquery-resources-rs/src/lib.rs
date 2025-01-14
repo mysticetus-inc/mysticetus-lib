@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::fmt;
+use std::num::NonZeroU16;
 
 pub mod dataset;
 pub mod job;
@@ -86,6 +87,8 @@ pub struct ErrorProto<S = Box<str>> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debug_info: Option<S>,
     pub message: S,
+    #[serde(skip)]
+    pub status: Option<NonZeroU16>,
 }
 
 impl<S: fmt::Display> fmt::Display for ErrorProto<S> {
@@ -97,10 +100,30 @@ impl<S: fmt::Display> fmt::Display for ErrorProto<S> {
     }
 }
 
+impl<S> ErrorProto<S> {
+    pub fn new(message: S) -> Self {
+        Self {
+            message,
+            reason: None,
+            location: None,
+            debug_info: None,
+            status: None,
+        }
+    }
+
+    pub fn with_status(mut self, status: u16) -> Self {
+        if let Some(status) = NonZeroU16::new(status) {
+            self.status = Some(status);
+        }
+        self
+    }
+}
+
 impl<S: AsRef<str>> ErrorProto<S> {
     pub fn is_not_found(&self) -> bool {
         self.reason
             .as_ref()
             .is_some_and(|reason| reason.as_ref() == "notFound")
+            || self.status.is_some_and(|status| status.get() == 404)
     }
 }

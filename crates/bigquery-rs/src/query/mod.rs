@@ -1,6 +1,5 @@
 use std::num::NonZeroU64;
 
-use bigquery_resources_rs::ErrorProto;
 use bigquery_resources_rs::query::{QueryRequest, QueryResponse};
 
 use crate::BigQueryClient;
@@ -51,16 +50,7 @@ where
         .send()
         .await?;
 
-    if !resp.status().is_success() {
-        let error: ErrorProto = crate::client::deserialize_json(resp).await?;
-        
-        return Err(crate::Error::JobError {
-            main: error,
-            misc: vec![],
-        });
-    }
-
-    crate::client::deserialize_json(resp).await
+    crate::client::handle_json_response(resp).await
 }
 
 #[cfg(test)]

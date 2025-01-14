@@ -17,6 +17,15 @@ pub enum Error {
     },
 }
 
+impl From<ErrorProto> for Error {
+    fn from(value: ErrorProto) -> Self {
+        Self::JobError {
+            main: value,
+            misc: vec![],
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("expected valid value for `{ty}.{field}`, not {value:?}")]
 pub struct MissingField {
