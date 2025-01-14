@@ -1,0 +1,28 @@
+[package]
+name = "cloud-storage"
+version.workspace = true
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["macros", "sync"] }
+protos = { path = "../protos", features = ["storage"] }
+bytes.workspace = true
+tonic = { workspace = true, features = [
+    "transport",
+    "tls",
+    "tls-roots",
+    "tls-webpki-roots",
+] }
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+tracing.workspace = true
+http.workspace = true
+futures.workspace = true
+tower.workspace = true
+crc32c = "0.6.8"
+md5 = "0.7.0"
+num-traits = "0.2.19"
