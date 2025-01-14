@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::fmt;
 
 pub mod dataset;
 pub mod job;
@@ -77,9 +78,9 @@ impl<S> DatasetReference<S> {
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize, thiserror::Error)]
 #[serde(rename_all = "camelCase")]
-#[error("{message}: {reason}")]
 pub struct ErrorProto<S = Box<str>> {
-    pub reason: S,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub location: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,8 +88,19 @@ pub struct ErrorProto<S = Box<str>> {
     pub message: S,
 }
 
+impl<S: fmt::Display> fmt::Display for ErrorProto<S> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.reason {
+            Some(ref reason) => write!(f, "{}: {reason}", self.message),
+            None => write!(f, "{}", self.message),
+        }
+    }
+}
+
 impl<S: AsRef<str>> ErrorProto<S> {
     pub fn is_not_found(&self) -> bool {
-        self.reason.as_ref() == "notFound"
+        self.reason
+            .as_ref()
+            .is_some_and(|reason| reason.as_ref() == "notFound")
     }
 }
