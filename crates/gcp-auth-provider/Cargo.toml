@@ -1,0 +1,33 @@
+[package]
+name = "gcp-auth-provider"
+edition = "2021"
+version.workspace = true
+
+[dependencies]
+bytes.workspace = true
+http.workspace = true
+http-body.workspace = true
+hyper = { workspace = true, features = ["client", "http1", "nightly"] }
+path-aware-serde = { path = "../path-aware-serde" }
+pin-project-lite.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+timestamp = { path = "../timestamp" }
+memchr.workspace = true
+tokio = { workspace = true, features = [
+    "sync",
+    "parking_lot",
+    "time",
+    "bytes",
+    "net",
+    "socket2",
+    "rt-multi-thread",
+    "process",
+    "macros",
+    "signal",
+    "fs",
+] }
+
+[features]
+gcloud = []
