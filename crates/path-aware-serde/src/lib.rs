@@ -48,6 +48,23 @@ where
 
 impl<'de, T> DeserializerExt<'de> for T where T: serde::Deserializer<'de> {}
 
+/// Extension trait for types that implement [`serde::de::DeserializeSeed`].
+pub trait DeserializeSeedExt<'de>
+where
+    Self: serde::de::DeserializeSeed<'de>,
+{
+    /// [`serde::de::DeserializeSeed::deserialize`], but wraps the deserialize first.
+    fn deserialize_seed_path_aware<D>(self, deserializer: D) -> Result<Self::Value, Error<D::Error>>
+    where
+        D: serde::Deserializer<'de>,
+        D::Error: 'static,
+    {
+        self.deserialize(deserializer.make_path_aware())
+    }
+}
+
+impl<'de, T> DeserializeSeedExt<'de> for T where T: serde::de::DeserializeSeed<'de> {}
+
 /// Extension trait for types that implement [`serde::Serialize`].
 pub trait SerializeExt
 where
