@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use http::StatusCode;
 
 #[derive(Debug, thiserror::Error)]
@@ -16,11 +18,18 @@ impl From<jsonwebtoken::errors::Error> for Error {
     }
 }
 
-impl axum::response::IntoResponse for Error {
-    fn into_response(self) -> axum::response::Response {
+impl Error {
+    pub fn to_response_parts(&self) -> (StatusCode, Cow<'static, str>) {
         match self {
-            Self::Auth(auth) => auth.into_response(),
-            Self::Json(_) | Self::Reqwest(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            Self::Auth(auth) => auth.to_response_parts(),
+            Self::Json(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Cow::Owned(error.to_string()),
+            ),
+            Self::Reqwest(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Cow::Owned(error.to_string()),
+            ),
         }
     }
 }

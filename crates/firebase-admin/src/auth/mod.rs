@@ -6,12 +6,11 @@ use std::collections::HashSet;
 pub use error::AuthError;
 use jsonwebtoken::Validation;
 use key_cache::KeyCache;
-pub use layer_service::ValidateIdTokenLayer;
+pub use layer_service::{ValidateIdTokenLayer, ValidateIdTokenService};
 use timestamp::Timestamp;
 
 #[derive(Debug)]
 struct ValidateIdTokenShared {
-    project_id: &'static str,
     validation: Validation,
     key_cache: KeyCache,
 }
@@ -19,7 +18,6 @@ struct ValidateIdTokenShared {
 impl ValidateIdTokenShared {
     fn new(project_id: &'static str, client: reqwest::Client, start_requesting_keys: bool) -> Self {
         Self {
-            project_id,
             validation: make_validation(project_id),
             key_cache: KeyCache::new(client, start_requesting_keys),
         }
@@ -54,12 +52,12 @@ fn make_validation(project_id: &'static str) -> Validation {
 
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct Claims {
-    aud: Box<str>,
-    auth_time: Timestamp,
-    email: Box<str>,
-    email_verified: bool,
-    exp: Timestamp,
-    iat: Timestamp,
-    name: Option<Box<str>>,
-    user_id: Box<str>,
+    pub aud: Box<str>,
+    pub auth_time: Timestamp,
+    pub email: Box<str>,
+    pub email_verified: bool,
+    pub exp: Timestamp,
+    pub iat: Timestamp,
+    pub name: Option<Box<str>>,
+    pub user_id: Box<str>,
 }

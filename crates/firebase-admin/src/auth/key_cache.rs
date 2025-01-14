@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::fmt;
 use std::future::Future;
 use std::sync::Arc;
@@ -34,9 +33,29 @@ impl fmt::Debug for KeyCache {
             .field("state", match guard_result.as_deref() {
                 Ok(CacheState::Empty) => &"Empty" as &dyn fmt::Debug,
                 Ok(CacheState::Requesting(_)) => &"Requesting" as &dyn fmt::Debug,
-                Ok(CacheState::Cached(cached)) => cached as &dyn fmt::Debug,
+                Ok(CacheState::Cached(ref cached)) => cached as &dyn fmt::Debug,
                 Err(_) => &"..." as &dyn fmt::Debug,
             })
+            .finish()
+    }
+}
+
+/// Wrapper around a key id to avoid mixing up with other random strings
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct KeyId(Box<str>);
+
+#[derive(Clone)]
+pub struct Decoder {
+    key_id: KeyId,
+    decoding_key: Arc<DecodingKey>,
+}
+
+impl fmt::Debug for Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Decoder")
+            .field("key_id", &self.key_id)
+            .field("decoding_key", &"...")
             .finish()
     }
 }
@@ -54,15 +73,37 @@ impl KeyCache {
         }
     }
 
-    async fn get_decoding_key(&self, kid: &str) -> crate::Result<Arc<DecodingKey>> {
+    pub fn get_cached_decoder(&self, key_id: KeyId) -> crate::Result<Result<Decoder, KeyId>> {
+        let now = Timestamp::now();
+
+        let Ok(read_guard) = self.state.try_read() else {
+            return Ok(Err(key_id));
+        };
+
+        match &*read_guard {
+            CacheState::Cached(cached) if now < cached.expires_at => {
+                let key = cached.keys.get(&key_id).ok_or(AuthError::UnknownKeyId)?;
+                Ok(Ok(Decoder {
+                    key_id,
+                    decoding_key: Arc::clone(key),
+                }))
+            }
+            _ => Ok(Err(key_id)),
+        }
+    }
+
+    pub async fn get_decoder(&self, key_id: KeyId) -> crate::Result<Decoder> {
         let now = Timestamp::now();
 
         let read_guard = self.state.read().await;
 
         match &*read_guard {
             CacheState::Cached(cached) if now < cached.expires_at => {
-                let key = cached.keys.get(kid).ok_or(AuthError::UnknownKeyId)?;
-                return Ok(Arc::clone(key));
+                let key = cached.keys.get(&key_id).ok_or(AuthError::UnknownKeyId)?;
+                return Ok(Decoder {
+                    key_id,
+                    decoding_key: Arc::clone(key),
+                });
             }
             // otherwise we need to get a write guard and handle refreshing/a pending request
             _ => (),
@@ -77,8 +118,11 @@ impl KeyCache {
                 // waiting for a write guard and/or refreshing may take time,
                 // so use a new 'now' timestamp when we check.
                 if Timestamp::now() < cached.expires_at {
-                    let key = cached.keys.get(kid).ok_or(AuthError::UnknownKeyId)?;
-                    return Ok(Arc::clone(key));
+                    let key = cached.keys.get(&key_id).ok_or(AuthError::UnknownKeyId)?;
+                    return Ok(Decoder {
+                        key_id,
+                        decoding_key: Arc::clone(key),
+                    });
                 }
             }
 
@@ -96,17 +140,25 @@ impl KeyCache {
         }
     }
 
-    pub async fn validate_token(
+    pub fn decode_key_id(&self, token: &str) -> crate::Result<KeyId> {
+        let mut header = jsonwebtoken::decode_header(token)?;
+
+        if header.alg != Algorithm::RS256 {
+            return Err(AuthError::UnsupportedAlgo(header.alg).into());
+        }
+
+        let kid = header.kid.take().ok_or(AuthError::MissingKeyId)?;
+        Ok(KeyId(kid.into_boxed_str()))
+    }
+}
+
+impl Decoder {
+    pub fn decode_token(
         &self,
         token: &str,
         validation: &Validation,
     ) -> crate::Result<TokenData<Claims>> {
-        let header = jsonwebtoken::decode_header(token)?;
-        let kid = header.kid.as_deref().ok_or(AuthError::MissingKeyId)?;
-
-        let decoding_key = self.get_decoding_key(kid).await?;
-
-        jsonwebtoken::decode(token, &decoding_key, validation).map_err(crate::Error::from)
+        jsonwebtoken::decode(token, &self.decoding_key, validation).map_err(crate::Error::from)
     }
 }
 
@@ -118,7 +170,7 @@ enum CacheState {
 
 pub struct CachedKeys {
     expires_at: Timestamp,
-    keys: FxHashMap<Box<str>, Arc<DecodingKey>>,
+    keys: FxHashMap<KeyId, Arc<DecodingKey>>,
 }
 
 impl CachedKeys {
@@ -139,15 +191,23 @@ impl CachedKeys {
 
 impl fmt::Debug for CachedKeys {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        struct DebugKeys<'a>(&'a FxHashMap<KeyId, Arc<DecodingKey>>);
+
+        impl fmt::Debug for DebugKeys<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_set().entries(self.0.keys()).finish()
+            }
+        }
+
         f.debug_struct("CachedKeys")
             .field("expires_at", &self.expires_at)
-            .field("keys", &self.keys.keys())
+            .field("keys", &DebugKeys(&self.keys))
             .finish()
     }
 }
 
 fn get_keys<'a>(
-    keys: &'a mut FxHashMap<Box<str>, Arc<DecodingKey>>,
+    keys: &'a mut FxHashMap<KeyId, Arc<DecodingKey>>,
     client: &reqwest::Client,
 ) -> impl Future<Output = crate::Result<Timestamp>> + 'a {
     fn parse_max_age(header: &header::HeaderValue) -> Option<Duration> {
@@ -186,7 +246,7 @@ fn get_keys<'a>(
 }
 
 struct KeysVisitor<'a> {
-    keys: &'a mut FxHashMap<Box<str>, Arc<DecodingKey>>,
+    keys: &'a mut FxHashMap<KeyId, Arc<DecodingKey>>,
 }
 
 impl<'de> de::DeserializeSeed<'de> for KeysVisitor<'_> {
@@ -219,7 +279,8 @@ impl<'de> de::Visitor<'de> for KeysVisitor<'_> {
             let decoding_key =
                 DecodingKey::from_rsa_pem(key.as_bytes()).map_err(de::Error::custom)?;
 
-            self.keys.insert(key_id.into(), Arc::new(decoding_key));
+            self.keys
+                .insert(KeyId(key_id.into()), Arc::new(decoding_key));
         }
 
         Ok(())

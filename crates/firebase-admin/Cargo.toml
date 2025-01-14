@@ -19,3 +19,4 @@ jsonwebtoken.workspace = true
 timestamp = { path = "../timestamp" }
 reqwest = { workspace = true, features = ["json"] }
 tracing.workspace = true
+pin-project-lite.workspace = true
