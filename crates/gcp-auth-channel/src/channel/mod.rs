@@ -1,8 +1,9 @@
 //! [`AuthChannel`], a [`Service`] that inserts authentication details.
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use http::{header, Request};
+use http::{Request, header};
 use tonic::transport::Channel;
 use tower::{Layer, Service};
 
@@ -122,11 +123,14 @@ impl<Svc> AuthChannel<Svc> {
 
     /// Returns a builder that'll wrap [`Svc`] with a new layer, inserting a header into each
     /// request.
-    pub fn attach_header<Kvp>(self) -> headers::WithHeaderBuilder<Svc, Kvp, (), ()>
+    pub fn attach_headers<Kvp>(
+        self,
+        headers: impl Into<Arc<[(Kvp::Key, Kvp::Value)]>>,
+    ) -> headers::WithHeaders<Self, Kvp>
     where
         Kvp: KeyValuePair,
     {
-        headers::WithHeaderBuilder::from_service(self)
+        headers::WithHeaders::new(self, headers)
     }
 
     /// Wraps the inner [`Svc`], replacing it with the returned value of 'f'.
