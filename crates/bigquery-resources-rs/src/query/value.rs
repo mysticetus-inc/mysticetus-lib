@@ -178,14 +178,8 @@ where
         match self.ty {
             FieldType::String
             | FieldType::Bytes
-            | FieldType::Timestamp
-            | FieldType::Time
-            | FieldType::Date
-            | FieldType::DateTime
             | FieldType::BigNumeric
             | FieldType::Numeric
-            | FieldType::Integer
-            | FieldType::Float
             | FieldType::Json => {
                 // TODO: make this less hacky and more efficient
                 // (there should be a way to wrap this visitor
@@ -206,6 +200,29 @@ where
                 } else {
                     self.seed.deserialize(SomeDeserializer {
                         inner: s.into_deserializer(),
+                    })
+                }
+            }
+            FieldType::Timestamp
+            | FieldType::Time
+            | FieldType::Date
+            | FieldType::DateTime
+            | FieldType::Integer
+            | FieldType::Float => {
+                // TODO: make this less hacky and more efficient
+                // (there should be a way to wrap this visitor
+                // with another that knows how to handle options)
+                let s: String = serde::Deserialize::deserialize(deserializer)?;
+
+                if self.ty == FieldType::Integer {
+                    let int = s.parse::<i64>().map_err(de::Error::custom)?;
+                    self.seed.deserialize(SomeDeserializer {
+                        inner: int.into_deserializer(),
+                    })
+                } else {
+                    let float = s.parse::<f64>().map_err(de::Error::custom)?;
+                    self.seed.deserialize(SomeDeserializer {
+                        inner: float.into_deserializer(),
                     })
                 }
             }
