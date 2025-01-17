@@ -32,7 +32,7 @@ pub struct BuildError;
 
 impl<E> MapError<E> for BuildError
 where
-    E: ser::Error + 'static,
+    E: ser::Error,
 {
     type Out = crate::Error<E>;
 

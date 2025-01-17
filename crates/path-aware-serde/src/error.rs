@@ -83,6 +83,28 @@ impl<E> Error<E> {
         Self { error, path }
     }
 
+    /// converts the inner error into a type erased [`Box<dyn std:::error::Error>`]
+    pub fn into_boxed(self) -> Error<Box<dyn std::error::Error>>
+    where
+        E: std::error::Error + 'static,
+    {
+        Error {
+            path: self.path,
+            error: Box::new(self.error),
+        }
+    }
+
+    /// converts the inner error into a type erased [`Box<dyn std:::error::Error + Send + Sync>`]
+    pub fn into_send_sync_boxed(self) -> Error<Box<dyn std::error::Error + Send + Sync>>
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Error {
+            path: self.path,
+            error: Box::new(self.error),
+        }
+    }
+
     /// Returns a reference to the inner error.
     pub fn error(&self) -> &E {
         &self.error
@@ -124,19 +146,20 @@ where
     }
 }
 
-impl<E> std::error::Error for Error<E>
-where
-    E: std::error::Error + 'static,
-{
+impl<E: std::error::Error> std::error::Error for Error<E> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.error)
+        // we cant return `self.error` as a source without requiring a 'static bound,
+        // which makes using [`Error`] much more of a pain in other scenarios (usually
+        // related to nested deserialization).
+        //
+        // in order to avoid that, we just use the errors 'source' method instead.
+        // that does mean a step in the error chain does get skipped, but Error provides
+        // direct access to the error via [Error::error], so it shouldn't be too annoying
+        self.error.source()
     }
 }
 
-impl<E> de::Error for Error<E>
-where
-    E: de::Error + 'static,
-{
+impl<E: de::Error> de::Error for Error<E> {
     fn custom<T>(msg: T) -> Self
     where
         T: fmt::Display,
@@ -148,10 +171,7 @@ where
     }
 }
 
-impl<E> ser::Error for Error<E>
-where
-    E: ser::Error + 'static,
-{
+impl<E: ser::Error> ser::Error for Error<E> {
     fn custom<T>(msg: T) -> Self
     where
         T: fmt::Display,

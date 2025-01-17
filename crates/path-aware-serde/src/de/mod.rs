@@ -123,7 +123,6 @@ macro_rules! impl_deserializer_fn {
 impl<'de, D> de::Deserializer<'de> for Deserializer<D>
 where
     D: de::Deserializer<'de>,
-    D::Error: 'static,
 {
     type Error = Error<D::Error>;
 
