@@ -70,12 +70,18 @@ where
             match field {
                 Field::V => match seed.take() {
                     Some(seed) => {
-                        value = Some(map.next_value_seed(ValueSeed {
+                        let value_seed = ValueSeed {
                             mode: self.mode,
                             ty: self.ty,
                             field_name: self.field_name,
                             seed,
-                        })?)
+                        };
+
+                        #[cfg(feature = "debug-json")]
+                        let value_seed =
+                            serde_helpers::debug_visitor::DebugVisitor::stdout(value_seed);
+
+                        value = Some(map.next_value_seed(value_seed)?);
                     }
                     None => return Err(de::Error::duplicate_field("v")),
                 },

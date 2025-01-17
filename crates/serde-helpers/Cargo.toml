@@ -12,6 +12,6 @@ rustversion = "1.0.9"
 serde.workspace = true
 static_assertions = "1.1.0"
 deepsize = { version = "0.2.0", features = ["derive"], optional = true }
-
+tracing.workspace = true
 [features]
 deepsize = ["dep:deepsize"]

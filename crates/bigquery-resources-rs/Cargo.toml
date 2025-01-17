@@ -12,3 +12,6 @@ itoa.workspace = true
 serde-helpers = { path = "../serde-helpers" }
 uuid = { workspace = true, features = ["serde"] }
 path-aware-serde = { path = "../path-aware-serde" }
+
+[features]
+debug-json = []
