@@ -35,7 +35,24 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_seq(self)
+        match serde::Deserializer::deserialize_seq(
+            path_aware_serde::Deserializer::new(deserializer),
+            self,
+        ) {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                let (inner_error, path) = error.into_inner();
+                // if the path is non-empty, return the original error with more context
+                if let Some(path) = path {
+                    if !path.is_empty() {
+                        return Err(de::Error::custom(format!("{path}: {inner_error}")));
+                    }
+                }
+
+                // otherwise, just return the original error
+                Err(inner_error)
+            }
+        }
     }
 }
 
