@@ -192,6 +192,8 @@ where
                 // with another that knows how to handle options)
                 let s: String = serde::Deserialize::deserialize(deserializer)?;
 
+                println!("{}: {s}", self.field_name);
+
                 if self.ty == FieldType::Json {
                     let value: serde_json::Value =
                         serde_json::from_str(&s).map_err(de::Error::custom)?;
@@ -215,8 +217,7 @@ where
     where
         E: de::Error,
     {
-        println!("visit_str");
-
+        println!("{}: {v}", self.field_name);
         match self.ty {
             FieldType::String | FieldType::Bytes | FieldType::BigNumeric | FieldType::Numeric => {
                 self.seed.deserialize(v.into_deserializer())
@@ -258,7 +259,8 @@ where
     where
         E: de::Error,
     {
-        println!("visit_string");
+        println!("{}: {v}", self.field_name);
+
         match self.ty {
             // only real string types benefit from getting an owned value, otherwise we should just
             // defer to all encompossing visit_str method
@@ -273,6 +275,8 @@ where
     where
         E: de::Error,
     {
+        println!("{}: {v}", self.field_name);
+
         match self.ty {
             // similar to the comment in visit_string, only string types will benefit
             // from being able to borrow the actual value, every other type will just
