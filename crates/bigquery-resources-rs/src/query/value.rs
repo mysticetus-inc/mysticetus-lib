@@ -169,9 +169,6 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        
-        
-        
         match self.ty {
             FieldType::String
             | FieldType::Bytes
@@ -293,24 +290,161 @@ pub struct SomeDeserializer<V> {
     inner: V,
 }
 
+macro_rules! defer_to_inner_deserialize_fn {
+    ($($fn_name:ident),* $(,)?) => {
+        $(
+            #[inline]
+            fn $fn_name<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+            where
+                V: de::Visitor<'de>,
+            {
+                self.inner.$fn_name(visitor)
+            }
+        )*
+    };
+}
+
 impl<'de, D> de::Deserializer<'de> for SomeDeserializer<D>
 where
     D: de::Deserializer<'de>,
 {
     type Error = D::Error;
 
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: de::Visitor<'de>,
     {
         visitor.visit_some(self.inner)
     }
 
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.deserialize_option(visitor)
+    }
+
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_str(visitor)
+    }
+
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_string(visitor)
+    }
+
+    defer_to_inner_deserialize_fn! {
+        deserialize_bool,
+        deserialize_i8,
+        deserialize_i16,
+        deserialize_i32,
+        deserialize_i64,
+        deserialize_i128,
+        deserialize_u8,
+        deserialize_u16,
+        deserialize_u32,
+        deserialize_u64,
+        deserialize_u128,
+        deserialize_f32,
+        deserialize_f64,
+        deserialize_char,
+        deserialize_bytes,
+        deserialize_byte_buf,
+        deserialize_unit,
+        deserialize_map,
+        deserialize_seq,
+        deserialize_identifier,
+        deserialize_ignored_any,
+    }
+
+    #[inline]
+    fn deserialize_enum<V>(
+        self,
+        name: &'static str,
+        variants: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_enum(name, variants, visitor)
+    }
+
+    #[inline]
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_tuple(len, visitor)
+    }
+
+    #[inline]
+    fn deserialize_struct<V>(
+        self,
+        name: &'static str,
+        fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_struct(name, fields, visitor)
+    }
+
+    #[inline]
+    fn deserialize_newtype_struct<V>(
+        self,
+        name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_newtype_struct(name, visitor)
+    }
+
+    #[inline]
+    fn deserialize_unit_struct<V>(
+        self,
+        name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_unit_struct(name, visitor)
+    }
+
+    #[inline]
+    fn deserialize_tuple_struct<V>(
+        self,
+        name: &'static str,
+        len: usize,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        self.inner.deserialize_tuple_struct(name, len, visitor)
+    }
+
+    #[inline]
+    fn is_human_readable(&self) -> bool {
+        self.inner.is_human_readable()
+    }
+
+    /*
     serde::forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char
+        bytes byte_buf unit unit_struct newtype_struct seq tuple
         tuple_struct map struct enum identifier ignored_any
     }
+    */
 }
 
 pub struct OptionalValueMapSeed<'a, S>(ValueMapSeed<'a, S>);
