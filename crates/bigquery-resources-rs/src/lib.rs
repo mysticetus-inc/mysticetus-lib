@@ -2,6 +2,7 @@ use std::borrow::Borrow;
 use std::fmt;
 use std::num::NonZeroU16;
 
+mod builders;
 pub mod dataset;
 pub mod job;
 pub mod query;

@@ -25,7 +25,7 @@ where
 /// generically from NonZero variants.
 ///
 /// TODO: remove if NonZero variants get [`itoa::Integer`] impls
-pub trait IntoInteger: Copy {
+pub trait IntoInteger: Copy + TryFrom<Self::Integer> {
     type Integer: itoa::Integer;
 
     fn into_integer(self) -> Self::Integer;
@@ -244,10 +244,23 @@ pub(crate) mod int64 {
         #[inline]
         pub fn deserialize<'de, D, I>(deserializer: D) -> Result<Option<I>, D::Error>
         where
-            I: TryFrom<i64>,
+            I: super::super::IntoInteger,
+            I::Integer: TryFrom<i64>,
+            <I::Integer as TryFrom<i64>>::Error: std::fmt::Display,
             I::Error: std::fmt::Display,
             D: serde::Deserializer<'de>,
         {
+            fn make_map_err<E: std::fmt::Display, D: serde::de::Error>(
+                int: i64,
+            ) -> impl FnOnce(E) -> D {
+                move |err| {
+                    serde::de::Error::invalid_value(
+                        serde::de::Unexpected::Signed(int),
+                        &err.to_string().as_str(),
+                    )
+                }
+            }
+
             let maybe_int = deserializer.deserialize_any(
                 serde_helpers::optional_visitor::OptionalVisitor::from(
                     super::super::Int64ValueVisitor,
@@ -258,12 +271,12 @@ pub(crate) mod int64 {
                 return Ok(None);
             };
 
-            I::try_from(int).map(Some).map_err(|err| {
-                serde::de::Error::invalid_value(
-                    serde::de::Unexpected::Signed(int),
-                    &err.to_string().as_str(),
-                )
-            })
+            let half_mapped =
+                <I::Integer as TryFrom<i64>>::try_from(int).map_err(make_map_err(int))?;
+
+            I::try_from(half_mapped)
+                .map(Some)
+                .map_err(make_map_err(int))
         }
     }
 }

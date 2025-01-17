@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::marker::PhantomData;
+
 use serde::de::{self, IntoDeserializer};
 
 use crate::table::{FieldMode, FieldType, TableFieldSchema};
@@ -166,13 +169,48 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserialize_according_to_type(self, deserializer)
+        match self.ty {
+            FieldType::String
+            | FieldType::Bytes
+            | FieldType::Timestamp
+            | FieldType::Time
+            | FieldType::Date
+            | FieldType::DateTime
+            | FieldType::BigNumeric
+            | FieldType::Numeric
+            | FieldType::Integer
+            | FieldType::Float
+            | FieldType::Json => {
+                // TODO: make this less hacky and more efficient
+                // (there should be a way to wrap this visitor
+                // with another that knows how to handle options)
+                let s: String = serde::Deserialize::deserialize(deserializer)?;
+
+                if self.ty == FieldType::Json {
+                    let value: serde_json::Value =
+                        serde_json::from_str(&s).map_err(de::Error::custom)?;
+
+                    self.seed
+                        .deserialize(SomeDeserializer {
+                            inner: value.into_deserializer(),
+                        })
+                        .map_err(de::Error::custom)
+                } else {
+                    self.seed.deserialize(SomeDeserializer {
+                        inner: s.into_deserializer(),
+                    })
+                }
+            }
+            _ => panic!("unknown format for bigquery encoded {:?}", self.ty),
+        }
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
+        println!("visit_str");
+
         match self.ty {
             FieldType::String | FieldType::Bytes | FieldType::BigNumeric | FieldType::Numeric => {
                 self.seed.deserialize(v.into_deserializer())
@@ -187,6 +225,13 @@ where
             }
             FieldType::Integer => {
                 let int = v.parse::<i64>().map_err(|err| {
+                    de::Error::invalid_type(de::Unexpected::Str(v), &err.to_string().as_str())
+                })?;
+
+                self.seed.deserialize(int.into_deserializer())
+            }
+            FieldType::Float => {
+                let int = v.parse::<f64>().map_err(|err| {
                     de::Error::invalid_type(de::Unexpected::Str(v), &err.to_string().as_str())
                 })?;
 
@@ -207,6 +252,7 @@ where
     where
         E: de::Error,
     {
+        println!("visit_string");
         match self.ty {
             // only real string types benefit from getting an owned value, otherwise we should just
             // defer to all encompossing visit_str method
@@ -237,5 +283,42 @@ where
             }
             _ => self.visit_str(v),
         }
+    }
+}
+
+pub struct SomeDeserializer<V> {
+    inner: V,
+}
+
+impl<'de, D> de::Deserializer<'de> for SomeDeserializer<D>
+where
+    D: de::Deserializer<'de>,
+{
+    type Error = D::Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_some(self.inner)
+    }
+
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+        tuple_struct map struct enum identifier ignored_any
+    }
+}
+
+pub struct OptionalValueMapSeed<'a, S>(ValueMapSeed<'a, S>);
+
+impl<'de, S> de::Visitor<'de> for OptionalValueMapSeed<'_, S>
+where
+    S: de::DeserializeSeed<'de>,
+{
+    type Value = S::Value;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.expecting(formatter)
     }
 }

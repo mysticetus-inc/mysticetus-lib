@@ -6,10 +6,10 @@ use serde::de;
 use crate::table::TableSchema;
 
 pub struct RowsVisitor<'a, S, Row> {
-    pub(super) schema: &'a TableSchema<S>,
-    pub(super) total_rows: Option<u64>,
-    pub(super) request_limit: Option<NonZeroU64>,
-    pub(super) _marker: PhantomData<fn(Row)>,
+    pub schema: &'a TableSchema<S>,
+    pub total_rows: Option<u64>,
+    pub request_limit: Option<NonZeroU64>,
+    pub _marker: PhantomData<fn(Row)>,
 }
 
 impl<S, Row> RowsVisitor<'_, S, Row> {
@@ -71,5 +71,88 @@ where
         }
 
         Ok(rows)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use path_aware_serde::DeserializeSeedExt;
+
+    use super::*;
+    use crate::table::{TableFieldSchema, TableSchema};
+
+    #[derive(Debug, Clone, serde::Deserialize)]
+    struct ExampleRow {
+        string: Box<str>,
+        optional_string: Option<Box<str>>,
+        optional_string2: Option<Box<str>>,
+        integer: i64,
+        float: f64,
+        timestamp: timestamp::Timestamp,
+        json: BTreeMap<Box<str>, serde_json::Value>,
+        optional_json: Option<BTreeMap<Box<str>, serde_json::Value>>,
+    }
+
+    impl ExampleRow {
+        fn schema() -> TableSchema<&'static str> {
+            let fields = vec![
+                TableFieldSchema::builder("string").string().required(),
+                TableFieldSchema::builder("optional_string")
+                    .string()
+                    .nullable(),
+                TableFieldSchema::builder("optional_string2")
+                    .string()
+                    .nullable(),
+                TableFieldSchema::builder("integer").int().required(),
+                TableFieldSchema::builder("float").float().required(),
+                TableFieldSchema::builder("timestamp")
+                    .timestamp()
+                    .required(),
+                TableFieldSchema::builder("json").json().required(),
+                TableFieldSchema::builder("optional_json").json().nullable(),
+            ];
+
+            TableSchema { fields }
+        }
+    }
+
+    const JSON_EXAMPLE: &str = r#"[{
+        "f": [
+            {"v": "test"},
+            {"v": null},
+            {"v": "optional but valid"},
+            {"v": "1234"},
+            {"v": "1e6"},
+            {"v": "1.724e9"},
+            {"v": "{}"},
+            {"v": "{\"test\": true}"}
+        ]
+    }]"#;
+
+    #[test]
+    fn test_deserialize() -> Result<(), Box<dyn std::error::Error>> {
+        let schema = ExampleRow::schema();
+
+        let visitor = RowsVisitor {
+            schema: &schema,
+            total_rows: Some(1),
+            request_limit: None,
+            _marker: std::marker::PhantomData,
+        };
+
+        let mut de = serde_json::de::Deserializer::from_str(JSON_EXAMPLE);
+
+        let mut deserialized_rows: Vec<ExampleRow> =
+            visitor.deserialize_seed_path_aware(&mut de)?;
+
+        assert_eq!(deserialized_rows.len(), 1);
+
+        let row = deserialized_rows.pop().unwrap();
+
+        println!("{row:#?}");
+
+        Ok(())
     }
 }

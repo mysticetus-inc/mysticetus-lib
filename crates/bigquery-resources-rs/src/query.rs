@@ -1,10 +1,7 @@
 use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::num::NonZeroU64;
 
 pub use query_string::{QueryString, query};
-use serde::de::{self, IntoDeserializer};
-use serde_json::value::RawValue;
 use uuid::Uuid;
 
 mod results;
@@ -15,7 +12,7 @@ mod value;
 pub use results::QueryResults;
 
 use crate::job::{JobCreationMode, JobReference};
-use crate::table::{FieldMode, FieldType, TableFieldSchema, TableSchema};
+use crate::table::FieldType;
 use crate::{DatasetReference, ErrorProto};
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -436,127 +433,5 @@ impl<T: serde::Serialize> serde::Serialize for Range<T> {
             Self::StartAt(start) => serialize_map!(serializer; start => start),
             Self::EndAt(end) => serialize_map!(serializer; end => end),
         }
-    }
-}
-
-struct FieldSeed<'a, S, V> {
-    column: &'a TableFieldSchema<S>,
-    seed: V,
-}
-
-impl<'de, S, V> de::DeserializeSeed<'de> for FieldSeed<'_, S, V>
-where
-    V: de::DeserializeSeed<'de>,
-    S: AsRef<str>,
-{
-    type Value = V::Value;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        deserializer.deserialize_map(self)
-    }
-}
-impl<'de, S, V> de::Visitor<'de> for FieldSeed<'_, S, V>
-where
-    V: de::DeserializeSeed<'de>,
-    S: AsRef<str>,
-{
-    type Value = V::Value;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("an object containing {'v': ")?;
-        write!(formatter, "{}}}", std::any::type_name::<V::Value>())
-    }
-
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-    where
-        A: de::MapAccess<'de>,
-    {
-        #[derive(serde::Deserialize)]
-        enum Field {
-            #[serde(rename = "v")]
-            V,
-            #[serde(other)]
-            Other,
-        }
-
-        let Self { column, seed } = self;
-
-        let mut seed = Some(seed);
-        let mut value = None;
-
-        while let Some(field) = map.next_key()? {
-            match field {
-                Field::V => match seed.take() {
-                    Some(seed) => value = Some(map.next_value_seed(seed)?),
-                    None => return Err(de::Error::duplicate_field("v")),
-                },
-                Field::Other => _ = map.next_value::<de::IgnoredAny>()?,
-            }
-        }
-
-        value.ok_or_else(|| de::Error::missing_field("v"))
-    }
-}
-
-struct FieldVisitor<'a, S, V> {
-    column: &'a TableFieldSchema<S>,
-    seed: V,
-}
-
-impl<'de, S, V> de::DeserializeSeed<'de> for FieldVisitor<'_, S, V>
-where
-    S: AsRef<str>,
-    V: de::DeserializeSeed<'de>,
-{
-    type Value = V::Value;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        match self.column.mode {
-            FieldMode::Nullable => deserializer.deserialize_option(self),
-            FieldMode::Required => match self.column.ty {
-                FieldType::String => deserializer.deserialize_string(self),
-                FieldType::Bytes => deserializer.deserialize_byte_buf(self),
-                FieldType::Integer => deserializer.deserialize_i64(self),
-                FieldType::Float => deserializer.deserialize_f64(self),
-                FieldType::Bool => deserializer.deserialize_bool(self),
-                FieldType::Timestamp => deserializer.deserialize_any(self),
-                FieldType::Date => deserializer.deserialize_any(self),
-                FieldType::Time => deserializer.deserialize_any(self),
-                FieldType::DateTime => deserializer.deserialize_any(self),
-                FieldType::Geography => deserializer.deserialize_any(self),
-                FieldType::Numeric => deserializer.deserialize_any(self),
-                FieldType::BigNumeric => deserializer.deserialize_any(self),
-                FieldType::Json => deserializer.deserialize_map(self),
-                FieldType::Record => deserializer.deserialize_map(self),
-                FieldType::Range => deserializer.deserialize_any(self),
-                FieldType::Interval => deserializer.deserialize_any(self),
-            },
-            FieldMode::Repeated => deserializer.deserialize_seq(self),
-        }
-    }
-}
-
-impl<'de, S, V> de::Visitor<'de> for FieldVisitor<'_, S, V>
-where
-    S: AsRef<str>,
-    V: de::DeserializeSeed<'de>,
-{
-    type Value = V::Value;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("an encoded value")
-    }
-
-    fn visit_none<E>(self) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        todo!()
     }
 }

@@ -1,8 +1,11 @@
 use std::collections::HashMap;
+use std::num::{NonZeroI64, NonZeroUsize};
 
 use timestamp::Timestamp;
 
 use super::TableReference;
+use crate::builders::Unset;
+use crate::builders::table_field_schema::TableFieldSchemaBuilder;
 use crate::util;
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
@@ -99,19 +102,19 @@ pub struct TableFieldSchema<S> {
         skip_serializing_if = "Option::is_none",
         with = "util::int64::optional"
     )]
-    pub max_length: Option<usize>,
+    pub max_length: Option<NonZeroUsize>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "util::int64::optional"
     )]
-    pub precision: Option<i64>,
+    pub precision: Option<NonZeroI64>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         with = "util::int64::optional"
     )]
-    pub scale: Option<i64>,
+    pub scale: Option<NonZeroI64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rounding_mode: Option<RoundingMode>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -121,6 +124,10 @@ pub struct TableFieldSchema<S> {
 }
 
 impl<S> TableFieldSchema<S> {
+    pub const fn builder(name: S) -> TableFieldSchemaBuilder<S, Unset> {
+        TableFieldSchemaBuilder::new(name)
+    }
+
     pub const fn new(name: S, ty: FieldType, mode: FieldMode) -> Self {
         Self {
             name,
