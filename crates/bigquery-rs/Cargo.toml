@@ -44,3 +44,7 @@ tokio-util = { workspace = true, features = [
     "rt",
     "io-util",
 ] }
+
+
+[features]
+debug-json = ["bigquery-resources-rs/debug-json"]
