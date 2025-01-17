@@ -264,5 +264,22 @@ where
     T: serde::de::DeserializeOwned,
 {
     let bytes = response.bytes().await?;
-    path_aware_serde::json::deserialize_slice(&bytes).map_err(crate::Error::from)
+    let result = path_aware_serde::json::deserialize_slice(&bytes);
+
+    #[cfg(feature = "debug-json")]
+    {
+        match result {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                eprintln!("{error:#?}");
+                eprintln!("'{}'", String::from_utf8_lossy(&bytes));
+
+                Err(crate::Error::from(error))
+            }
+        }
+    }
+    #[cfg(not(feature = "debug-json"))]
+    {
+        result.map_err(crate::Error::from)
+    }
 }
