@@ -9,6 +9,7 @@
 )]
 #![allow(stable_features)]
 
+pub mod debug_visitor;
 pub mod display_error;
 pub mod display_serialize;
 pub mod empty_to_option;
