@@ -173,16 +173,14 @@ impl SessionPoolInner {
 
         let mut set = JoinSet::new();
 
-        let mut channel = self.client.channel.clone();
-        let mut client = SpannerClient::new(&mut channel);
+        for session in sessions {
+            let mut client = SpannerClient::new(self.client.channel.clone());
 
-        for mut session in sessions {
             if let Some(raw) = session.close() {
-                let delete_fut =
-                    client.delete_session(spanner::DeleteSessionRequest { name: raw.name });
-
                 set.spawn(async move {
-                    delete_fut.await?;
+                    client
+                        .delete_session(spanner::DeleteSessionRequest { name: raw.name })
+                        .await?;
                     Ok(())
                 });
             }

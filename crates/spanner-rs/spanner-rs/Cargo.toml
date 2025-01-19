@@ -57,7 +57,7 @@ ryu = "1.0.12"
 
 
 [features]
-default = ["serde_json", "admin", "emulator"]
+default = []                                                               # ["serde_json", "admin", "emulator"]
 serde_json = ["dep:serde_json"]
 admin = ["protos/spanner-admin-database", "protos/spanner-admin-instance"]
 emulator = ["tokio/process", "gcp-auth-channel/emulator"]

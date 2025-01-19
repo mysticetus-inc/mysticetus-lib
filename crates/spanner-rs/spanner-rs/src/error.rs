@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::fmt;
 
 use crate::Value;
+use crate::client::pool::PoolError;
 use crate::column::InvalidColumnIndex;
 use crate::convert::SpannerEncode;
-use crate::pool::SessionError;
 use crate::ty::SpannerType;
 
 #[derive(Debug, thiserror::Error)]
@@ -30,7 +30,7 @@ pub enum Error {
     #[error(transparent)]
     InvalidColumnIndex(#[from] InvalidColumnIndex),
     #[error(transparent)]
-    SessionError(#[from] SessionError),
+    SessionError(#[from] PoolError),
     #[error(transparent)]
     Convert(#[from] ConvertError),
     #[error(transparent)]
