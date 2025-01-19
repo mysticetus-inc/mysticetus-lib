@@ -189,6 +189,7 @@ impl Client {
         &self.parts.channel
     }
 
+    #[cfg(feature = "admin")]
     pub fn admin_client(&self) -> admin::SpannerAdmin {
         admin::SpannerAdmin::from_channel(self.parts.channel.clone())
     }

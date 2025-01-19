@@ -3,24 +3,26 @@ use bytes::Bytes;
 use protos::protobuf::value::Kind;
 use shared::static_or_boxed::StaticOrBoxed;
 
-use crate::convert::SpannerEncode;
-use crate::error::{ConvertError, FromError, IntoError};
+use crate::error::{ConvertError, FromError};
 use crate::ty::SpannerType;
 use crate::{FromSpanner, IntoSpanner, Scalar, Type, Value};
 
 // -------------------- Json<T> ------------------ //
 
+#[cfg(feature = "serde_json")]
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
 pub struct Json<T>(pub T);
 
+#[cfg(feature = "serde_json")]
 impl<T: serde::Serialize> SpannerType for Json<T> {
     const TYPE: &'static Type = &Type::Scalar(Scalar::Json);
     const NULLABLE: bool = true;
 }
 
-impl<T> SpannerEncode for Json<T>
+#[cfg(feature = "serde_json")]
+impl<T> crate::convert::SpannerEncode for Json<T>
 where
     T: serde::Serialize,
 {
@@ -28,17 +30,18 @@ where
 
     type Encoded = String;
 
-    type Error = IntoError;
+    type Error = crate::error::IntoError;
 
-    fn encode(self) -> Result<Self::Encoded, IntoError> {
+    fn encode(self) -> Result<Self::Encoded, Self::Error> {
         match serde_json::to_string(&self.0) {
             Ok(encoded) => Ok(encoded),
-            Err(err) => Err(IntoError::from_error(err)),
+            Err(err) => Err(crate::error::IntoError::from_error(err)),
         }
     }
 }
 
-impl<T> SpannerEncode for &Json<T>
+#[cfg(feature = "serde_json")]
+impl<T> crate::convert::SpannerEncode for &Json<T>
 where
     T: serde::Serialize,
 {
@@ -46,14 +49,15 @@ where
 
     type Encoded = String;
 
-    type Error = IntoError;
+    type Error = crate::error::IntoError;
 
     #[inline]
-    fn encode(self) -> Result<Self::Encoded, IntoError> {
+    fn encode(self) -> Result<Self::Encoded, Self::Error> {
         Json(&self.0).encode()
     }
 }
 
+#[cfg(feature = "serde_json")]
 impl<T: serde::Serialize + serde::de::DeserializeOwned> FromSpanner for Json<T> {
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let s = match value.0 {

@@ -14,7 +14,7 @@ pub use encoded_value::EncodedValue;
 
 use crate::Table;
 use crate::convert::SpannerEncode;
-use crate::error::{ConvertError, FromError, IntoError};
+use crate::error::{ConvertError, FromError};
 
 /// A Spanner value.
 #[derive(Clone, PartialEq)]
@@ -132,10 +132,13 @@ impl Value {
         pub into_number(NumberValue) -> f64,
     }
 
-    pub fn json<T: serde::Serialize>(value: &T) -> Result<Self, IntoError> {
+    #[cfg(feature = "serde_json")]
+    pub fn json<T: serde::Serialize>(value: &T) -> Result<Self, crate::error::IntoError> {
         match serde_json::to_string(value) {
             Ok(s) => Ok(Self::from(s)),
-            Err(err) => Err(IntoError::from_error(err).reason("failed to serialize JSON")),
+            Err(err) => {
+                Err(crate::error::IntoError::from_error(err).reason("failed to serialize JSON"))
+            }
         }
     }
 }

@@ -3,9 +3,9 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use bytes::Bytes;
-use protos::protobuf::value::Kind;
 use protos::protobuf::ListValue;
-use protos::spanner::{self, struct_type, StructType, TypeAnnotationCode, TypeCode};
+use protos::protobuf::value::Kind;
+use protos::spanner::{self, StructType, TypeAnnotationCode, TypeCode, struct_type};
 use shared::static_or_boxed::StaticOrBoxed;
 use timestamp::{Date, Timestamp};
 
@@ -35,8 +35,12 @@ impl<T: SpannerType + ?Sized> SpannerType for &mut T {
 }
 
 macro_rules! impl_scalar {
-    ($($name:ty => $t:expr),* $(,)?) => {
+    ($(
+        $(#[$cfg_attr:meta])?
+        $name:ty => $t:expr
+    ),* $(,)?) => {
         $(
+            $(#[$cfg_attr])?
             impl SpannerType for $name {
                 const TYPE: &'static Type = &$t;
 
@@ -69,6 +73,7 @@ impl_scalar! {
     Bytes => Type::Scalar(Scalar::Bytes),
     [u8] => Type::Scalar(Scalar::Bytes),
     Vec<u8> => Type::Scalar(Scalar::Bytes),
+    #[cfg(feature = "serde_json")]
     serde_json::Value => Type::Scalar(Scalar::Json),
 }
 

@@ -5,7 +5,7 @@ use bytes::Bytes;
 use protos::protobuf::value::Kind;
 use timestamp::{Date, Timestamp};
 
-use crate::error::{ConvertError, FromError, IntoError};
+use crate::error::{ConvertError, FromError};
 use crate::ty::{Scalar, SpannerType, Type};
 use crate::value::{EncodedArray, EncodedValue};
 use crate::{Field, Value};
@@ -104,9 +104,10 @@ where
 
 // -------------------- serde_json::Value ------------------ //
 
+#[cfg(feature = "serde_json")]
 impl SpannerEncode for serde_json::Value {
     type SpannerType = crate::with::Json<Self>;
-    type Error = IntoError;
+    type Error = crate::error::IntoError;
     type Encoded = String;
 
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
@@ -114,9 +115,10 @@ impl SpannerEncode for serde_json::Value {
     }
 }
 
+#[cfg(feature = "serde_json")]
 impl SpannerEncode for &serde_json::Value {
     type SpannerType = crate::with::Json<Self>;
-    type Error = IntoError;
+    type Error = crate::error::IntoError;
     type Encoded = String;
 
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
@@ -124,18 +126,20 @@ impl SpannerEncode for &serde_json::Value {
     }
 }
 
+#[cfg(feature = "serde_json")]
 impl FromSpanner for serde_json::Value {
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         crate::with::Json::from_value(value).map(|j| j.0)
     }
 }
 
+#[cfg(feature = "serde_json")]
 impl<K, V> SpannerEncode for std::collections::BTreeMap<K, V>
 where
     K: serde::Serialize,
     V: serde::Serialize,
 {
-    type Error = IntoError;
+    type Error = crate::error::IntoError;
     type Encoded = String;
     type SpannerType = crate::with::Json<Self>;
 
