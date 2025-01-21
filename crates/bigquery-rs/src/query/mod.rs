@@ -1,6 +1,9 @@
 use std::num::NonZeroU64;
 
-use bigquery_resources_rs::query::{QueryRequest, QueryResponse};
+use bigquery_resources_rs::query::{
+    QueryParameter, QueryParameterType, QueryParameterValue, QueryRequest, QueryResponse,
+};
+use bigquery_resources_rs::table::FieldType;
 
 use crate::BigQueryClient;
 
@@ -19,7 +22,41 @@ impl<S> QueryBuilder<S> {
         self
     }
 
-    pub async fn execute<Row, S2>(self) -> crate::Result<QueryResponse<Row, S2>>
+    pub fn number_param(
+        &mut self,
+        name: impl Into<S>,
+        param: impl Into<serde_json::Number>,
+    ) -> &mut Self {
+        self.request.parameter_mode = Some(bigquery_resources_rs::query::ParameterMode::Named);
+
+        let number: serde_json::Number = param.into();
+
+        let ty = if number.is_f64() {
+            FieldType::Float
+        } else {
+            FieldType::Integer
+        };
+
+        self.request.query_parameters.push(QueryParameter {
+            name: Some(name.into()),
+            parameter_type: QueryParameterType::Scalar(ty),
+            parameter_value: QueryParameterValue::Scalar(number.into()),
+        });
+
+        self
+    }
+
+    pub fn string_param(&mut self, name: impl Into<S>, param: impl Into<String>) -> &mut Self {
+        self.request.parameter_mode = Some(bigquery_resources_rs::query::ParameterMode::Named);
+        self.request.query_parameters.push(QueryParameter {
+            name: Some(name.into()),
+            parameter_type: QueryParameterType::Scalar(FieldType::String),
+            parameter_value: QueryParameterValue::Scalar(serde_json::Value::String(param.into())),
+        });
+        self
+    }
+
+    pub async fn execute<Row, S2>(&self) -> crate::Result<QueryResponse<Row, S2>>
     where
         S: serde::Serialize + std::fmt::Debug,
         S2: AsRef<str> + serde::de::DeserializeOwned,

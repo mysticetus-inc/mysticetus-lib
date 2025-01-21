@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::num::NonZeroU64;
 
+use parameter_serializer::SerializeError;
 pub use query_string::{QueryString, query};
 use uuid::Uuid;
 
@@ -10,6 +11,8 @@ mod rows;
 mod value;
 
 pub use results::QueryResults;
+
+pub mod parameter_serializer;
 
 use crate::job::{JobCreationMode, JobReference};
 use crate::table::FieldType;
@@ -224,12 +227,16 @@ pub enum ParameterMode {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct QueryParameter<S = Box<str>> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<S>,
-    parameter_type: QueryParameterType,
-    parameter_value: QueryParameterValue,
+    pub name: Option<S>,
+    pub parameter_type: QueryParameterType,
+    pub parameter_value: QueryParameterValue,
 }
 
 impl<S> QueryParameter<S> {
+    pub fn serialize<T: serde::Serialize>(value: T) -> Result<Self, SerializeError> {
+        value.serialize(parameter_serializer::QueryParameterSerializer::new())
+    }
+
     pub fn scalar(ty: FieldType, value: QueryParameterValue) -> Self {
         Self {
             name: None,
@@ -371,7 +378,7 @@ pub struct StructField {
 pub enum QueryParameterValue {
     Scalar(serde_json::Value),
     Array(Vec<serde_json::Value>),
-    Struct(HashMap<Box<str>, serde_json::Value>),
+    Struct(serde_json::Map<String, serde_json::Value>),
     Range(Box<Range<QueryParameterValue>>),
 }
 
