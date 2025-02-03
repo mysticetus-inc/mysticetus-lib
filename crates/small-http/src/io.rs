@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -106,5 +107,18 @@ impl http_body::Body for EmptyBody {
 
     fn is_end_stream(&self) -> bool {
         true
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct TokioExec;
+
+impl<Fut> hyper::rt::Executor<Fut> for TokioExec
+where
+    Fut: Future + Send + 'static,
+    Fut::Output: Send + 'static,
+{
+    fn execute(&self, fut: Fut) {
+        tokio::spawn(fut);
     }
 }

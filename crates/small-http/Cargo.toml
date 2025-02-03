@@ -11,6 +11,16 @@ thiserror.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
-tokio = { workspace = true, features = ["rt", "sync", "parking_lot", "time"] }
+tokio = { workspace = true, features = ["rt", "sync", "net", "parking_lot", "time", "macros"] }
 pin-project-lite.workspace = true
 bytes.workspace = true
+url.workspace = true
+tokio-util.workspace = true
+ouroboros = "0.18.5"
+futures.workspace = true
+
+
+[features]
+default = ["http1"]
+http1 = ["hyper/http1"]
+http2 = ["hyper/http2"]
