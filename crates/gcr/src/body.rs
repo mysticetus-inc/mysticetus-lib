@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::future::Future;
 use std::pin::Pin;
@@ -19,14 +20,24 @@ pub enum BodyError<E> {
     RequestTooLarge,
 }
 
+impl<E: fmt::Display> BodyError<E> {
+    pub fn into_response_parts(self) -> (StatusCode, Cow<'static, str>) {
+        match self {
+            Self::Body(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Cow::Owned(err.to_string()),
+            ),
+            Self::RequestTooLarge => (
+                StatusCode::BAD_REQUEST,
+                Cow::Borrowed("request payload exceeds 10MiB"),
+            ),
+        }
+    }
+}
+
 impl<E: fmt::Display> IntoResponse for BodyError<E> {
     fn into_response(self) -> axum::response::Response {
-        match self {
-            Self::Body(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-            Self::RequestTooLarge => {
-                (StatusCode::BAD_REQUEST, "request payload exceeds 10MiB").into_response()
-            }
-        }
+        self.into_response_parts().into_response()
     }
 }
 
