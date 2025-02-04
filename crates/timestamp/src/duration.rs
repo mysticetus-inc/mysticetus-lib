@@ -1056,7 +1056,7 @@ impl<'de> Deserialize<'de> for Duration {
 
 struct DurationVisitor;
 
-impl<'de> de::Visitor<'de> for DurationVisitor {
+impl de::Visitor<'_> for DurationVisitor {
     type Value = Duration;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

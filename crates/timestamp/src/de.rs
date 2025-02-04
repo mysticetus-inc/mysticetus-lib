@@ -425,7 +425,7 @@ pub struct TimestampDeserializer<'de> {
     _marker: PhantomData<&'de ()>,
 }
 
-impl<'a> TimestampDeserializer<'a> {
+impl TimestampDeserializer<'_> {
     /// Builds a new [`TimestampDeserializer`] with a given [`Timestamp`]. When deserialized,
     /// the specified [`Unit`] will determine what unit numeric types are deserialized as.
     pub fn new(ts: Timestamp, unit: Unit) -> Self {

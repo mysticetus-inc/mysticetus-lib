@@ -1,5 +1,6 @@
-//!
+//! Helpers for dealing with specific headers in axum handlers.
 use std::fmt;
+use std::future::Future;
 
 use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
@@ -58,23 +59,58 @@ impl FromHeader for HeaderValue {
     }
 }
 
-#[axum::async_trait]
 impl<T, S> FromRequestParts<S> for AdminHeader<T>
 where
     T: FromHeader,
 {
     type Rejection = Response;
 
-    async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
-        match parts.headers.remove(ADMIN_FLAG_HEADER) {
-            Some(header) => match T::from_header(header) {
-                Ok(ok) => Ok(Self(ok)),
-                Err(error) => Err(error.into_response()),
-            },
-            None => {
-                error!("missing admin header");
-                Err(StatusCode::BAD_REQUEST.into_response())
+    fn from_request_parts(
+        parts: &mut Parts,
+        _: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        let header_opt = parts.headers.remove(ADMIN_FLAG_HEADER);
+        async move {
+            match header_opt {
+                Some(header) => match T::from_header(header) {
+                    Ok(ok) => Ok(Self(ok)),
+                    Err(error) => Err(error.into_response()),
+                },
+                None => {
+                    error!("missing admin header");
+                    Err(StatusCode::BAD_REQUEST.into_response())
+                }
             }
         }
     }
 }
+
+#[macro_export]
+macro_rules! define_header_extractor {
+    ($name:ident, $header:expr) => {
+        pub struct $name(pub HeaderValue);
+
+        impl<S> FromRequestParts<S> for $name {
+            type Rejection = axum::response::Response;
+            fn from_request_parts(
+                parts: &mut Parts,
+                _: &S,
+            ) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+                let opt = parts.headers.remove($header);
+
+                async move {
+                    match opt {
+                        Some(header) => Ok(Self(header)),
+                        None => {
+                            use axum::response::IntoResponse as _;
+                            let message = format!("missing header '{}'", $header);
+                            Err((axum::http::StatusCode::BAD_REQUEST, message).into_response())
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+// define_header_extractor!(Authorization, http::header::AUTHORIZATION);
