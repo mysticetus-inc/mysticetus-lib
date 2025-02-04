@@ -30,54 +30,33 @@ impl<E: fmt::Display> IntoResponse for BodyError<E> {
     }
 }
 
-pub trait CollectBodyExt<B: Body + Send + 'static>: Sized
+pub trait CollectBodyExt<'a>: Body + Send + Sized + 'a
 where
-    Bytes: From<B::Data>,
+    Bytes: From<Self::Data>,
 {
     fn collect_to_bytes(
         self,
-    ) -> impl Future<Output = Result<Bytes, BodyError<B::Error>>> + Send + 'static;
+        content_len: Option<usize>,
+    ) -> impl Future<Output = Result<Bytes, BodyError<Self::Error>>> + Send + 'a {
+        collect_to_bytes(self, content_len)
+    }
 }
 
-impl<B: Body + Send + 'static> CollectBodyExt<B> for B
+impl<'a, B> CollectBodyExt<'a> for B
 where
+    B: Body + Send + 'static,
     Bytes: From<B::Data>,
 {
     #[inline]
     fn collect_to_bytes(
         self,
-    ) -> impl Future<Output = Result<Bytes, BodyError<<B as Body>::Error>>> + Send + 'static {
-        collect_to_bytes(self, None)
+        content_len: Option<usize>,
+    ) -> impl Future<Output = Result<Bytes, BodyError<Self::Error>>> + Send + 'a {
+        collect_to_bytes(self, content_len)
     }
 }
 
-impl<B: Body + Send + 'static> CollectBodyExt<B> for http::Request<B>
-where
-    Bytes: From<B::Data>,
-{
-    #[inline]
-    fn collect_to_bytes(
-        self,
-    ) -> impl Future<Output = Result<Bytes, BodyError<<B as Body>::Error>>> + Send + 'static {
-        let content_len = try_parse_content_len(self.headers());
-        collect_to_bytes(self.into_body(), content_len)
-    }
-}
-
-impl<B: Body + Send + 'static> CollectBodyExt<B> for http::Response<B>
-where
-    Bytes: From<B::Data>,
-{
-    #[inline]
-    fn collect_to_bytes(
-        self,
-    ) -> impl Future<Output = Result<Bytes, BodyError<<B as Body>::Error>>> + Send + 'static {
-        let content_len = try_parse_content_len(self.headers());
-        collect_to_bytes(self.into_body(), content_len)
-    }
-}
-
-fn try_parse_content_len(headers: &HeaderMap) -> Option<usize> {
+pub fn try_parse_content_len(headers: &HeaderMap) -> Option<usize> {
     headers
         .get(http::header::CONTENT_LENGTH)
         .and_then(|value| value.to_str().ok())
