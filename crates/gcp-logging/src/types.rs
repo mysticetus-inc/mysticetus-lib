@@ -185,12 +185,14 @@ where
 
         self.serialize_request_trace(&mut map)?;
 
-        let payload =
-            crate::payload::SerializePayload::new(meta, self.event, self.options, self.stage);
+        let alert_found = crate::payload::serialize_event_payload(
+            &mut map,
+            self.event,
+            self.options,
+            self.stage,
+        )?;
 
-        map.serialize_entry("jsonPayload", &payload)?;
-
-        if matches!(payload.alert(), AlertFound::Yes) && self.options.treat_as_error(meta) {
+        if matches!(alert_found, AlertFound::Yes) && self.options.treat_as_error(meta) {
             map.serialize_entry(ALERT_ERROR_NAME, ALERT_ERROR_VALUE)?;
         }
 
