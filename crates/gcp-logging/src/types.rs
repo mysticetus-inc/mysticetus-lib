@@ -5,10 +5,11 @@ use tracing::span::Id;
 use tracing_subscriber::fmt::{FmtContext, FormatFields};
 use tracing_subscriber::registry::LookupSpan;
 
+use crate::Stage;
+use crate::payload::AlertFound;
 use crate::span::SPAN_FIELD_NAME;
 use crate::subscriber::RequestTrace;
 use crate::trace_layer::{ActiveTraces, TraceHeader};
-use crate::Stage;
 
 const ALERT_ERROR_NAME: &str = "@type";
 const ALERT_ERROR_VALUE: &str =
@@ -117,6 +118,7 @@ where
 
 pub struct ActiveRequestTrace<'a> {
     request_trace: dashmap::mapref::one::Ref<'a, Id, RequestTrace, fxhash::FxBuildHasher>,
+    #[allow(dead_code)]
     trace_span_id: &'a Id,
     current_span_id: &'a Id,
 }
@@ -181,23 +183,16 @@ where
             &SourceLocation::new(meta),
         )?;
 
-        if self.options.include_stage(self.stage, meta) {
-            map.serialize_entry("stage", &self.stage)?;
-        }
-
         self.serialize_request_trace(&mut map)?;
 
-        let mut visitor = crate::payload::PayloadVisitor::new(meta, &mut map, self.options);
+        let payload =
+            crate::payload::SerializePayload::new(meta, self.event, self.options, self.stage);
 
-        self.event.record(&mut visitor);
+        map.serialize_entry("jsonPayload", &payload)?;
 
-        let should_alert = visitor.finish()?;
-
-        /*
-        if matches!(should_alert, AlertFound::Yes) || self.options.treat_as_error(meta) {
+        if matches!(payload.alert(), AlertFound::Yes) && self.options.treat_as_error(meta) {
             map.serialize_entry(ALERT_ERROR_NAME, ALERT_ERROR_VALUE)?;
         }
-        */
 
         map.end()
     }

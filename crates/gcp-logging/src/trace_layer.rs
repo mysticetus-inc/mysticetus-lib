@@ -70,7 +70,7 @@ impl<P: AsRef<str>> fmt::Display for TraceHeader<'_, P> {
 
             if trace.is_ascii() {
                 // SAFETY: we just checked it was valid ascii. This should only ever be ascii and
-                // not utf8, so we only check for ascii to avoid the overhead from
+                // not utf8, so we only check for ascii to avoid the extra overhead from
                 // checking utf8
                 let trace_str = unsafe { std::str::from_utf8_unchecked(trace) };
                 write!(f, "projects/{project_id}/traces/{trace_str}")

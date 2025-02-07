@@ -1,9 +1,8 @@
 use std::error::Error as StdError;
-use std::fmt;
-use std::io;
+use std::{fmt, io};
 
-use serde::ser::SerializeMap;
 use serde::Serializer;
+use serde::ser::SerializeMap;
 
 use crate::TryGetBacktrace;
 
@@ -73,6 +72,25 @@ impl<'a> SerializeErrorReprs<'a> {
             source_depth: self.source_depth + 1,
             try_get_bt: TryGetBacktrace::No,
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct JsonFloat(pub f64);
+
+impl serde::Serialize for JsonFloat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use std::num::FpCategory::*;
+
+        match self.0.classify() {
+            Subnormal | Normal | Zero => serializer.serialize_f64(self.0),
+            Infinite if self.0.is_sign_negative() => serializer.serialize_str("-Inf"),
+            Infinite => serializer.serialize_str("Inf"),
+            Nan => serializer.serialize_str("NaN"),
+        }
     }
 }
 

@@ -1,14 +1,12 @@
-use std::num::FpCategory;
-
 use serde::ser::SerializeMap;
 use tracing::field::{Field, Visit};
 
-pub(crate) struct PayloadVisitor<'a, M: SerializeMap, O = crate::DefaultLogOptions> {
-    alert: AlertFound,
-    map_ser: &'a mut M,
+pub(crate) struct SerializePayload<'a, O = crate::DefaultLogOptions> {
+    alert: std::cell::Cell<AlertFound>,
     metadata: &'a tracing::Metadata<'a>,
     options: &'a O,
-    error: Option<M::Error>,
+    event: &'a tracing::Event<'a>,
+    stage: crate::Stage,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -18,111 +16,122 @@ pub(crate) enum AlertFound {
     No,
 }
 
-impl<'a, M: SerializeMap, O: crate::LogOptions> PayloadVisitor<'a, M, O> {
-    #[inline]
-    pub(crate) fn new(
+impl<'a, O> SerializePayload<'a, O> {
+    pub fn new(
         metadata: &'a tracing::Metadata<'a>,
-        map_ser: &'a mut M,
+        event: &'a tracing::Event<'a>,
         options: &'a O,
+        stage: crate::Stage,
     ) -> Self {
         Self {
-            map_ser,
-            alert: AlertFound::No,
+            alert: std::cell::Cell::new(AlertFound::No),
             metadata,
             options,
-            error: None,
+            event,
+            stage,
         }
     }
 
-    pub(crate) fn finish(self) -> Result<AlertFound, M::Error> {
-        match self.error {
-            None => Ok(self.alert),
-            Some(error) => Err(error),
-        }
-    }
-
-    #[inline]
-    fn try_serialize<S: serde::Serialize>(&mut self, field: &str, value: S) {
-        if let Err(error) = self.map_ser.serialize_entry(field, &value) {
-            self.error = Some(error);
-        }
+    pub fn alert(&self) -> AlertFound {
+        self.alert.get()
     }
 }
 
-impl<M: SerializeMap, O: crate::LogOptions> Visit for PayloadVisitor<'_, M, O> {
+impl<O: crate::LogOptions> serde::Serialize for SerializePayload<'_, O> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(None)?;
+
+        let mut visitor = Visitor {
+            map: &mut map,
+            alert: &self.alert,
+            options: self.options,
+            metadata: self.metadata,
+            error: None,
+        };
+
+        self.event.record(&mut visitor);
+
+        if let Some(error) = visitor.error {
+            return Err(error);
+        }
+
+        if self.options.include_stage(self.stage, self.metadata) {
+            map.serialize_entry("stage", &self.stage)?;
+        }
+
+        map.end()
+    }
+}
+
+struct Visitor<'a, M: SerializeMap, O = crate::DefaultLogOptions> {
+    map: &'a mut M,
+    alert: &'a std::cell::Cell<AlertFound>,
+    options: &'a O,
+    metadata: &'a tracing::Metadata<'a>,
+    error: Option<M::Error>,
+}
+
+macro_rules! impl_simple_record_fns {
+    ($($fn_name:ident($arg_ty:ty)),* $(,)?) => {
+        $(
+            fn $fn_name(&mut self, field: &Field, value: $arg_ty) {
+                if self.error.is_none() {
+                    self.error = self.map.serialize_entry(field.name(), &value).err();
+                }
+            }
+        )*
+    };
+}
+
+impl<M: SerializeMap, O: crate::LogOptions> Visit for Visitor<'_, M, O> {
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
         if self.error.is_none() {
-            self.try_serialize(field.name(), crate::utils::SerializeDebug(value));
+            self.error = self
+                .map
+                .serialize_entry(field.name(), &crate::utils::SerializeDebug(value))
+                .err();
         }
     }
 
-    fn record_error(&mut self, field: &Field, error: &(dyn std::error::Error + 'static)) {
-        if self.error.is_none() {
-            let try_get_bt = self.options.try_get_backtrace(self.metadata, error);
-
-            self.try_serialize(
-                field.name(),
-                crate::utils::SerializeErrorReprs::new(error, try_get_bt),
-            );
-        }
+    impl_simple_record_fns! {
+        record_u64(u64),
+        record_u128(u128),
+        record_i64(i64),
+        record_i128(i128),
+        record_str(&str),
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
-        if self.error.is_some() {
-            return;
-        }
-
-        if field.name().eq_ignore_ascii_case("alert") && value {
-            self.alert = AlertFound::Yes;
-        } else {
-            self.try_serialize(field.name(), value);
-        }
-    }
-
-    fn record_str(&mut self, field: &Field, value: &str) {
-        if self.error.is_none() {
-            self.try_serialize(field.name(), value);
+        if field.name() == "alert" && value {
+            self.alert.set(AlertFound::Yes);
+        } else if self.error.is_none() {
+            self.error = self.map.serialize_entry(field.name(), &value).err();
         }
     }
 
     fn record_f64(&mut self, field: &Field, value: f64) {
-        if self.error.is_some() {
-            return;
-        }
-
-        match value.classify() {
-            FpCategory::Zero | FpCategory::Subnormal | FpCategory::Normal => {
-                self.try_serialize(field.name(), value)
-            }
-            FpCategory::Nan => self.try_serialize(field.name(), "NaN"),
-            FpCategory::Infinite if value.is_sign_positive() => {
-                self.try_serialize(field.name(), "Inf")
-            }
-            FpCategory::Infinite => self.try_serialize(field.name(), "-Inf"),
+        if self.error.is_none() {
+            self.error = self
+                .map
+                .serialize_entry(field.name(), &crate::utils::JsonFloat(value))
+                .err();
         }
     }
 
-    fn record_i64(&mut self, field: &Field, value: i64) {
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
         if self.error.is_none() {
-            self.try_serialize(field.name(), value);
-        }
-    }
+            let try_get_bt = self.options.try_get_backtrace(self.metadata, value);
 
-    fn record_u64(&mut self, field: &Field, value: u64) {
-        if self.error.is_none() {
-            self.try_serialize(field.name(), value);
-        }
-    }
-
-    fn record_i128(&mut self, field: &Field, value: i128) {
-        if self.error.is_none() {
-            self.try_serialize(field.name(), value);
-        }
-    }
-
-    fn record_u128(&mut self, field: &Field, value: u128) {
-        if self.error.is_none() {
-            self.try_serialize(field.name(), value);
+            self.error = self
+                .map
+                .serialize_entry(
+                    field.name(),
+                    &crate::utils::SerializeErrorReprs::new(value, try_get_bt),
+                )
+                .err();
         }
     }
 }

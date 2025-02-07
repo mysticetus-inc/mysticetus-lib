@@ -1,27 +1,12 @@
-use std::cell::RefCell;
-use std::io::Stdout;
-use std::num::NonZeroU64;
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use http::{HeaderValue, StatusCode};
+use http::HeaderValue;
 use http_body::Body;
-use rand::Rng;
-use rand::rngs::ThreadRng;
 use timestamp::Duration;
 use tracing::span::Id;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::Registry;
 
-use crate::env_filter::EnvFilter;
 use crate::http_request::{HttpRequest, TRACE_CTX_HEADER};
-
-pub struct Subscriber<W = Stdout> {
-    env_filter: EnvFilter,
-    registry: Registry,
-    trace_headers: Arc<DashMap<Id, RequestTrace, fxhash::FxBuildHasher>>,
-    writer: W,
-}
 
 #[derive(Debug, Clone)]
 pub struct RequestTrace {
@@ -56,19 +41,26 @@ impl SubscriberHandle {
         self.trace_headers.insert(trace.span_id.clone(), trace);
     }
 
-    pub fn update_trace(
+    pub fn update_trace<B: Body>(
         &self,
         span_id: &Id,
         latency: Duration,
-        status: StatusCode,
-        response_size: Option<u64>,
+        response: &http::Response<B>,
     ) {
         if let Some(mut request_trace) = self.trace_headers.get_mut(span_id) {
             request_trace
                 .request
-                .update_response(latency, status, response_size);
+                .update_from_response(latency, response);
         }
     }
+}
+
+/*
+pub struct Subscriber<W = Stdout> {
+    env_filter: EnvFilter,
+    registry: Registry,
+    trace_headers: Arc<DashMap<Id, RequestTrace, fxhash::FxBuildHasher>>,
+    writer: W,
 }
 
 impl<W: 'static> tracing::subscriber::Subscriber for Subscriber<W> {
@@ -112,43 +104,5 @@ impl<W: 'static> tracing::subscriber::Subscriber for Subscriber<W> {
     fn event(&self, event: &tracing::Event<'_>) {
         todo!()
     }
-}
-
-/*
-fn with_buf<O>(mut f: impl FnOnce(&mut String) -> O) -> O {
-    return TlsStringBuf::with_buf(f);
-
-
-    thread_local! {
-        static BUF0: RefCell<String> = RefCell::new(String::with_capacity(512));
-        static BUF1: RefCell<String> = RefCell::new(String::with_capacity(512));
-        static BUF2: RefCell<String> = RefCell::new(String::with_capacity(512));
-        static BUF3: RefCell<String> = RefCell::new(String::with_capacity(512));
-    }
-
-
-    macro_rules! try_with_buf {
-        ($buf:expr, $f:expr) => {{
-            match $buf.with(move |b| {
-                match b.try_borrow_mut() {
-                    Ok(mut ref_mut) => Ok($f(&mut *ref_mut)),
-                    Err(_) => Err($f),
-                }
-            })
-            {
-                Ok(ret) => return ret,
-                Err(f) => $f = f,
-            }
-        }};
-    }
-
-    try_with_buf!(BUF0, f);
-    try_with_buf!(BUF1, f);
-    try_with_buf!(BUF2, f);
-    try_with_buf!(BUF3, f);
-
-    let mut buf = String::with_capacity(256);
-
-    f(&mut buf)
 }
 */

@@ -2,35 +2,26 @@ use std::fmt;
 use std::sync::Arc;
 
 use dashmap::DashMap;
-use serde::ser::SerializeMap;
 use subscriber::SubscriberHandle;
 use trace_layer::ActiveTraces;
 use tracing::Subscriber;
-use tracing::field::{Field, Visit};
 use tracing_subscriber::fmt::format::Writer;
-use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields, SubscriberBuilder};
+use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
 
-pub mod env_filter;
-// mod json_serializer;
-mod live_ids;
-mod payload;
-mod registry;
-pub mod response_error;
-mod subscriber;
-pub mod trace_layer;
-//mod json;
 mod http_request;
 mod middleware;
-mod middlewarev2;
+mod payload;
 mod span;
+mod subscriber;
+pub mod trace_layer;
 mod types;
 mod utils;
 
 #[inline]
-pub fn init_logging(project_id: &'static str, stage: Stage) -> middlewarev2::TraceLayer {
+pub fn init_logging(project_id: &'static str, stage: Stage) -> middleware::TraceLayer {
     init_logging_opt(project_id, stage, DefaultLogOptions)
 }
 
@@ -47,7 +38,7 @@ pub fn init_logging_opt<Options>(
     project_id: &'static str,
     stage: Stage,
     options: Options,
-) -> middlewarev2::TraceLayer
+) -> middleware::TraceLayer
 where
     Options: LogOptions,
 {
@@ -74,16 +65,7 @@ where
         .with(traces)
         .init();
 
-    middlewarev2::TraceLayer::new(handle)
-}
-
-pub fn init_with<F>(f: F) -> middleware::TraceLayer
-where
-    F: FnOnce(SubscriberBuilder),
-{
-    f(SubscriberBuilder::default());
-
-    middleware::new_trace_layer()
+    middleware::TraceLayer::new(handle)
 }
 
 #[derive(Debug, Clone)]
@@ -121,7 +103,8 @@ pub struct DefaultLogOptions;
 
 impl LogOptions for DefaultLogOptions {
     fn include_http_info(&self, meta: &tracing::Metadata<'_>) -> bool {
-        matches!(*meta.level(), tracing::Level::ERROR | tracing::Level::WARN)
+        // include the http info on everything but verbose tracing
+        !matches!(*meta.level(), tracing::Level::TRACE | tracing::Level::DEBUG)
     }
 
     fn treat_as_error(&self, meta: &tracing::Metadata<'_>) -> bool {
@@ -142,75 +125,6 @@ impl LogOptions for DefaultLogOptions {
         } else {
             TryGetBacktrace::No
         }
-    }
-}
-
-struct JsonVisitor<'a, S: SerializeMap> {
-    map: &'a mut S,
-    error: Option<S::Error>,
-}
-
-impl<S: SerializeMap> JsonVisitor<'_, S> {
-    fn try_serialize<V: serde::Serialize>(&mut self, name: &str, value: V) {
-        if self.error.is_some() {
-            return;
-        }
-
-        if let Err(err) = self.map.serialize_entry(name, &value) {
-            self.error = Some(err);
-        }
-    }
-}
-
-impl<'a, S> Visit for JsonVisitor<'a, S>
-where
-    S: SerializeMap,
-{
-    fn record_u64(&mut self, field: &Field, value: u64) {
-        self.try_serialize(field.name(), value);
-    }
-
-    fn record_str(&mut self, field: &Field, value: &str) {
-        self.try_serialize(field.name(), value);
-    }
-
-    fn record_bool(&mut self, field: &Field, value: bool) {
-        self.try_serialize(field.name(), value);
-    }
-
-    fn record_u128(&mut self, field: &Field, value: u128) {
-        self.try_serialize(field.name(), value);
-    }
-
-    fn record_i128(&mut self, field: &Field, value: i128) {
-        self.try_serialize(field.name(), value);
-    }
-
-    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        self.try_serialize(
-            field.name(),
-            utils::SerializeErrorReprs::new(value, TryGetBacktrace::No),
-        );
-    }
-
-    fn record_i64(&mut self, field: &Field, value: i64) {
-        self.try_serialize(field.name(), value);
-    }
-
-    fn record_f64(&mut self, field: &Field, value: f64) {
-        use std::num::FpCategory::*;
-        // NaN and +/- Inf are invalid in Json, so we need to handle turning them into their string
-        // reprs
-        match value.classify() {
-            Zero | Subnormal | Normal => self.try_serialize(field.name(), value),
-            Nan => self.try_serialize(field.name(), "NaN"),
-            Infinite if value.is_sign_negative() => self.try_serialize(field.name(), "Inf"),
-            Infinite => self.try_serialize(field.name(), "-Inf"),
-        }
-    }
-
-    fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-        self.try_serialize(field.name(), utils::SerializeDebug(value));
     }
 }
 
