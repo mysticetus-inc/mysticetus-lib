@@ -1,19 +1,29 @@
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use timestamp::Timestamp;
+use tracing::field::Visit;
 use tracing::span::Id;
 use tracing_subscriber::fmt::{FmtContext, FormatFields};
 use tracing_subscriber::registry::LookupSpan;
 
 use crate::Stage;
-use crate::payload::AlertFound;
-use crate::span::SPAN_FIELD_NAME;
+use crate::payload::{EventInfo, serialize_event_payload};
 use crate::subscriber::RequestTrace;
 use crate::trace_layer::{ActiveTraces, TraceHeader};
 
 const ALERT_ERROR_NAME: &str = "@type";
 const ALERT_ERROR_VALUE: &str =
     "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent";
+
+pub(crate) const LABEL_PREFIX: &str = "label.";
+
+const TRACE_KEY: &str = "logging.googleapis.com/trace";
+const TIMESTAMP_KEY: &str = "timestamp";
+const SEVERITY_KEY: &str = "severity";
+const SPAN_ID_KEY: &str = "logging.googleapis.com/spanId";
+const HTTP_REQUEST_KEY: &str = "httpRequest";
+const LABELS_KEY: &str = "logging.googleapis.com/labels";
+const SOURCE_LOCATION_KEY: &str = "logging.googleapis.com/sourceLocation";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,14 +85,11 @@ where
     {
         self.with_request_trace::<_, M::Error>(|art| {
             if self.options.include_http_info(self.event.metadata()) {
-                map.serialize_entry("httpRequest", &art.request_trace.request)?;
+                map.serialize_entry(HTTP_REQUEST_KEY, &art.request_trace.request)?;
             }
 
             if let Some(ref header) = art.request_trace.trace_header {
-                map.serialize_entry(
-                    crate::span::TRACE_FIELD_NAME,
-                    &TraceHeader::new(self.project_id, header),
-                )?;
+                map.serialize_entry(TRACE_KEY, &TraceHeader::new(self.project_id, header))?;
                 serialize_span_id(art.current_span_id, map)?;
             }
 
@@ -128,6 +135,7 @@ macro_rules! serialize_with {
         struct SerializeWith<'a>(&'a $t);
 
         impl serde::Serialize for SerializeWith<'_> {
+            #[inline]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: serde::Serializer,
@@ -142,6 +150,7 @@ macro_rules! serialize_with {
         struct SerializeWith<'a>(&'a $t);
 
         impl serde::Serialize for SerializeWith<'_> {
+            #[inline]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: serde::Serializer,
@@ -171,29 +180,38 @@ where
         let timestamp = self.timestamp.unwrap_or_else(Timestamp::now);
 
         map.serialize_entry(
-            "timestamp",
+            TIMESTAMP_KEY,
             serialize_with!(timestamp; Timestamp::serialize_as_proto),
         )?;
         map.serialize_entry(
-            "severity",
+            SEVERITY_KEY,
             serialize_with!(meta.level(); tracing::Level => serialize_as_severity),
         )?;
-        map.serialize_entry(
-            "logging.googleapis.com/sourceLocation",
-            &SourceLocation::new(meta),
-        )?;
+        map.serialize_entry(SOURCE_LOCATION_KEY, &SourceLocation::new(meta))?;
 
         self.serialize_request_trace(&mut map)?;
 
-        let alert_found = crate::payload::serialize_event_payload(
-            &mut map,
-            self.event,
-            self.options,
-            self.stage,
-        )?;
+        let EventInfo {
+            alert_found,
+            labels,
+        } = serialize_event_payload(&mut map, self.event, self.options)?;
 
-        if matches!(alert_found, AlertFound::Yes) && self.options.treat_as_error(meta) {
+        if alert_found && self.options.treat_as_error(meta) {
             map.serialize_entry(ALERT_ERROR_NAME, ALERT_ERROR_VALUE)?;
+        }
+
+        if labels > 0 {
+            map.serialize_entry(LABELS_KEY, &Labels {
+                labels,
+                stage: self.stage,
+                event: self.event,
+                options: self.options,
+            })?;
+        } else if self
+            .options
+            .include_stage(self.stage, self.event.metadata())
+        {
+            map.serialize_entry(LABELS_KEY, &StageLabel { stage: self.stage })?;
         }
 
         map.end()
@@ -213,7 +231,7 @@ where
     let hex_str =
         std::str::from_utf8(&dst).expect("successful hex encoding should always be valid ascii");
 
-    map.serialize_entry(SPAN_FIELD_NAME, hex_str)
+    map.serialize_entry(SPAN_ID_KEY, hex_str)
 }
 
 fn get_severity_string(level: &tracing::Level) -> &'static str {
@@ -240,4 +258,145 @@ where
     S: Serializer,
 {
     serializer.serialize_str(get_severity_string(level))
+}
+
+#[derive(serde::Serialize)]
+struct StageLabel {
+    stage: Stage,
+}
+
+struct Labels<'a, O> {
+    labels: u8,
+    stage: Stage,
+    event: &'a tracing::Event<'a>,
+    options: &'a O,
+}
+
+impl<O: crate::LogOptions> serde::Serialize for Labels<'_, O> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let include_stage = self
+            .options
+            .include_stage(self.stage, self.event.metadata());
+
+        let fields = self.labels as usize + include_stage as usize;
+
+        let mut map = serializer.serialize_map(Some(fields))?;
+
+        let mut visitor = LabelsVisitor {
+            map: &mut map,
+            error: None,
+        };
+
+        self.event.record(&mut visitor);
+
+        if let Some(error) = visitor.error {
+            return Err(error);
+        }
+
+        if include_stage {
+            map.serialize_entry("stage", &self.stage)?;
+        }
+
+        map.end()
+    }
+}
+
+struct LabelsVisitor<'a, M: SerializeMap> {
+    map: &'a mut M,
+    error: Option<M::Error>,
+}
+
+impl<M: SerializeMap> LabelsVisitor<'_, M> {
+    #[inline]
+    fn serialize_field(
+        &mut self,
+        field: &tracing::field::Field,
+        serialize_entry: impl FnOnce(&mut M, &str) -> Result<(), M::Error>,
+    ) {
+        if self.error.is_some() {
+            return;
+        }
+
+        if let Some(field) = field.name().strip_prefix(LABEL_PREFIX) {
+            self.error = serialize_entry(self.map, field).err();
+        }
+    }
+}
+
+macro_rules! record_int_fns {
+    ($($fn_name:ident($arg_ty:ty)),* $(,)?) => {
+        $(
+            #[inline]
+            fn $fn_name(&mut self, field: &tracing::field::Field, value: $arg_ty) {
+                self.serialize_field(field, |map, field| {
+                    let mut buf = itoa::Buffer::new();
+                    map.serialize_entry(field, buf.format(value))
+                });
+            }
+        )*
+    };
+}
+
+impl<M: SerializeMap> Visit for LabelsVisitor<'_, M> {
+    #[inline]
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        self.serialize_field(field, |map, field| {
+            map.serialize_entry(field, &crate::utils::SerializeDebug(value))
+        });
+    }
+
+    record_int_fns! {
+        record_i64(i64),
+        record_i128(i128),
+        record_u64(u64),
+        record_u128(u128),
+    }
+
+    #[inline]
+    fn record_f64(&mut self, field: &tracing::field::Field, value: f64) {
+        self.serialize_field(field, |map, field| {
+            use std::num::FpCategory;
+
+            let mut buf: ryu::Buffer;
+
+            let float_str = match value.classify() {
+                FpCategory::Normal | FpCategory::Subnormal => {
+                    buf = ryu::Buffer::new();
+                    buf.format(value)
+                }
+                FpCategory::Zero => "0.0",
+                FpCategory::Infinite if value.is_sign_positive() => "Inf",
+                FpCategory::Infinite => "-Inf",
+                FpCategory::Nan => "NaN",
+            };
+
+            map.serialize_entry(field, float_str)
+        });
+    }
+
+    #[inline]
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        self.serialize_field(field, |map, field| map.serialize_entry(field, value));
+    }
+
+    #[inline]
+    fn record_bool(&mut self, field: &tracing::field::Field, value: bool) {
+        self.serialize_field(field, |map, field| {
+            let bool_str = if value { "true" } else { "false" };
+            map.serialize_entry(field, bool_str)
+        });
+    }
+
+    fn record_error(
+        &mut self,
+        field: &tracing::field::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        self.serialize_field(field, |map, field| {
+            map.serialize_entry(field, &crate::utils::SerializeDisplay(value))
+        });
+    }
 }

@@ -12,7 +12,7 @@ futures.workspace = true
 http.workspace = true
 http-body.workspace = true
 itoa.workspace = true
-ryu = "1.0.13"
+ryu = "1"
 serde.workspace = true
 serde_json.workspace = true
 serde-helpers = { path = "../serde-helpers" }

@@ -14,7 +14,6 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod http_request;
 mod middleware;
 mod payload;
-mod span;
 mod subscriber;
 pub mod trace_layer;
 mod types;

@@ -10,7 +10,7 @@ use http_body::Body;
 use tower::{Layer, Service};
 use tracing::Span;
 
-use crate::subscriber::SubscriberHandle;
+use crate::subscriber::{RequestTrace, SubscriberHandle};
 
 #[derive(Debug, Clone)]
 pub struct TraceLayer {
@@ -58,7 +58,7 @@ where
     }
 
     fn call(&mut self, req: http::Request<Rb>) -> Self::Future {
-        let span = crate::span::make_span(&req, &self.handle);
+        let span = make_span(&req, &self.handle);
         let start = Instant::now();
         let fut = self.svc.call(req);
 
@@ -70,6 +70,19 @@ where
             _marker: PhantomData,
         }
     }
+}
+
+pub(super) fn make_span<B: Body>(
+    request: &http::Request<B>,
+    handle: &SubscriberHandle,
+) -> tracing::Span {
+    let span = tracing::info_span!("request");
+
+    if let Some(span_id) = span.id() {
+        handle.insert_new_trace(RequestTrace::new(span_id, request));
+    }
+
+    span
 }
 
 pin_project_lite::pin_project! {

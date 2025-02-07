@@ -1,26 +1,28 @@
 use serde::ser::SerializeMap;
 use tracing::field::{Field, Visit};
 
+use super::types::LABEL_PREFIX;
+
+const ALERT: &str = "alert";
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) enum AlertFound {
-    Yes,
-    #[default]
-    No,
+pub(crate) struct EventInfo {
+    pub labels: u8,
+    pub alert_found: bool,
 }
 
 pub(crate) fn serialize_event_payload<M, O>(
     map: &mut M,
     event: &tracing::Event<'_>,
     options: &O,
-    stage: crate::Stage,
-) -> Result<AlertFound, M::Error>
+) -> Result<EventInfo, M::Error>
 where
     M: SerializeMap,
     O: crate::LogOptions,
 {
     let mut visitor = Visitor {
         map,
-        alert: AlertFound::No,
+        event_info: EventInfo::default(),
         options,
         metadata: event.metadata(),
         error: None,
@@ -32,16 +34,12 @@ where
         return Err(error);
     }
 
-    if options.include_stage(stage, event.metadata()) {
-        visitor.map.serialize_entry("stage", &stage)?;
-    }
-
-    Ok(visitor.alert)
+    Ok(visitor.event_info)
 }
 
 struct Visitor<'a, M: SerializeMap, O = crate::DefaultLogOptions> {
     map: &'a mut M,
-    alert: AlertFound,
+    event_info: EventInfo,
     options: &'a O,
     metadata: &'a tracing::Metadata<'a>,
     error: Option<M::Error>,
@@ -51,7 +49,9 @@ macro_rules! impl_simple_record_fns {
     ($($fn_name:ident($arg_ty:ty)),* $(,)?) => {
         $(
             fn $fn_name(&mut self, field: &Field, value: $arg_ty) {
-                if self.error.is_none() {
+                if field.name().starts_with(LABEL_PREFIX) {
+                    self.event_info.labels = self.event_info.labels.saturating_add(1);
+                } else if self.error.is_none() {
                     self.error = self.map.serialize_entry(field.name(), &value).err();
                 }
             }
@@ -61,7 +61,9 @@ macro_rules! impl_simple_record_fns {
 
 impl<M: SerializeMap, O: crate::LogOptions> Visit for Visitor<'_, M, O> {
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        if self.error.is_none() {
+        if field.name().starts_with(LABEL_PREFIX) {
+            self.event_info.labels = self.event_info.labels.saturating_add(1);
+        } else if self.error.is_none() {
             self.error = self
                 .map
                 .serialize_entry(field.name(), &crate::utils::SerializeDebug(value))
@@ -78,15 +80,19 @@ impl<M: SerializeMap, O: crate::LogOptions> Visit for Visitor<'_, M, O> {
     }
 
     fn record_bool(&mut self, field: &Field, value: bool) {
-        if field.name() == "alert" && value {
-            self.alert = AlertFound::Yes;
+        if field.name() == ALERT && value {
+            self.event_info.alert_found = true;
+        } else if field.name().starts_with(LABEL_PREFIX) {
+            self.event_info.labels = self.event_info.labels.saturating_add(1);
         } else if self.error.is_none() {
             self.error = self.map.serialize_entry(field.name(), &value).err();
         }
     }
 
     fn record_f64(&mut self, field: &Field, value: f64) {
-        if self.error.is_none() {
+        if field.name().starts_with(LABEL_PREFIX) {
+            self.event_info.labels = self.event_info.labels.saturating_add(1);
+        } else if self.error.is_none() {
             self.error = self
                 .map
                 .serialize_entry(field.name(), &crate::utils::JsonFloat(value))
@@ -95,7 +101,9 @@ impl<M: SerializeMap, O: crate::LogOptions> Visit for Visitor<'_, M, O> {
     }
 
     fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        if self.error.is_none() {
+        if field.name().starts_with(LABEL_PREFIX) {
+            self.event_info.labels = self.event_info.labels.saturating_add(1);
+        } else if self.error.is_none() {
             let try_get_bt = self.options.try_get_backtrace(self.metadata, value);
 
             self.error = self
