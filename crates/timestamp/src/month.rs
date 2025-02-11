@@ -134,7 +134,7 @@ impl Month {
     /// Returns the previous month, wrapping to [`December`] if 'self == [`January`]'
     ///
     /// [`December`]: [`Month::December`]
-    /// [`January`]: [`Month::January`]    
+    /// [`January`]: [`Month::January`]
     #[inline]
     pub const fn previous(self) -> Self {
         match self {
@@ -195,7 +195,7 @@ impl Month {
     /// Returns the next month, wrapping to [`January`] if 'self == [`December`]'
     ///
     /// [`December`]: [`Month::December`]
-    /// [`January`]: [`Month::January`]    
+    /// [`January`]: [`Month::January`]
     #[inline]
     pub const fn next(self) -> Self {
         match self {
@@ -216,8 +216,9 @@ impl Month {
 }
 
 impl Step for Month {
-    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-        Some((*start as u8).abs_diff(*end as u8) as usize)
+    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
+        let diff = (*start as u8).abs_diff(*end as u8) as usize;
+        (diff, Some(diff))
     }
 
     fn forward_checked(start: Self, count: usize) -> Option<Self> {

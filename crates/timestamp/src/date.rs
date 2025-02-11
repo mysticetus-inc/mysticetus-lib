@@ -418,13 +418,13 @@ impl Date {
         self.year
     }
 
-    /// Returns the non-zero day in the mont this [`Date`] falls on.    
+    /// Returns the non-zero day in the mont this [`Date`] falls on.
     #[inline]
     pub const fn day_non_zero(&self) -> NonZeroU8 {
         self.day
     }
     /// Returns the day in the mont this [`Date`] falls on.
-    /// Identical to 'date.day_non_zero().get()'.   
+    /// Identical to 'date.day_non_zero().get()'.
     #[inline]
     pub const fn day(&self) -> u8 {
         self.day.get()
@@ -582,7 +582,7 @@ impl Date {
 
     /// Writes 'self' into a [`std::io::Write`] type.
     ///
-    /// See [`Date::format_into`] for the [`std::fmt::Write`] variant.     
+    /// See [`Date::format_into`] for the [`std::fmt::Write`] variant.
     pub fn write_into<W: std::io::Write>(&self, w: &mut W) -> std::io::Result<()> {
         write!(w, "{self}")
     }
@@ -626,7 +626,7 @@ impl Date {
         (year, month as u8, day)
     }
 
-    /// Converts from a [`chrono::NaiveDate`].    
+    /// Converts from a [`chrono::NaiveDate`].
     pub fn from_chrono_date_naive(date: chrono::NaiveDate) -> Self {
         Self {
             year: date.year() as i16,
@@ -778,7 +778,7 @@ impl Date {
 }
 
 impl Step for Date {
-    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         let (start_year, start_ord) = start.to_ordinal();
         let (end_year, end_ord) = end.to_ordinal();
 
@@ -790,7 +790,9 @@ impl Step for Date {
 
         let delta_days = delta_years + delta_ord;
 
-        Some(delta_days.unsigned_abs())
+        let abs_delta = delta_days.unsigned_abs();
+
+        (abs_delta, Some(abs_delta))
     }
 
     fn forward_checked(start: Self, count: usize) -> Option<Self> {

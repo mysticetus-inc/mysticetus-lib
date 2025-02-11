@@ -24,12 +24,12 @@ impl<'a, Kind> WriteBuilder<'a, Kind> {
                     name: path.into(),
                     ..Default::default()
                 }),
-                predefined_acl: (),
-                if_generation_match: (),
-                if_generation_not_match: (),
-                if_metageneration_match: (),
-                if_metageneration_not_match: (),
-                object_size: (),
+                predefined_acl: todo!(),
+                if_generation_match: todo!(),
+                if_generation_not_match: todo!(),
+                if_metageneration_match: todo!(),
+                if_metageneration_not_match: todo!(),
+                object_size: todo!(),
             },
             common_object_request_params: None,
             kind: todo!(),
@@ -57,7 +57,7 @@ impl<'a> WriteBuilder<'a, NonResumable> {
 
         todo!();
 
-        let write_status = client.client().write_object(request).await?.into_inner();
+        // let write_status = client.client().write_object(request).await?.into_inner();
 
         Ok(())
     }

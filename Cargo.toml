@@ -29,7 +29,10 @@ members = [
     "crates/spanner-rs/spanner-rs-macros",
     "crates/spanner-rs/spanner-rs-inspect",
     "crates/timestamp",
-    "crates/firebase-admin", "crates/metadata-server", "crates/small-http",
+    "crates/firebase-admin",
+    # TODO: in progress
+    # "crates/metadata-server",
+    # "crates/small-http",
 ]
 
 

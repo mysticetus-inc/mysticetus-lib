@@ -267,20 +267,6 @@ impl Timestamp {
         None
     }
 
-    /// Creates a type that will step from `self` to the maximum allowed [`Timestamp`], with a
-    /// step duration of `step`.
-    pub const fn step_from(self, step: Duration) -> crate::stepper::StepFrom {
-        crate::stepper::StepFrom {
-            current: self,
-            delta: step,
-        }
-    }
-
-    /// Creates a type that will step from `self` to `end` with a step duration of `step`.
-    pub const fn step_to(self, step: Duration, end: Self) -> crate::stepper::StepTo {
-        self.step_from(step).stop_at(end)
-    }
-
     /// Adds a [`Duration`]. Used by the [`std::ops::Add`] impl under the hood.
     #[inline]
     pub const fn add_duration(self, duration: Duration) -> Self {
