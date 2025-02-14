@@ -8,9 +8,9 @@ use tokio::net::TcpListener;
 #[derive(Debug, thiserror::Error)]
 pub enum InitError<E: std::error::Error> {
     #[error(transparent)]
-    State(#[from] E),
+    State(E),
     #[error(transparent)]
-    Io(io::Error),
+    Io(#[from] io::Error),
 }
 
 impl<E: std::error::Error> InitError<E> {
