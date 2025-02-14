@@ -50,6 +50,22 @@ impl StorageClient {
         Ok(Self { channel })
     }
 
+    pub async fn from_auth(auth: Auth) -> crate::Result<Self> {
+        let channel = build_channel().await?;
+
+        let channel = AuthChannel::builder()
+            .with_channel(channel)
+            .with_auth(auth)
+            .build();
+
+        Ok(Self { channel })
+    }
+
+    #[inline]
+    pub fn auth(&self) -> &Auth {
+        self.channel.auth()
+    }
+
     pub async fn from_service_account<P>(
         project_id: &'static str,
         scope: gcp_auth_channel::Scope,
