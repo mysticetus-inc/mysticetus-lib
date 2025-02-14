@@ -33,6 +33,10 @@ mod value;
 pub mod with;
 
 pub use client::Client;
+#[cfg(feature = "admin")]
+pub use client::admin;
+#[cfg(feature = "emulator")]
+pub use client::emulator;
 pub use convert::{FromSpanner, IntoSpanner, SpannerEncode};
 pub use error::Error;
 pub use info::Database;

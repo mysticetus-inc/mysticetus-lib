@@ -31,3 +31,4 @@ pin-project-lite.workspace = true
 base64 = "0.13.1"
 tokio-util = { version = "0.7.4", features = ["io", "io-util"] }
 percent-encoding = "2.2.0"
+num-traits.workspace = true

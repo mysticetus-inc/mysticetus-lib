@@ -1,34 +1,158 @@
+use std::fmt;
 use std::future::Future;
-use std::num::NonZeroI64;
+use std::num::{NonZeroI64, NonZeroU64};
 use std::ops::{Bound, RangeBounds};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
+use bytes::{BufMut, Bytes};
+use futures::Stream;
 use num_traits::PrimInt;
-use protos::storage::{CommonObjectRequestParams, ReadObjectRequest, ReadObjectResponse};
+use protos::storage::{
+    ChecksummedData, CommonObjectRequestParams, ContentRange, Object, ObjectChecksums,
+    ReadObjectRequest, ReadObjectResponse,
+};
 
 use crate::bucket::BucketClient;
+use crate::error::DataError;
 use crate::generation::{
     Generation, GenerationPredicate, IfGenerationMatches, IfGenerationNotMatches,
     IfMetaGenerationMatches, IfMetaGenerationNotMatches,
 };
+use crate::util::OwnedOrMut;
 
 pub struct ReadBuilder<'a, S, GenPredicate, MetaGenPredicate> {
-    client: &'a BucketClient,
+    client: OwnedOrMut<'a, BucketClient>,
     path: S,
-    read_offset: Option<NonZeroI64>,
-    // 0 means no limit, as per the ReadObjectRequest.read_limit docs
-    read_limit: u64,
+    read_range: ReadRange,
     gen_pred: GenPredicate,
     meta_gen_pred: MetaGenPredicate,
     common_request_params: Option<CommonObjectRequestParams>,
 }
 
-impl<'a, S> ReadBuilder<'a, S, (), ()> {
-    pub(crate) fn new(client: &'a BucketClient, path: S) -> Self {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReadRange {
+    // Allowed to be negative, to indicate reading the last N bytes of the object
+    // (i.e reading with an offset -5 would return the final 5 bytes)
+    offset: Option<NonZeroI64>,
+    // 0 means no limit, as per the ReadObjectRequest.read_limit docs.
+    // The stream can return fewer bytes if the object isn't large enough.
+    //
+    // A negative value here is invalid.
+    limit: Option<NonZeroI64>,
+}
+
+impl Default for ReadRange {
+    #[inline]
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
+impl ReadRange {
+    fn from_range<I: PrimInt>(range: impl RangeBounds<I>) -> Result<Self, InvalidReadBounds> {
+        enum NormalizedBound {
+            Zero,
+            NonZero(NonZeroI64),
+            Unbounded,
+        }
+
+        impl From<i64> for NormalizedBound {
+            fn from(value: i64) -> Self {
+                match NonZeroI64::new(value) {
+                    Some(nz) => Self::NonZero(nz),
+                    None => Self::Zero,
+                }
+            }
+        }
+
+        // converts + normalizes range bounds to be
+        // { start: Inclusive | Unbounded, end: Exclusive | Unbounded }
+        fn normalize_bounds<I: PrimInt>(
+            start: Bound<&I>,
+            end: Bound<&I>,
+        ) -> Result<(NormalizedBound, NormalizedBound), InvalidReadBounds> {
+            fn convert_and_add_one(
+                int: &impl PrimInt,
+            ) -> Result<NormalizedBound, InvalidReadBounds> {
+                let int_i64 = to_i64(int)?;
+                let int = int_i64
+                    .checked_add(1)
+                    .ok_or_else(|| InvalidReadBounds::out_of_range(*int))?;
+                Ok(NormalizedBound::from(int))
+            }
+
+            let start = match start {
+                Bound::Unbounded => NormalizedBound::Unbounded,
+                Bound::Included(incl) => NormalizedBound::from(to_i64(incl)?),
+                Bound::Excluded(excl) => convert_and_add_one(excl)?,
+            };
+
+            let end = match end {
+                Bound::Unbounded => NormalizedBound::Unbounded,
+                Bound::Excluded(excl) => NormalizedBound::from(to_i64(excl)?),
+                Bound::Included(incl) => convert_and_add_one(incl)?,
+            };
+
+            Ok((start, end))
+        }
+
+        fn inner(
+            start: NormalizedBound,
+            end: NormalizedBound,
+        ) -> Result<ReadRange, InvalidReadBounds> {
+            use NormalizedBound::*;
+
+            match (start, end) {
+                (Unbounded | Zero, Unbounded) => Ok(ReadRange::all()),
+                (Zero, Zero) => Err(InvalidReadBounds::ZeroByteLimit),
+                (Unbounded | Zero, NonZero(end)) if end.is_negative() => {
+                    Err(InvalidReadBounds::NegativeEndBoundWithoutStartBound)
+                }
+                (Unbounded | Zero, NonZero(end)) => Ok(ReadRange {
+                    limit: Some(end),
+                    offset: None,
+                }),
+                (NonZero(start), Unbounded | Zero) => Ok(ReadRange {
+                    offset: Some(start),
+                    limit: None,
+                }),
+                (Unbounded, Zero) => Err(InvalidReadBounds::ZeroByteLimit),
+                (NonZero(start), NonZero(end)) => {
+                    let limit = end.get() - start.get();
+
+                    match NonZeroI64::new(limit) {
+                        Some(limit) if limit.is_positive() => Ok(ReadRange {
+                            offset: Some(start),
+                            limit: Some(limit),
+                        }),
+                        Some(limit) => Err(InvalidReadBounds::NegativeLimit(limit)),
+                        None => Err(InvalidReadBounds::ZeroByteLimit),
+                    }
+                }
+            }
+        }
+
+        let (start, end) = normalize_bounds(range.start_bound(), range.end_bound())?;
+
+        inner(start, end)
+    }
+
+    #[inline]
+    pub const fn all() -> Self {
         Self {
-            client,
+            limit: None,
+            offset: None,
+        }
+    }
+}
+
+impl<'a, S> ReadBuilder<'a, S, (), ()> {
+    pub(crate) fn new(client: impl Into<OwnedOrMut<'a, BucketClient>>, path: S) -> Self {
+        Self {
+            client: client.into(),
             path,
-            read_limit: 0,
-            read_offset: None,
+            read_range: ReadRange::default(),
             gen_pred: (),
             meta_gen_pred: (),
             common_request_params: None,
@@ -42,57 +166,23 @@ impl<'a, S, GenPred, MetaGenPred> ReadBuilder<'a, S, GenPred, MetaGenPred> {
         self
     }
 
-    pub fn read_limit(mut self, read_limit: u64) -> Self {
-        self.read_limit = read_limit;
-        self
-    }
-
-    pub fn read_offset(mut self, read_offset: i64) -> Self {
-        self.read_offset = NonZeroI64::new(read_offset);
-        self
-    }
-
-    /// Translates a range bound into separate calls to [`Self::read_limit`] and
-    /// [`Self::read_offset`]
-    pub fn range<R, Int>(self, range: R) -> Self
-    where
-        R: RangeBounds<Int>,
-        Int: PrimInt + num_traits::ToPrimitive,
-    {
-        let start = match range.start_bound() {
-            Bound::Unbounded => None,
-            Bound::Included(start) => Some(*start),
-            Bound::Excluded(excl) => Some(
-                excl.checked_add(&Int::one())
-                    .expect("exclusionary start bound overflow"),
-            ),
-        };
-
-        let end = match range.end_bound() {
-            Bound::Unbounded => None,
-            Bound::Included(start) => Some(
-                start
-                    .checked_sub(&Int::one())
-                    .expect("included end bound overflow"),
-            ),
-            Bound::Excluded(excl) => Some(*excl),
-        };
-
-        match (start, end) {
-            (None, None) => self,
-            (Some(start), None) => {
-                self.read_offset(start.to_i64().expect("start out of range for i64"))
-            }
-            (None, Some(end)) => self.read_limit(end.to_u64().expect("end out of range for u64")),
-            (Some(start), Some(end)) => {
-                let delta = end
-                    .checked_sub(&start)
-                    .expect("getting delta from start and end overflows");
-
-                self.read_offset(start.to_i64().expect("start out of range for i64"))
-                    .read_limit(delta.to_u64().expect("delta out of range for u64"))
-            }
+    pub fn into_static(self) -> ReadBuilder<'static, S, GenPred, MetaGenPred> {
+        ReadBuilder {
+            path: self.path,
+            read_range: self.read_range,
+            gen_pred: self.gen_pred,
+            meta_gen_pred: self.meta_gen_pred,
+            client: self.client.into_static(),
+            common_request_params: self.common_request_params,
         }
+    }
+
+    pub fn range<Int: PrimInt>(
+        mut self,
+        range: impl RangeBounds<Int>,
+    ) -> Result<Self, InvalidReadBounds> {
+        self.read_range = ReadRange::from_range(range)?;
+        Ok(self)
     }
 }
 
@@ -104,8 +194,7 @@ impl<'a, S, MetaGenPred> ReadBuilder<'a, S, (), MetaGenPred> {
         ReadBuilder {
             client: self.client,
             path: self.path,
-            read_limit: self.read_limit,
-            read_offset: self.read_offset,
+            read_range: self.read_range,
             common_request_params: self.common_request_params,
             gen_pred,
             meta_gen_pred: self.meta_gen_pred,
@@ -139,8 +228,7 @@ impl<'a, S, GenPred> ReadBuilder<'a, S, GenPred, ()> {
         ReadBuilder {
             client: self.client,
             path: self.path,
-            read_limit: self.read_limit,
-            read_offset: self.read_offset,
+            read_range: self.read_range,
             common_request_params: self.common_request_params,
             gen_pred: self.gen_pred,
             meta_gen_pred,
@@ -162,7 +250,7 @@ impl<'a, S, GenPred> ReadBuilder<'a, S, GenPred, ()> {
     }
 }
 
-impl<S, GenPredicate, MetaGenPredicate> ReadBuilder<'_, S, GenPredicate, MetaGenPredicate>
+impl<'a, S, GenPredicate, MetaGenPredicate> ReadBuilder<'a, S, GenPredicate, MetaGenPredicate>
 where
     S: Into<String>,
     GenPredicate: GenerationPredicate<ReadObjectRequest>,
@@ -172,13 +260,13 @@ where
         self,
     ) -> impl Future<Output = tonic::Result<tonic::Response<tonic::Streaming<ReadObjectResponse>>>>
     + Send
-    + 'static {
+    + 'a {
         let mut request = ReadObjectRequest {
             bucket: self.client.qualified_bucket().to_owned(),
             object: self.path.into(),
             common_object_request_params: self.common_request_params,
-            read_limit: self.read_limit as i64,
-            read_offset: self.read_offset.map(NonZeroI64::get).unwrap_or(0),
+            read_limit: self.read_range.limit.map(NonZeroI64::get).unwrap_or(0),
+            read_offset: self.read_range.offset.map(NonZeroI64::get).unwrap_or(0),
             generation: 0,
             read_mask: None,
             if_generation_match: None,
@@ -194,7 +282,35 @@ where
 
         async move { client.read_object(request).await }
     }
+
+    pub fn stream(self) -> impl Future<Output = crate::Result<ReadStream>> + Send + 'a {
+        let fut = self.read_inner();
+
+        async move {
+            let response = fut.await?;
+            ReadStream::new(response.into_inner()).await
+        }
+    }
 }
+
+/*
+// TODO: uncomment when 'impl_trait_in_assoc_type' stabilizes.
+// see: https://github.com/rust-lang/rust/issues/63063
+impl<S, GenPredicate, MetaGenPredicate> std::future::IntoFuture
+    for ReadBuilder<'_, S, GenPredicate, MetaGenPredicate>
+where
+    S: Into<String>,
+    GenPredicate: GenerationPredicate<ReadObjectRequest>,
+    MetaGenPredicate: GenerationPredicate<ReadObjectRequest>,
+{
+    type Output = crate::Result<ReadStream>;
+    type IntoFuture = impl Future<Output = crate::Result<ReadStream>> + Send + 'static;
+
+    fn into_future(self) -> Self::IntoFuture {
+        self.stream()
+    }
+}
+*/
 
 crate::generation::impl_generation_predicate! {
     |self: Generation, req: ReadObjectRequest| req.generation = self.0 as i64,
@@ -202,4 +318,299 @@ crate::generation::impl_generation_predicate! {
     |self: IfGenerationNotMatches, req: ReadObjectRequest| req.if_generation_not_match = Some(self.0 as i64),
     |self: IfMetaGenerationMatches, req: ReadObjectRequest| req.if_metageneration_match = Some(self.0 as i64),
     |self: IfMetaGenerationNotMatches, req: ReadObjectRequest| req.if_metageneration_not_match = Some(self.0 as i64),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum InvalidReadBounds {
+    #[error("negative read limit of {0} is invalid")]
+    NegativeLimit(NonZeroI64),
+    #[error("bounds of {start} and {end} are invalid")]
+    InvalidBounds { start: i64, end: i64 },
+    #[error("offset of {0} is invalid, out of range for an i64")]
+    OutOfRange(NonZeroU64),
+    #[error("invalid 0 byte limit")]
+    ZeroByteLimit,
+    #[error("can't compute a limit with a negative end bound and no start bound")]
+    NegativeEndBoundWithoutStartBound,
+}
+
+impl InvalidReadBounds {
+    fn out_of_range(invalid: impl PrimInt) -> Self {
+        let int = invalid.to_u64().expect("unrepresentable by a u64");
+        Self::OutOfRange(NonZeroU64::new(int).expect("InvalidReadBounds::out_of_range called on 0"))
+    }
+}
+
+fn to_i64(int: &impl PrimInt) -> Result<i64, InvalidReadBounds> {
+    if let Some(i) = int.to_i64() {
+        return Ok(i);
+    }
+
+    Err(InvalidReadBounds::out_of_range(*int))
+}
+
+impl From<std::convert::Infallible> for InvalidReadBounds {
+    fn from(value: std::convert::Infallible) -> Self {
+        match value {}
+    }
+}
+
+enum Validator {
+    Crc32c {
+        current_crc: u32,
+        expected_crc: u32,
+    },
+    Md5 {
+        expected_md5: md5::Digest,
+        hasher: md5::Context,
+    },
+}
+
+impl Validator {
+    fn new(checksums: ObjectChecksums) -> Option<Self> {
+        fn md5_to_array(md5: Bytes) -> Option<md5::Digest> {
+            md5.as_ref().try_into().ok().map(md5::Digest)
+        }
+
+        match checksums.crc32c {
+            Some(expected_crc) => Some(Self::Crc32c {
+                current_crc: 0,
+                expected_crc,
+            }),
+            None => md5_to_array(checksums.md5_hash).map(|expected_md5| Self::Md5 {
+                hasher: md5::Context::new(),
+                expected_md5,
+            }),
+        }
+    }
+
+    fn update(&mut self, bytes: &[u8], computed_crc: Option<u32>) {
+        match self {
+            Self::Crc32c {
+                ref mut current_crc,
+                ..
+            } => {
+                let computed_crc = computed_crc.unwrap_or_else(|| crc32c::crc32c(bytes));
+                *current_crc = crc32c::crc32c_combine(*current_crc, computed_crc, bytes.len());
+            }
+            Self::Md5 { hasher, .. } => hasher.consume(bytes),
+        }
+    }
+
+    fn finish(&mut self) -> crate::Result<()> {
+        match self {
+            Self::Crc32c {
+                current_crc,
+                expected_crc,
+            } => {
+                if *current_crc != *expected_crc {
+                    Err(crate::Error::DataError(DataError::crc32c(
+                        *expected_crc,
+                        *current_crc,
+                    )))
+                } else {
+                    Ok(())
+                }
+            }
+            Self::Md5 {
+                expected_md5,
+                hasher,
+            } => {
+                let digest = std::mem::replace(hasher, md5::Context::new()).compute();
+                if &digest.0[..] != &expected_md5[..] {
+                    Err(crate::Error::DataError(DataError::md5(
+                        *expected_md5,
+                        digest,
+                    )))
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
+}
+
+pin_project_lite::pin_project! {
+    pub struct ReadStream {
+        pub metadata: Object,
+        content_range: Option<ContentRange>,
+        validator: Option<Validator>,
+        leading_chunk: Option<ChecksummedData>,
+        #[pin]
+        stream: tonic::Streaming<ReadObjectResponse>,
+    }
+}
+
+impl ReadStream {
+    pub(crate) async fn new(
+        mut stream: tonic::Streaming<ReadObjectResponse>,
+    ) -> crate::Result<Self> {
+        let mut pinned = Pin::new(&mut stream);
+        let mut validator = None;
+
+        let first_message =
+            match std::future::poll_fn(|cx| poll_stream(&mut pinned, &mut validator, cx)).await {
+                Some(result) => result?,
+                None => {
+                    return Err(crate::Error::internal(
+                        "ReadObject never returned a response",
+                    ));
+                }
+            };
+
+        let ReadObjectResponse {
+            checksummed_data,
+            object_checksums,
+            metadata,
+            content_range,
+        } = first_message;
+
+        let metadata = metadata.ok_or_else(|| {
+            crate::Error::internal("First ReadObject response missing expected metadata")
+        })?;
+
+        let validator = match content_range {
+            Some(ref range) if range.end - range.start == metadata.size => {
+                object_checksums.and_then(Validator::new)
+            }
+            Some(_) => None,
+            None => object_checksums.and_then(Validator::new),
+        };
+
+        Ok(Self {
+            metadata,
+            validator,
+            leading_chunk: checksummed_data,
+            content_range,
+            stream,
+        })
+    }
+
+    pub fn content_range(&self) -> Option<&ContentRange> {
+        self.content_range.as_ref()
+    }
+
+    pub async fn collect_to_vec(self) -> crate::Result<(Object, Vec<u8>)> {
+        let len = self
+            .content_range
+            .as_ref()
+            .map(|range| range.end - range.start)
+            .unwrap_or(self.metadata.size) as usize;
+
+        let mut vec = Vec::with_capacity(len);
+
+        let object = self.collect_into(&mut vec).await?;
+
+        Ok((object, vec))
+    }
+
+    pub async fn collect_into<B: BufMut + ?Sized>(
+        mut self,
+        mut buf: &mut B,
+    ) -> crate::Result<Object> {
+        while let Some(result) = std::future::poll_fn(|cx| Pin::new(&mut self).poll_next(cx)).await
+        {
+            let chunk = result?;
+            (&mut buf).put(chunk);
+        }
+
+        Ok(self.metadata)
+    }
+}
+
+impl fmt::Debug for ReadStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ReadStream")
+            .field("content_range", &self.content_range)
+            .field("metadata", &self.metadata)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Stream for ReadStream {
+    type Item = crate::Result<Bytes>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let mut this = self.project();
+
+        if let Some(data) = this
+            .leading_chunk
+            .take()
+            .and_then(|data| handle_data(data, this.validator))
+        {
+            return Poll::Ready(Some(data));
+        }
+
+        loop {
+            let resp = match std::task::ready!(this.stream.as_mut().poll_next(cx)) {
+                None => {
+                    if let Some(ref mut validator) = this.validator {
+                        validator.finish()?;
+                    }
+                    return Poll::Ready(None);
+                }
+                Some(result) => result?,
+            };
+
+            if let Some(content_range) = resp.content_range {
+                *this.content_range = Some(content_range);
+            }
+
+            if this.validator.is_none() {
+                if let Some(validator) = resp.object_checksums.and_then(Validator::new) {
+                    *this.validator = Some(validator);
+                }
+            }
+
+            if let Some(result) = resp
+                .checksummed_data
+                .and_then(|data| handle_data(data, this.validator))
+            {
+                return Poll::Ready(Some(result));
+            }
+        }
+    }
+}
+
+fn handle_data(
+    data: ChecksummedData,
+    validator: &mut Option<Validator>,
+) -> Option<crate::Result<Bytes>> {
+    if data.content.is_empty() {
+        return None;
+    }
+
+    if let Some(crc) = data.crc32c {
+        let computed = crc32c::crc32c(&data.content);
+
+        if crc != computed {
+            return Some(Err(crate::Error::DataError(DataError::crc32c(
+                crc, computed,
+            ))));
+        }
+
+        if let Some(ref mut validator) = validator {
+            validator.update(&data.content, Some(computed));
+        }
+    } else if let Some(ref mut validator) = validator {
+        validator.update(&data.content, None);
+    }
+
+    Some(Ok(data.content))
+}
+
+fn poll_stream(
+    stream: &mut Pin<&mut tonic::Streaming<ReadObjectResponse>>,
+    validator: &mut Option<Validator>,
+    cx: &mut Context<'_>,
+) -> Poll<Option<crate::Result<ReadObjectResponse>>> {
+    match std::task::ready!(stream.as_mut().poll_next(cx)) {
+        None => {
+            if let Some(ref mut validator) = validator {
+                validator.finish()?;
+            }
+            Poll::Ready(None)
+        }
+        Some(result) => Poll::Ready(Some(result.map_err(crate::Error::Status))),
+    }
 }

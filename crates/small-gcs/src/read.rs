@@ -1,16 +1,24 @@
-use std::task::Poll;
+use std::marker::PhantomData;
+use std::ops::{Bound, RangeBounds};
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use futures::{Stream, StreamExt};
+use itoa::Integer;
 use net_utils::backoff::Backoff;
-use reqwest::{header, RequestBuilder};
+use num_traits::PrimInt;
+use reqwest::header::{HeaderMap, HeaderValue, InvalidHeaderValue};
+use reqwest::{RequestBuilder, header};
 
 use crate::client::Client;
 use crate::params::Alt;
 use crate::{Error, Object};
 
-pub struct ReadBuilder<'a> {
+pub struct ReadBuilder<'a, R = std::ops::RangeFull, I = u64> {
     builder: RequestBuilder,
+    range: R,
+    _range_int_type: PhantomData<fn(I)>,
     shared: &'a Client,
 }
 
@@ -22,6 +30,8 @@ impl<'a> ReadBuilder<'a> {
         ReadBuilder {
             builder: shared.client.get(url),
             shared,
+            _range_int_type: PhantomData,
+            range: ..,
         }
     }
 
@@ -38,10 +48,18 @@ impl<'a> ReadBuilder<'a> {
 
         ReadBuilder {
             builder: shared.client.get(url_buf.as_str()),
+            _range_int_type: PhantomData,
             shared,
+            range: ..,
         }
     }
+}
 
+impl<'a, R, I> ReadBuilder<'a, R, I>
+where
+    R: RangeBounds<I>,
+    I: Integer + PrimInt,
+{
     #[inline]
     fn with_query_param<S>(self, field: &str, value: S) -> Self
     where
@@ -50,6 +68,8 @@ impl<'a> ReadBuilder<'a> {
         Self {
             builder: self.builder.query(&[(field, value)]),
             shared: self.shared,
+            range: self.range,
+            _range_int_type: PhantomData,
         }
     }
 
@@ -68,23 +88,47 @@ impl<'a> ReadBuilder<'a> {
         self.with_query_param("ifGenerationNotMatch", generation)
     }
 
-    async fn send(self, alt: Alt) -> Result<reqwest::Response, Error> {
+    pub fn range<Range, Int>(self, range: Range) -> ReadBuilder<'a, Range, Int>
+    where
+        Range: RangeBounds<Int>,
+        Int: Integer + PrimInt,
+    {
+        ReadBuilder {
+            builder: self.builder,
+            shared: self.shared,
+            _range_int_type: PhantomData,
+            range,
+        }
+    }
+
+    async fn send(self, alt: Alt) -> Result<(reqwest::Response, Option<u64>), Error> {
         let auth_header = self.shared.auth.get_header().await?;
 
-        let request = self
+        let mut builder = self
             .builder
             .header(header::AUTHORIZATION, auth_header)
-            .query(&[alt])
-            .build()?;
+            .query(&[alt]);
+
+        let size_hint = match make_range_header(self.range)? {
+            Some((header, size_hint)) => {
+                builder = builder.header(header::RANGE, header);
+                size_hint
+            }
+            None => None,
+        };
+
+        let request = builder.build()?;
 
         let resp =
             crate::try_execute_with_backoff(&self.shared.client, request, Backoff::default).await?;
 
-        crate::validate_response(resp).await
+        let resp = crate::validate_response(resp).await?;
+
+        Ok((resp, size_hint))
     }
 
     pub async fn metadata(self) -> Result<Object, Error> {
-        let resp = self
+        let (resp, _size_hint) = self
             .with_query_param("fields", Object::FIELDS)
             .send(Alt::Json)
             .await?;
@@ -100,17 +144,25 @@ impl<'a> ReadBuilder<'a> {
         }
     }
 
-    pub async fn content(self) -> Result<impl Stream<Item = Result<Bytes, Error>>, Error> {
+    pub async fn content(
+        self,
+    ) -> Result<ReadStream<impl Stream<Item = Result<Bytes, Error>>>, Error> {
         use futures::TryStreamExt;
 
-        let resp = self.send(Alt::Media).await?;
+        let (mut resp, size_hint) = self.send(Alt::Media).await?;
 
-        Ok(resp.bytes_stream().map_err(Error::Reqwest))
+        let headers = std::mem::take(resp.headers_mut());
+
+        Ok(ReadStream {
+            stream: resp.bytes_stream().map_err(Error::Reqwest),
+            headers,
+            size_hint,
+        })
     }
 
     pub async fn content_opt(
         self,
-    ) -> Result<Option<impl Stream<Item = Result<Bytes, Error>>>, Error> {
+    ) -> Result<Option<ReadStream<impl Stream<Item = Result<Bytes, Error>>>>, Error> {
         match self.content().await {
             Ok(stream) => Ok(Some(stream)),
             Err(Error::NotFound(_)) => Ok(None),
@@ -144,7 +196,7 @@ impl<'a> ReadBuilder<'a> {
         futures::pin_mut!(stream);
         futures::pin_mut!(writer);
 
-        let mut chunks = std::collections::LinkedList::new();
+        let mut chunks = std::collections::VecDeque::with_capacity(16);
         let mut total = 0;
 
         let mut is_done = false;
@@ -161,15 +213,12 @@ impl<'a> ReadBuilder<'a> {
                 }
             }
 
-            // write whatever chunks we have to the writer
-            let mut cursor = chunks.cursor_front_mut();
-
             // do this in a loop so we can write multiple chunks if the writer can handle it.
             loop {
                 // get the current front chunk, if there isnt one, return if the stream is finished,
                 // since that means we're done. otherwise, return pending since we're waiting
                 // on the stream.
-                let chunk = match cursor.current() {
+                let chunk = match chunks.front_mut() {
                     Some(chunk) => chunk,
                     None if is_done => return Poll::Ready(Ok(total)),
                     None => return Poll::Pending,
@@ -188,7 +237,7 @@ impl<'a> ReadBuilder<'a> {
                             // the top of the outer loop with the next chunk (if there is one),
                             // otherwise keep trying to write this chunk.
                             if !chunk.has_remaining() {
-                                cursor.remove_current();
+                                chunks.pop_front();
                                 break;
                             }
                         }
@@ -233,7 +282,7 @@ impl<'a> ReadBuilder<'a> {
 }
 
 async fn content_to_bytes_inner(
-    stream: impl Stream<Item = Result<Bytes, Error>>,
+    stream: ReadStream<impl Stream<Item = Result<Bytes, Error>>>,
     est_capacity: usize,
 ) -> Result<Bytes, Error> {
     futures::pin_mut!(stream);
@@ -250,7 +299,12 @@ async fn content_to_bytes_inner(
         None => return Ok(first_chunk),
     };
 
-    let mut dst = BytesMut::with_capacity(est_capacity.max(first_chunk.len() + second_chunk.len()));
+    let capacity = stream
+        .size_hint
+        .map(|hint| hint as usize)
+        .unwrap_or_else(|| est_capacity.max(first_chunk.len() + second_chunk.len()));
+
+    let mut dst = BytesMut::with_capacity(capacity);
 
     dst.extend_from_slice(&first_chunk);
     dst.extend_from_slice(&second_chunk);
@@ -262,4 +316,124 @@ async fn content_to_bytes_inner(
     }
 
     Ok(dst.freeze())
+}
+
+pin_project_lite::pin_project! {
+    pub struct ReadStream<S> {
+        headers: HeaderMap,
+        size_hint: Option<u64>,
+        #[pin]
+        stream: S,
+    }
+}
+
+impl<S> ReadStream<S> {
+    pub fn size_hint(&self) -> Option<u64> {
+        self.size_hint
+    }
+    pub fn headers(&self) -> &HeaderMap {
+        &self.headers
+    }
+}
+
+impl<S: Stream> Stream for ReadStream<S> {
+    type Item = S::Item;
+
+    #[inline]
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.project().stream.poll_next(cx)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.stream.size_hint()
+    }
+}
+
+fn make_range_header<I: PrimInt + Integer>(
+    range: impl RangeBounds<I>,
+) -> Result<Option<(HeaderValue, Option<u64>)>, InvalidHeaderValue> {
+    fn inner<I: PrimInt + Integer>(
+        start: Bound<&I>,
+        end: Bound<&I>,
+    ) -> Result<Option<(HeaderValue, Option<u64>)>, InvalidHeaderValue> {
+        let start = match start {
+            Bound::Unbounded => None,
+            Bound::Included(incl) => Some(*incl),
+            Bound::Excluded(excl) => Some(*excl + I::one()),
+        };
+
+        let end = match end {
+            Bound::Unbounded => None,
+            Bound::Included(incl) => Some(*incl),
+            Bound::Excluded(excl) => Some(*excl - I::one()),
+        };
+
+        macro_rules! fmt_int {
+            ($b:expr; $i:expr) => {{
+                $b = itoa::Buffer::new();
+                $b.format($i)
+            }};
+        }
+
+        macro_rules! sum_len {
+            ($(,)?) => {
+                0
+            };
+            ($first:expr $(,)?) => {
+                $first.len()
+            };
+            ($first:expr $(, $rest:expr)* $(,)?) => {
+                $first.len() + sum_len!($($rest,)*)
+            };
+        }
+
+        macro_rules! make_header {
+            ($($part:expr),* $(,)?) => {{
+                const PREFIX: &str = "bytes=";
+                let mut buf = BytesMut::with_capacity(
+                    PREFIX.len() + sum_len!($($part),*),
+                );
+
+                buf.extend_from_slice(PREFIX.as_bytes());
+                $(
+                    buf.extend_from_slice($part.as_bytes());
+                )*
+
+
+                HeaderValue::from_maybe_shared(buf.freeze())
+            }};
+        }
+
+        let mut b1: itoa::Buffer;
+        let mut b2: itoa::Buffer;
+
+        match (start, end) {
+            (None, None) => Ok(None),
+            (Some(start), None) => {
+                // if starting at a negative index to get the last N bytes,
+                // we dont need to include a trailing '-'
+                let start_str = fmt_int!(b1; start);
+                if start < I::zero() {
+                    let size = (I::zero() - I::one()) * start;
+                    Ok(Some((make_header!(start_str)?, size.to_u64())))
+                } else {
+                    Ok(Some((make_header!(start_str, "-")?, None)))
+                }
+            }
+            (_, Some(end)) => {
+                let start = start.unwrap_or_else(I::zero);
+                let size_hint = (end - start).to_u64();
+
+                let start_str = fmt_int!(b1; start);
+                let end_str = fmt_int!(b2; end);
+
+                let header = make_header!(start_str, "-", end_str)?;
+
+                Ok(Some((header, size_hint)))
+            }
+        }
+    }
+
+    inner(range.start_bound(), range.end_bound())
 }

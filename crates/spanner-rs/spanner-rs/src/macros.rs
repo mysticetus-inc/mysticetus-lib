@@ -28,8 +28,20 @@ macro_rules! table {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __invalid_table_syntax {
-    () => {
+    ($inside:literal) => {
         compile_error!("Invalid `table!` syntax");
+    };
+    ($inside:literal $($tokens:tt)+) => {
+        #[cfg(feature = "debug-table-macro")]
+        compile_error!(concat!(
+            "Invalid `table!` syntax inside",
+            $inside,
+            " '",
+            $(stringify!($tokens))+
+            "'"
+        ));
+        #[cfg(not(feature = "debug-table-macro"))]
+        $crate::__invalid_table_syntax!($inside)
     };
 }
 
@@ -213,8 +225,7 @@ macro_rules! __parse_table {
 
     // Invalid syntax
     ($($tokens:tt)*) => {
-        compile_error!(concat!($(stringify!($tokens)),*));
-        $crate::__invalid_table_syntax!();
+        $crate::__invalid_table_syntax!("parse_table" $($tokens)*);
     }
 }
 
@@ -649,8 +660,7 @@ macro_rules! __parse_columns {
     };
 
     ($($tokens:tt)*) => {
-        compile_error!(concat!($(stringify!($tokens)),*));
-        $crate::__invalid_table_syntax!();
+        $crate::__invalid_table_syntax!("parse_columns" $($tokens)*);
     }
 }
 

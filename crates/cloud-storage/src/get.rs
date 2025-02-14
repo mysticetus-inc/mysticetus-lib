@@ -7,9 +7,10 @@ use crate::generation::{
     Generation, GenerationPredicate, IfGenerationMatches, IfGenerationNotMatches,
     IfMetaGenerationMatches, IfMetaGenerationNotMatches,
 };
+use crate::util::OwnedOrMut;
 
 pub struct GetBuilder<'a, S, GenPredicate, MetaGenPredicate> {
-    client: &'a BucketClient,
+    client: OwnedOrMut<'a, BucketClient>,
     path: S,
     gen_pred: GenPredicate,
     meta_gen_pred: MetaGenPredicate,
@@ -17,9 +18,9 @@ pub struct GetBuilder<'a, S, GenPredicate, MetaGenPredicate> {
 }
 
 impl<'a, S> GetBuilder<'a, S, (), ()> {
-    pub(crate) fn new(client: &'a BucketClient, path: S) -> Self {
+    pub(crate) fn new(client: impl Into<OwnedOrMut<'a, BucketClient>>, path: S) -> Self {
         Self {
-            client,
+            client: client.into(),
             path,
             gen_pred: (),
             meta_gen_pred: (),
@@ -32,6 +33,16 @@ impl<'a, S, GenPred, MetaGenPred> GetBuilder<'a, S, GenPred, MetaGenPred> {
     pub fn common_object_request_params(mut self, params: CommonObjectRequestParams) -> Self {
         self.common_request_params = Some(params);
         self
+    }
+
+    pub fn into_static(self) -> GetBuilder<'static, S, GenPred, MetaGenPred> {
+        GetBuilder {
+            client: self.client.into_static(),
+            path: self.path,
+            gen_pred: self.gen_pred,
+            meta_gen_pred: self.meta_gen_pred,
+            common_request_params: self.common_request_params,
+        }
     }
 }
 
@@ -97,13 +108,13 @@ impl<'a, S, GenPred> GetBuilder<'a, S, GenPred, ()> {
     }
 }
 
-impl<S, GenPredicate, MetaGenPredicate> GetBuilder<'_, S, GenPredicate, MetaGenPredicate>
+impl<'a, S, GenPredicate, MetaGenPredicate> GetBuilder<'a, S, GenPredicate, MetaGenPredicate>
 where
     S: Into<String>,
     GenPredicate: GenerationPredicate<GetObjectRequest>,
     MetaGenPredicate: GenerationPredicate<GetObjectRequest>,
 {
-    pub fn get(self) -> impl Future<Output = crate::Result<Object>> + Send + 'static {
+    pub fn get(self) -> impl Future<Output = crate::Result<Object>> + Send + 'a {
         let fut = self.get_inner();
         async move {
             fut.await
@@ -112,7 +123,7 @@ where
         }
     }
 
-    pub fn try_get(self) -> impl Future<Output = crate::Result<Option<Object>>> + Send + 'static {
+    pub fn try_get(self) -> impl Future<Output = crate::Result<Option<Object>>> + Send + 'a {
         let fut = self.get_inner();
         async move {
             match fut.await {
@@ -126,8 +137,8 @@ where
     // use `fn() -> impl Future` instead of `async fn` so we can specify
     // that the returned `Future` is `Send + 'static`
     fn get_inner(
-        self,
-    ) -> impl Future<Output = tonic::Result<tonic::Response<Object>>> + Send + 'static {
+        mut self,
+    ) -> impl Future<Output = tonic::Result<tonic::Response<Object>>> + Send + 'a {
         let mut request = GetObjectRequest {
             bucket: self.client.qualified_bucket().to_owned(),
             object: self.path.into(),
@@ -145,9 +156,7 @@ where
         self.gen_pred.insert(&mut request);
         self.meta_gen_pred.insert(&mut request);
 
-        let mut client = self.client.client();
-
-        async move { client.get_object(request).await }
+        async move { self.client.client_mut().get_object(request).await }
     }
 }
 

@@ -6,7 +6,8 @@ use tonic::transport::Channel;
 mod client;
 pub use client::StorageClient;
 
-pub mod bucket;
+mod bucket;
+pub use bucket::BucketClient;
 
 pub mod error;
 pub use error::Error;
@@ -15,7 +16,9 @@ pub mod generation;
 pub mod get;
 pub mod list;
 pub mod read;
-pub mod write;
+pub mod util;
+// TODO: writes
+// pub mod write;
 
 const GOOG_PROJ_ID_HEADER: HeaderName = HeaderName::from_static("x-goog-project-id");
 const GOOG_REQUEST_PARAMS_HEADER: HeaderName = HeaderName::from_static("x-goog-request-params");
@@ -25,29 +28,56 @@ pub(crate) type HeaderAuthChannel<Svc = Channel> = AuthChannel<WithHeaders<Svc, 
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[tokio::test]
-async fn test_read() -> Result<()> {
-    let client = StorageClient::new("mysticetus-oncloud", gcp_auth_channel::Scope::GcsReadOnly)
-        .await?
-        .into_bucket("mysticetus-replicated-data");
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let (metadata, bytes) = match client
-        .read_object_to_vec(
-            "Testing4-101112/Edits/PaulTestVis/2022-03-22/\
-             PaulTestVis-2022-03-22-1629-Final-Edited-DS.Mysticetus",
-        )
-        .await
-    {
-        Ok(b) => b,
-        Err(error) => {
-            println!("{error:#?}");
-            return Ok(());
+    async fn get_client() -> Result<BucketClient> {
+        async fn init() -> Result<BucketClient> {
+            StorageClient::new("mysticetus-oncloud", gcp_auth_channel::Scope::GcsReadOnly)
+                .await
+                .map(|client| client.into_bucket("mysticetus-replicated-data"))
         }
-    };
 
-    println!("{metadata:#?}");
+        static CLIENT: tokio::sync::OnceCell<BucketClient> = tokio::sync::OnceCell::const_new();
 
-    std::fs::write("test-file.zip", bytes).unwrap();
+        CLIENT.get_or_try_init(init).await.cloned()
+    }
 
-    Ok(())
+    #[tokio::test]
+    async fn test_list_prefix() -> Result<()> {
+        const DIR: &str = "Testing4-101112/Edits/";
+
+        let mut client = get_client().await?;
+
+        let results = client.list().prefix(DIR).folders().collect().await?;
+
+        println!("{results:#?}");
+
+        assert!(
+            results
+                .prefixes
+                .contains(&"Testing4-101112/Edits/PaulTestVis/".to_owned())
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_read() -> Result<()> {
+        const PATH: &str = "Testing4-101112/Edits/PaulTestVis/2022-03-22/\
+                            PaulTestVis-2022-03-22-1629-Final-Edited-DS.Mysticetus";
+
+        let mut client = get_client().await?;
+
+        let read_stream = client.read(PATH).range(-3000..)?.stream().await?;
+        println!("{read_stream:#?}");
+
+        let (object, bytes) = read_stream.collect_to_vec().await?;
+        println!("{object:#?}");
+
+        assert_eq!(bytes.len(), 3000);
+
+        Ok(())
+    }
 }

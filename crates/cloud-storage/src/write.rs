@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use protos::storage::write_object_request::FirstMessage;
 use protos::storage::{CommonObjectRequestParams, Object, WriteObjectRequest, WriteObjectSpec};
 

@@ -1,3 +1,6 @@
+#[cfg(not(all(feature = "emulator", feature = "admin")))]
+compile_error!("requires both the 'emulator' and 'admin' features to be enabled");
+
 spanner_rs::table! {
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct TestTable {
