@@ -1,0 +1,33 @@
+[package]
+name = "csv-stream"
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+bstr = "1"
+bytemuck = { version = "1.22.0", features = ["derive"] }
+bytes.workspace = true
+csv = "1"
+csv-core = "0.1"
+
+futures.workspace = true
+pin-project-lite.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = [
+    "macros",
+    "time",
+    "process",
+    "parking_lot",
+    "sync",
+    "signal",
+    "io-util",
+    "io-std",
+    "net",
+    "fs",
+    "rt-multi-thread",
+] }
+
+
+[dev-dependencies]
+rand.workspace = true
