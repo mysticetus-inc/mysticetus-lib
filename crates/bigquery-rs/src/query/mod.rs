@@ -17,7 +17,7 @@ impl<S> QueryBuilder<S> {
         Self { client, request }
     }
 
-    pub fn limit(mut self, limit: NonZeroU64) -> Self {
+    pub fn limit(&mut self, limit: NonZeroU64) -> &mut Self {
         self.request.max_results = Some(limit);
         self
     }
