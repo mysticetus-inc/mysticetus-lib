@@ -1,8 +1,6 @@
-use std::cell::RefCell;
 use std::num::NonZeroI32;
 
 use rand::Rng;
-use rand::rngs::ThreadRng;
 
 mod listener;
 pub use listener::Listener;
@@ -52,15 +50,12 @@ impl ListenerId {
         R: Rng + ?Sized,
     {
         // SAFETY: using min/max as bounds will make sure the value is valud.
-        unsafe { Self::new_unchecked(rng.gen_range(Self::MIN.0.get()..=Self::MAX.0.get())) }
+        unsafe { Self::new_unchecked(rng.random_range(Self::MIN.0.get()..=Self::MAX.0.get())) }
     }
 
-    /// Shorthand for creating a thread local [`rand::rngs::ThreadRng`] and calling
-    /// [`Self::rand`] with it.
+    /// Shorthand for <code>ListenerId::rand(&mut rand::rng())</code>
     fn gen_rand() -> Self {
-        thread_local!(static RNG: RefCell<ThreadRng> = RefCell::new(rand::thread_rng()));
-
-        RNG.with_borrow_mut(Self::rand)
+        Self::rand(&mut rand::rng())
     }
 
     const fn new(id: i32) -> Option<Self> {

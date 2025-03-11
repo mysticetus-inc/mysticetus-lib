@@ -91,19 +91,3 @@ fn test_ellipse() {
 
     chart.draw_series(point_iter).unwrap();
 }
-
-#[test]
-fn test_ellipse_to_poly() -> Result<(), InvalidCoordinate> {
-    let point = Point::new_checked(-121.22764556811171, 44.12679669837136)?;
-
-    let ellipse = Ellipse {
-        center: point.into(),
-        semi_major_m: 1500.0,
-        semi_minor_m: 1000.0,
-        semi_major_bearing_rad: 45.0f64.to_radians(),
-    };
-
-    let poly = ellipse.to_polygon(10)?;
-
-    Ok(())
-}

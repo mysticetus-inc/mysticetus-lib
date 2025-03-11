@@ -420,12 +420,12 @@ macro_rules! impl_lat_lon {
 
             /// rand impl to generate random points for testing.
             #[cfg(any(test, feature = "random-geom"))]
-            impl rand::distributions::Distribution<$name> for rand::distributions::Standard {
+            impl rand::distr::Distribution<$name> for rand::distr::StandardUniform {
                 fn sample<R>(&self, rng: &mut R) -> $name
                 where
                     R: rand::Rng + ?Sized
                 {
-                    $name(rng.gen_range(MINIMUM_LEGAL_VALUE..i64::MAX))
+                    $name(rng.random_range(MINIMUM_LEGAL_VALUE..i64::MAX))
                 }
             }
 
@@ -452,7 +452,7 @@ macro_rules! impl_lat_lon {
                 where
                     R: rand::Rng + ?Sized
                 {
-                    rng.gen()
+                    rng.random()
                 }
             }
         )*

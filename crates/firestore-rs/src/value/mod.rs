@@ -13,14 +13,14 @@ pub use value_ref::ValueRef;
 
 #[cfg(test)]
 fn gen_string<R: rand::Rng>(rng: &mut R) -> String {
-    let len = rng.gen_range(1_usize..=50);
+    let len = rng.random_range(1_usize..=50);
 
     let mut dst = String::with_capacity(len);
 
     for _ in 0..len {
-        let mut b = rng.gen_range(b'0'..=b'z');
+        let mut b = rng.random_range(b'0'..=b'z');
         while !b.is_ascii_alphanumeric() {
-            b = rng.gen_range(b'0'..=b'z');
+            b = rng.random_range(b'0'..=b'z');
         }
 
         dst.push(b as char);

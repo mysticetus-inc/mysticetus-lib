@@ -1,7 +1,6 @@
-use std::cell::RefCell;
 use std::future::Future;
 
-use rand::rngs::{SmallRng, ThreadRng};
+use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use timestamp::Duration;
 
@@ -34,24 +33,7 @@ pub struct BackoffStats<const MAX_RETRIES: u32> {
 }
 
 fn get_or_init_rng(rng: &mut Option<SmallRng>) -> &mut SmallRng {
-    thread_local!(static RNG_SRC: RefCell<ThreadRng> = RefCell::new(rand::thread_rng()));
-
-    rng.get_or_insert_with(|| {
-        RNG_SRC.with_borrow_mut(|src| {
-            // this should ideally never fail, (the rand docs even show unwrapping as
-            // an example), but to make sure fall back to a slower method if it fails
-            match SmallRng::from_rng(src) {
-                Ok(rng) => rng,
-                Err(error) => {
-                    error!(
-                        message = "error initializing SmallRng from ThreadRng",
-                        ?error
-                    );
-                    SmallRng::from_entropy()
-                }
-            }
-        })
-    })
+    rng.get_or_insert_with(|| SmallRng::from_rng(&mut rand::rng()))
 }
 
 impl Default for Backoff<DEFAULT_RETRIES> {
@@ -98,7 +80,8 @@ impl<const MAX_RETRIES: u32> Backoff<MAX_RETRIES> {
         let slots = 2_u32.saturating_pow(self.retries);
         let full_delay_ms = slots * self.base_delay_ms;
 
-        let sleep_ms = get_or_init_rng(&mut self.rng).gen_range(self.base_delay_ms..=full_delay_ms);
+        let sleep_ms =
+            get_or_init_rng(&mut self.rng).random_range(self.base_delay_ms..=full_delay_ms);
 
         let waiting = Duration::from_millis(sleep_ms.min(self.max_timeout_ms) as _);
 

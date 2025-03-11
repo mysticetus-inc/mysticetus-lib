@@ -1,11 +1,4 @@
-#![feature(
-    trait_alias,
-    type_alias_impl_trait,
-    trusted_len,
-    let_chains,
-    const_trait_impl,
-    const_option_ext
-)]
+#![feature(let_chains)]
 
 //! Wrapper around the gRPC Firestore API that emulates the Javascript Firestore API.
 //!
@@ -87,7 +80,7 @@ pub use collec::CollectionRef;
 pub use doc::{Doc, DocumentRef, RawDoc};
 pub use firestore::Firestore;
 pub use protos::r#type::LatLng;
-pub use ser::{escape_field_path_into, serialize_set_doc, serialize_update_doc, DocFields};
+pub use ser::{DocFields, escape_field_path_into, serialize_set_doc, serialize_update_doc};
 use timestamp::Timestamp;
 pub use value::{Reference, Value};
 /// Shared trait to represent collection names and document ids.
@@ -534,12 +527,6 @@ mod tests {
 
         assert_eq!(final_resp, final_expected);
 
-        Ok(())
-    }
-
-    async fn transaction() -> crate::Result<()> {
-        let client = get_client().await;
-        client.transaction().read_write().await?;
         Ok(())
     }
 

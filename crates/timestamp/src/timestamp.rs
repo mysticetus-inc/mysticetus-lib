@@ -923,16 +923,16 @@ mod rand_impls {
     use crate::Duration;
 
     #[cfg(feature = "rand")]
-    impl rand::distributions::Distribution<Timestamp> for rand::distributions::Standard {
+    impl rand::distr::Distribution<Timestamp> for rand::distr::StandardUniform {
         fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
             Timestamp {
-                seconds: rng.gen_range(Timestamp::MIN.seconds..=Timestamp::MAX.seconds),
-                nanos: rng.gen(),
+                seconds: rng.random_range(Timestamp::MIN.seconds..=Timestamp::MAX.seconds),
+                nanos: rng.random(),
             }
         }
     }
 
-    impl rand::distributions::uniform::SampleUniform for Timestamp {
+    impl rand::distr::uniform::SampleUniform for Timestamp {
         type Sampler = TimestampSampler;
     }
 
@@ -950,27 +950,27 @@ mod rand_impls {
         }
     }
 
-    impl rand::distributions::uniform::UniformSampler for TimestampSampler {
+    impl rand::distr::uniform::UniformSampler for TimestampSampler {
         type X = Timestamp;
 
-        fn new<B1, B2>(low: B1, high: B2) -> Self
+        fn new<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
         where
-            B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
-            B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+            B1: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
+            B2: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
         {
-            Self::new_from(*low.borrow(), *high.borrow())
+            Ok(Self::new_from(*low.borrow(), *high.borrow()))
         }
 
-        fn new_inclusive<B1, B2>(low: B1, high: B2) -> Self
+        fn new_inclusive<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
         where
-            B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
-            B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+            B1: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
+            B2: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
         {
-            Self::new_from(*low.borrow(), high.borrow().add_nanos(1))
+            Ok(Self::new_from(*low.borrow(), high.borrow().add_nanos(1)))
         }
 
         fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Self::X {
-            let delta = rng.gen_range(Duration::ZERO..self.delta);
+            let delta = rng.random_range(Duration::ZERO..self.delta);
             self.start_at + delta
         }
     }

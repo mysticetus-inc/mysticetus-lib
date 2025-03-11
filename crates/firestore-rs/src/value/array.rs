@@ -111,7 +111,7 @@ impl Array {
 
     #[cfg(test)]
     pub fn rand<R: rand::Rng>(rng: &mut R, avail_nesting: usize, allow_nested: bool) -> Self {
-        let len = rng.gen_range(0..16_usize);
+        let len = rng.random_range(0..16_usize);
         let mut dst = Vec::with_capacity(len);
 
         for _ in 0..len {

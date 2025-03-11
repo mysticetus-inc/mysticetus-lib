@@ -347,13 +347,13 @@ mod rand_impls {
     use super::{MAX_NANOS, Nanos};
 
     #[cfg(feature = "rand")]
-    impl rand::distributions::Distribution<Nanos> for rand::distributions::Standard {
+    impl rand::distr::Distribution<Nanos> for rand::distr::StandardUniform {
         fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Nanos {
-            Nanos(rng.gen_range(0..=MAX_NANOS))
+            Nanos(rng.random_range(0..=MAX_NANOS))
         }
     }
 
-    impl rand::distributions::uniform::SampleUniform for Nanos {
+    impl rand::distr::uniform::SampleUniform for Nanos {
         type Sampler = NanosSampler;
     }
 
@@ -371,28 +371,28 @@ mod rand_impls {
         }
     }
 
-    impl rand::distributions::uniform::UniformSampler for NanosSampler {
+    impl rand::distr::uniform::UniformSampler for NanosSampler {
         type X = Nanos;
 
-        fn new<B1, B2>(low: B1, high: B2) -> Self
+        fn new<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
         where
-            B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
-            B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+            B1: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
+            B2: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
         {
-            Self::new_from(*low.borrow(), *high.borrow())
+            Ok(Self::new_from(*low.borrow(), *high.borrow()))
         }
 
-        fn new_inclusive<B1, B2>(low: B1, high: B2) -> Self
+        fn new_inclusive<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
         where
-            B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
-            B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+            B1: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
+            B2: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
         {
             let high = Nanos::new_saturating(high.borrow().0 + 1);
-            Self::new_from(*low.borrow(), high)
+            Ok(Self::new_from(*low.borrow(), high))
         }
 
         fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Self::X {
-            Nanos::new_saturating(rng.gen_range(self.min..=self.max))
+            Nanos::new_saturating(rng.random_range(self.min..=self.max))
         }
     }
 }

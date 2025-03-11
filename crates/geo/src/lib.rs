@@ -1,10 +1,4 @@
-#![feature(
-    array_try_from_fn,
-    portable_simd,
-    const_try,
-    const_option_ext,
-    const_trait_impl
-)]
+#![feature(array_try_from_fn, const_try, const_trait_impl)]
 
 #[cfg(feature = "normal")]
 #[macro_use]

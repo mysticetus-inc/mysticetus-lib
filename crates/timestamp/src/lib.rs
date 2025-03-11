@@ -145,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_add_duration() {
-        let rand_ts: i64 = rand::thread_rng().gen_range(1500000000..1650000000);
+        let rand_ts: i64 = rand::rng().random_range(1500000000..1650000000);
 
         let dt = Timestamp::from_seconds(rand_ts);
 

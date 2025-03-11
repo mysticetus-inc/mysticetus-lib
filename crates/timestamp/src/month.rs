@@ -189,7 +189,7 @@ impl Month {
 
     /// Returns the number of days in this [`Month`], given the year.
     pub const fn days_in(&self, year: i16) -> u8 {
-        time::util::days_in_year_month(year as i32, self.into_time_month())
+        self.into_time_month().length(year as i32)
     }
 
     /// Returns the next month, wrapping to [`January`] if 'self == [`December`]'

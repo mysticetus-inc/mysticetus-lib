@@ -1,4 +1,4 @@
-#![feature(const_swap, seek_stream_len, hash_raw_entry)]
+#![feature(seek_stream_len, hash_raw_entry)]
 use std::fmt;
 use std::time::Duration;
 
@@ -251,10 +251,11 @@ impl TestTrackMark {
         R: rand::Rng,
         S: Into<String>,
     {
-        const TAGS: &[&str] = &["tag 0", "tag 1", "tag 2", "tag 3", "tag 4", "tag 5"];
-        use rand::seq::SliceRandom;
+        use rand::prelude::IndexedRandom;
 
-        let n_tags = rng.gen_range(1..=TAGS.len());
+        const TAGS: &[&str] = &["tag 0", "tag 1", "tag 2", "tag 3", "tag 4", "tag 5"];
+
+        let n_tags = rng.random_range(1..=TAGS.len());
         let mut tags = Vec::with_capacity(n_tags);
         tags.extend(
             TAGS.choose_multiple(rng, n_tags)
@@ -264,11 +265,13 @@ impl TestTrackMark {
 
         Self {
             timestamp: TsAsMs(timestamp::Timestamp::now()),
-            lon: 360.0 * rng.gen::<f64>() - 180.0,
-            lat: 180.0 * rng.gen::<f64>() - 90.0,
-            alt: rng.gen::<bool>().then(|| 10.0 * rng.gen::<f64>() - 5.0),
+            lon: 360.0 * rng.random::<f64>() - 180.0,
+            lat: 180.0 * rng.random::<f64>() - 90.0,
+            alt: rng
+                .random::<bool>()
+                .then(|| 10.0 * rng.random::<f64>() - 5.0),
             vessel: vessel.into(),
-            fixed: rng.gen_bool(0.9),
+            fixed: rng.random_bool(0.9),
             tags,
         }
     }
@@ -291,7 +294,7 @@ async fn test_write() -> Result<()> {
 
     println!("{:#?}", write_session.schema());
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let tracks = (0..10)
         .map(|_| TestTrackMark::generate("Test A", &mut rng))

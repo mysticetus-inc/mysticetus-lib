@@ -1272,14 +1272,13 @@ mod rand_impls {
     use super::Duration;
     use crate::nanos::Nanos;
 
-    #[cfg(feature = "rand")]
-    impl rand::distributions::Distribution<Duration> for rand::distributions::Standard {
+    impl rand::distr::Distribution<Duration> for rand::distr::StandardUniform {
         fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Duration {
-            rng.gen_range(Duration::MIN..=Duration::MAX)
+            rng.random_range(Duration::MIN..=Duration::MAX)
         }
     }
 
-    impl rand::distributions::uniform::SampleUniform for Duration {
+    impl rand::distr::uniform::SampleUniform for Duration {
         type Sampler = DurationSampler;
     }
 
@@ -1297,31 +1296,31 @@ mod rand_impls {
         }
     }
 
-    impl rand::distributions::uniform::UniformSampler for DurationSampler {
+    impl rand::distr::uniform::UniformSampler for DurationSampler {
         type X = Duration;
 
-        fn new<B1, B2>(low: B1, high: B2) -> Self
+        fn new<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
         where
-            B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
-            B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+            B1: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
+            B2: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
         {
-            Self::new_from(*low.borrow(), *high.borrow())
+            Ok(Self::new_from(*low.borrow(), *high.borrow()))
         }
 
-        fn new_inclusive<B1, B2>(low: B1, high: B2) -> Self
+        fn new_inclusive<B1, B2>(low: B1, high: B2) -> Result<Self, rand::distr::uniform::Error>
         where
-            B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
-            B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+            B1: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
+            B2: rand::distr::uniform::SampleBorrow<Self::X> + Sized,
         {
-            Self::new_from(
+            Ok(Self::new_from(
                 *low.borrow(),
                 high.borrow().saturating_add(Duration::NANOSECOND),
-            )
+            ))
         }
 
         fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Self::X {
-            let seconds = rng.gen_range(0..=self.delta.seconds);
-            let nanos = rng.gen_range(Nanos::ZERO..=self.delta.nanos);
+            let seconds = rng.random_range(0..=self.delta.seconds);
+            let nanos = rng.random_range(Nanos::ZERO..=self.delta.nanos);
             self.min + Duration { seconds, nanos }
         }
     }

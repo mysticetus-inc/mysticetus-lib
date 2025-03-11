@@ -1,6 +1,6 @@
 use firestore_rs::Firestore;
-use rand::rngs::ThreadRng;
 use rand::Rng;
+use rand::rngs::ThreadRng;
 
 async fn get_client() -> Firestore {
     Firestore::new("mysticetus-oncloud", gcp_auth_channel::Scope::Firestore)
@@ -32,7 +32,7 @@ impl TestDoc {
     fn random_with_layers(layers: usize) -> Self {
         // rand itself generates this from a cached thread local, so this is a relatively cheap
         // function (after the first call, that is)
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         Self::build_nested(&mut rng, layers)
     }
@@ -41,20 +41,16 @@ impl TestDoc {
         self.id
     }
 
-    fn randomize_fields(&mut self) {
-        *self = Self::random();
-    }
-
     fn build_nested(rng: &mut ThreadRng, nested_layers: usize) -> Self {
         fn gen_string(rng: &mut ThreadRng) -> String {
-            let len = rng.gen_range(1_usize..=50);
+            let len = rng.random_range(1_usize..=50);
 
             let mut dst = String::with_capacity(len);
 
             for _ in 0..len {
-                let mut b = rng.gen_range(b'0'..=b'z');
+                let mut b = rng.random_range(b'0'..=b'z');
                 while !b.is_ascii_alphanumeric() {
-                    b = rng.gen_range(b'0'..=b'z');
+                    b = rng.random_range(b'0'..=b'z');
                 }
 
                 dst.push(b as char);
@@ -69,14 +65,14 @@ impl TestDoc {
 
             let now = NOW.with(|ts| *ts);
 
-            let ts = rng.gen_range(START..=now);
+            let ts = rng.random_range(START..=now);
 
             timestamp::Timestamp::from_seconds_f64_checked(ts).unwrap()
         }
 
         fn gen_geo(rng: &mut ThreadRng) -> firestore_rs::LatLng {
-            let latitude = rng.gen_range(-90.0..=90.0);
-            let longitude = rng.gen_range(-180.0..=180.0);
+            let latitude = rng.random_range(-90.0..=90.0);
+            let longitude = rng.random_range(-180.0..=180.0);
 
             firestore_rs::LatLng {
                 latitude,
@@ -86,12 +82,12 @@ impl TestDoc {
 
         let mut new = Self {
             id: uuid::Uuid::nil(),
-            number: rng.gen(),
+            number: rng.random(),
             string: gen_string(rng),
-            float: rng.gen(),
+            float: rng.random(),
             timestamp: gen_timestamp(rng),
             geo: gen_geo(rng),
-            boolean: rng.gen(),
+            boolean: rng.random(),
             nested: None,
             reference: None,
         };
@@ -224,12 +220,6 @@ async fn test_update() -> firestore_rs::Result<()> {
 
 #[tokio::test]
 async fn test_get_field() -> firestore_rs::Result<()> {
-    Ok(())
-}
-
-async fn transaction() -> firestore_rs::Result<()> {
-    let client = get_client().await;
-    client.transaction().read_write().await?;
     Ok(())
 }
 

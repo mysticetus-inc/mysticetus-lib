@@ -301,11 +301,11 @@ impl<'de> de::Visitor<'de> for PointVisitor {
 #[cfg(any(test, feature = "random-geom"))]
 mod point_rand_impls {
     use rand::Rng;
-    use rand::distributions::{Distribution, Standard};
+    use rand::distr::{Distribution, StandardUniform};
 
     use super::{Latitude, Longitude, Point};
 
-    impl Distribution<Point> for Standard {
+    impl Distribution<Point> for StandardUniform {
         fn sample<R>(&self, rng: &mut R) -> Point
         where
             R: Rng + ?Sized,
@@ -330,7 +330,7 @@ mod point_rand_impls {
         where
             R: rand::Rng,
         {
-            rng.gen()
+            rng.random()
         }
     }
 }

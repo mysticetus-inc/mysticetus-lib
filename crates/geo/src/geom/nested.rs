@@ -145,13 +145,13 @@ macro_rules! impl_nested_geometries {
             }
 
             #[cfg(any(test, feature = "random-geom"))]
-            impl rand::distributions::Distribution<$name> for rand::distributions::Standard {
+            impl rand::distr::Distribution<$name> for rand::distr::StandardUniform {
                 fn sample<R>(&self, rng: &mut R) -> $name
                 where
                     R: rand::Rng + ?Sized
                 {
                     // 3-100 range, since we need 3 points minimum for polygons.
-                    $name::random_with_len_inner(rng.gen_range(3..100), rng)
+                    $name::random_with_len_inner(rng.random_range(3..100), rng)
                 }
             }
 
@@ -168,13 +168,13 @@ macro_rules! impl_nested_geometries {
                 {
                     let mut container = Vec::with_capacity(len);
 
-                    container.extend(std::iter::repeat_with(|| rng.gen::<$inner>()).take(len));
+                    container.extend(std::iter::repeat_with(|| rng.random::<$inner>()).take(len));
 
                     $name(container)
                 }
 
                 pub fn random_with_len(len: usize) -> Self {
-                    let mut thread_rng = rand::thread_rng();
+                    let mut thread_rng = rand::rng();
                     Self::random_with_len_inner(len, &mut thread_rng)
                 }
             }

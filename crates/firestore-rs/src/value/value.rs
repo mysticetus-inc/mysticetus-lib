@@ -95,14 +95,14 @@ impl Value {
 
             let now = NOW.with(|ts| *ts);
 
-            let ts = rng.gen_range(START..=now);
+            let ts = rng.random_range(START..=now);
 
             timestamp::Timestamp::from_seconds_f64_checked(ts).unwrap()
         }
 
         fn gen_geo<R: rand::Rng>(rng: &mut R) -> crate::LatLng {
-            let latitude = rng.gen_range(-90.0..=90.0);
-            let longitude = rng.gen_range(-180.0..=180.0);
+            let latitude = rng.random_range(-90.0..=90.0);
+            let longitude = rng.random_range(-180.0..=180.0);
 
             crate::LatLng {
                 latitude,
@@ -111,11 +111,11 @@ impl Value {
         }
 
         fn gen_bytes<R: rand::Rng>(rng: &mut R) -> Bytes {
-            let len = rng.gen_range(0_usize..128);
+            let len = rng.random_range(0_usize..128);
             let mut dst = bytes::BytesMut::with_capacity(len);
 
             let bytes =
-                <&mut R as rand::Rng>::sample_iter::<u8, _>(rng, rand::distributions::Standard)
+                <&mut R as rand::Rng>::sample_iter::<u8, _>(rng, rand::distr::StandardUniform)
                     .take(len);
 
             dst.extend(bytes);
@@ -129,11 +129,11 @@ impl Value {
         }
         let nesting = avail_nesting.checked_sub(1).unwrap_or_default();
 
-        match rng.gen_range(0..=max) {
+        match rng.random_range(0..=max) {
             0 => Self::Null,
-            1 => Self::Bool(rng.gen()),
-            2 => Self::Integer(rng.gen()),
-            3 => Self::Double(rng.gen()),
+            1 => Self::Bool(rng.random()),
+            2 => Self::Integer(rng.random()),
+            3 => Self::Double(rng.random()),
             4 => Self::Timestamp(gen_timestamp(rng)),
             5 => Self::String(super::gen_string(rng)),
             6 => Self::Bytes(gen_bytes(rng)),

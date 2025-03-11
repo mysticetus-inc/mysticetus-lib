@@ -108,22 +108,7 @@ impl fmt::Display for FieldPair {
 }
 
 impl FieldPair {
-    /*
-    pub fn many_from_buf<B>(buf: &mut B) -> Result<Vec<Self>, DecodeError>
-    where
-        B: Buf,
-    {
-        let mut decoded = Vec::with_capacity(10);
-
-        while buf.remaining() > 0 {
-            let pair = Self::from_buf(buf)?;
-            decoded.push(pair);
-        }
-
-        Ok(decoded)
-    }
-    */
-
+    #[allow(unused)]
     pub fn from_buf<B>(buf: &mut B) -> Result<Self, DecodeError>
     where
         B: Buf,
@@ -507,18 +492,26 @@ pub mod zigzag {
 
     #[test]
     fn test_zigzag() {
-        use rand::distributions::Standard;
         use rand::Rng;
+        use rand::distr::StandardUniform;
 
         const TESTS: usize = 10000;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
-        for int in (&mut rng).sample_iter::<isize, _>(Standard).take(TESTS) {
+        for int in (&mut rng)
+            .sample_iter::<i64, _>(StandardUniform)
+            .take(TESTS)
+            .map(|int| int as isize)
+        {
             assert_eq!(int, decode(encode(int)));
         }
 
-        for uint in (&mut rng).sample_iter::<usize, _>(Standard).take(TESTS) {
+        for uint in (&mut rng)
+            .sample_iter::<u64, _>(StandardUniform)
+            .take(TESTS)
+            .map(|uint| uint as usize)
+        {
             assert_eq!(uint, encode(decode(uint)));
         }
     }
