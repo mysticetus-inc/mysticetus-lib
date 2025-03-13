@@ -5,8 +5,12 @@ use std::net::SocketAddr;
 use futures::TryFuture;
 use tokio::net::TcpListener;
 
+pub type StdError = Box<dyn std::error::Error + Send + Sync>;
+
+pub type InitResult<T, E = StdError> = core::result::Result<T, InitError<E>>;
+
 #[derive(Debug, thiserror::Error)]
-pub enum InitError<E: std::error::Error> {
+pub enum InitError<E: std::error::Error = StdError> {
     #[error(transparent)]
     State(E),
     #[error(transparent)]
