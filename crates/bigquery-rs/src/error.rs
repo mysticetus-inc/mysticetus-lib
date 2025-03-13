@@ -45,6 +45,14 @@ impl MissingField {
             value: Box::from(value),
         }
     }
+
+    pub fn new_missing<T>(field: &'static str) -> Self {
+        Self {
+            field,
+            ty: std::any::type_name::<T>(),
+            value: Box::from(None::<()>),
+        }
+    }
 }
 
 impl Error {

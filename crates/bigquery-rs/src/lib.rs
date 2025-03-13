@@ -1,6 +1,6 @@
 #![feature(round_char_boundary)]
 mod error;
-pub use error::Error;
+pub use error::{Error, MissingField};
 
 /// Type alias to [`core::result::Result<T, Error>`].
 pub type Result<T> = core::result::Result<T, Error>;
