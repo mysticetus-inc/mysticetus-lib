@@ -6,25 +6,30 @@ use std::task::{Context, Poll, ready};
 use futures::future::Then;
 use tokio::signal::unix::{Signal, SignalKind, signal};
 
-#[derive(Debug)]
-pub struct Shutdown {
-    /// if setting up a signal handler was successful, should a
-    /// message be logged when the signal is recieved?
-    log_shutdown: bool,
-    /// If 'None', we weren't able to set up the signal handler,
-    /// so we need to block forever.
-    signal: Option<Signal>,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    pub struct Shutdown {
+        // if setting up a signal handler was successful, should a
+        // message be logged when the signal is recieved?
+        log_shutdown: bool,
+        // If 'None', we weren't able to set up the signal handler,
+        // so we need to block forever.
+        #[pin]
+        signal: Option<Signal>,
+    }
 }
 
-#[derive(Debug)]
-#[repr(transparent)]
-pub struct ShutdownWithTask<T, Fut>
-where
-    T: FnOnce() -> Fut,
-    Fut: ShutdownTask,
-{
-    #[allow(dead_code)] // we transmute into this, so we never actually 'access' it
-    inner: Inner<T, Fut>,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    #[repr(transparent)]
+    pub struct ShutdownWithTask<T, Fut>
+    where
+        T: FnOnce() -> Fut,
+        Fut: ShutdownTask,
+    {
+        #[pin]
+        inner: Inner<T, Fut>,
+    }
 }
 
 /// alias to not get arguments/wrapping types mixed up when
@@ -173,13 +178,13 @@ impl Future for Shutdown {
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.get_mut();
-        match this.signal.as_mut() {
-            Some(signal) => {
+        let mut this = self.project();
+        match this.signal.as_mut().as_pin_mut() {
+            Some(mut signal) => {
                 ready!(signal.poll_recv(cx));
-                this.signal = None;
+                this.signal.set(None);
 
-                if this.log_shutdown {
+                if *this.log_shutdown {
                     info!("SIGTERM recieved, shutting down");
                 }
 
@@ -199,15 +204,9 @@ where
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // SAFETY:
-        //  - ShutdownWithTask is repr(transparent)
-        //  - Pin is repr(transparent)
-        //  - No references are moved, so no pinning invariants are broken.
-        let this: Pin<&mut Inner<T, Fut>> = unsafe { std::mem::transmute(self) };
-
-        if let Err(error) = ready!(this.poll(cx)) {
+        if let Err(error) = ready!(self.project().inner.poll(cx)) {
             error!(message = "shutdown task failed", ?error);
-        }
+        };
 
         Poll::Ready(())
     }
