@@ -11,13 +11,23 @@ thiserror.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
-tokio = { workspace = true, features = ["rt", "sync", "net", "parking_lot", "time", "macros"] }
+tokio = { workspace = true, features = [
+    "rt",
+    "sync",
+    "net",
+    "parking_lot",
+    "time",
+    "macros",
+] }
 pin-project-lite.workspace = true
 bytes.workspace = true
+bytes-utils.workspace = true
 url.workspace = true
 tokio-util.workspace = true
 ouroboros = "0.18.5"
 futures.workspace = true
+async-compression = { version = "0.4.18", features = ["zlib", "tokio", "gzip"] }
+flate2 = "1.0.35"
 
 
 [features]

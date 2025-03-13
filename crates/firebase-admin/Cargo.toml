@@ -1,6 +1,6 @@
 [package]
 name = "firebase-admin"
-edition = "2021"
+edition = "2024"
 version.workspace = true
 
 [dependencies]

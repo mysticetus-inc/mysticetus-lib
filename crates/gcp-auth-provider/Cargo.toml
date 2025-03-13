@@ -1,6 +1,6 @@
 [package]
 name = "gcp-auth-provider"
-edition = "2021"
+edition = "2024"
 version.workspace = true
 
 [dependencies]
