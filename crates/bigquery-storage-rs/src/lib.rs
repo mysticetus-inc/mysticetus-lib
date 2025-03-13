@@ -33,7 +33,6 @@ pub struct BigQueryStorageClient {
 async fn build_channel() -> Result<Channel> {
     Channel::from_static(BQ_HOST)
         .user_agent("bigquery-rs")?
-        .concurrency_limit(5000)
         .tcp_keepalive(Some(KEEPALIVE_DURATION))
         .tls_config(ClientTlsConfig::new().domain_name(BQ_DOMAIN))?
         .connect()
