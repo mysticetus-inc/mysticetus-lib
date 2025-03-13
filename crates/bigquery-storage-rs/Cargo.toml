@@ -59,6 +59,8 @@ tracing-subscriber = { workspace = true, features = [
 [features]
 default = ["full"]
 
+tls = ["tonic/tls"]
+
 read = []
 write = []
 full = ["read", "write"]
