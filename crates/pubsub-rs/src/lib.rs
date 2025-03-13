@@ -1,12 +1,12 @@
-#![feature(maybe_uninit_uninit_array, maybe_uninit_slice, result_flattening)]
+#![feature(maybe_uninit_slice, result_flattening)]
 use std::path::Path;
 use std::pin::Pin;
-use std::task::{ready, Context, Poll};
+use std::task::{Context, Poll, ready};
 use std::time::Duration;
 
 use futures::{Future, Stream};
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
-use protos::pubsub::{self, publisher_client, subscriber_client, GetSubscriptionRequest, Topic};
+use protos::pubsub::{self, GetSubscriptionRequest, Topic, publisher_client, subscriber_client};
 use tokio::sync::mpsc::{self, Receiver};
 use tokio::task::JoinHandle;
 use tonic::transport::Channel;

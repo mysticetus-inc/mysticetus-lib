@@ -152,8 +152,7 @@ async fn read_memory_file(path: &str) -> io::Result<u64> {
     use tokio::io::{AsyncRead, ReadBuf};
 
     let mut file = tokio::fs::File::open(&path).await?;
-
-    let mut dst = MaybeUninit::uninit_array::<MAX_DIGITS>();
+    let mut dst = [MaybeUninit::uninit(); MAX_DIGITS];
     let mut read_buf = ReadBuf::uninit(&mut dst);
 
     poll_fn(|ctx| Pin::new(&mut file).poll_read(ctx, &mut read_buf)).await?;

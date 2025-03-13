@@ -1,10 +1,5 @@
 #![deny(clippy::suspicious, clippy::complexity, clippy::perf, clippy::style)]
-#![feature(
-    maybe_uninit_uninit_array,
-    const_trait_impl,
-    unboxed_closures,
-    fn_traits
-)]
+#![feature(const_trait_impl, unboxed_closures, fn_traits)]
 //! Utilities for services running within the context of Cloud Run
 
 #[macro_use]
