@@ -31,10 +31,23 @@ pub struct BigQueryStorageClient {
 }
 
 async fn build_channel() -> Result<Channel> {
+    let tls_config = {
+        #[cfg(not(feature = "tls-webpki-roots"))]
+        {
+            ClientTlsConfig::new().domain_name(BQ_DOMAIN)
+        }
+        #[cfg(feature = "tls-webpki-roots")]
+        {
+            ClientTlsConfig::new()
+                .domain_name(BQ_DOMAIN)
+                .with_webpki_roots()
+        }
+    };
+
     Channel::from_static(BQ_HOST)
         .user_agent("bigquery-rs")?
         .tcp_keepalive(Some(KEEPALIVE_DURATION))
-        .tls_config(ClientTlsConfig::new().domain_name(BQ_DOMAIN))?
+        .tls_config(tls_config)?
         .connect()
         .await
         .map_err(Error::from)
