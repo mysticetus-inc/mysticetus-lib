@@ -1,12 +1,10 @@
-//! A universal exponential backoff mechanism.  
+//! A universal exponential backoff mechanism.
 
-use std::cell::RefCell;
 use std::future::IntoFuture;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rand::Rng;
-use rand::rngs::ThreadRng;
 use timestamp::Duration;
 use tokio::time::Sleep;
 
@@ -50,9 +48,7 @@ impl BackoffOnce {
 }
 
 fn get_within_range(range: std::ops::RangeInclusive<u32>) -> u32 {
-    thread_local!(static RNG_SRC: RefCell<Option<ThreadRng>> = RefCell::new(None));
-
-    RNG_SRC.with_borrow_mut(|opt| opt.get_or_insert_with(rand::thread_rng).gen_range(range))
+    rand::rng().random_range(range)
 }
 
 impl Default for Backoff {

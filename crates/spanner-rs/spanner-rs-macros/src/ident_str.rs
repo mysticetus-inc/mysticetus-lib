@@ -27,8 +27,8 @@ impl IdentStr {
         match self.ident {
             Some(ref ident) => ident,
             None => match (&self.string, &self.literal) {
-                (Some(ref s), _) => self.ident.insert(ident!(s)),
-                (None, Some(ref lit)) => {
+                (Some(s), _) => self.ident.insert(ident!(s)),
+                (None, Some(lit)) => {
                     let s_refer = self.string.insert(Rc::from(lit.value()));
                     self.ident.insert(ident!(s_refer))
                 }
@@ -45,8 +45,8 @@ impl IdentStr {
         match self.string {
             Some(ref s) => s,
             None => match (&self.literal, &self.ident) {
-                (Some(ref s), _) => self.string.insert(Rc::from(s.value())),
-                (None, Some(ref ident)) => self.string.insert(Rc::from(ident.to_string())),
+                (Some(s), _) => self.string.insert(Rc::from(s.value())),
+                (None, Some(ident)) => self.string.insert(Rc::from(ident.to_string())),
                 (None, None) => unreachable!(),
             },
         }
@@ -60,8 +60,8 @@ impl IdentStr {
         match self.literal {
             Some(ref s) => s,
             None => match (&self.string, &self.ident) {
-                (Some(ref s), _) => self.literal.insert(litstr!(s)),
-                (None, Some(ref ident)) => {
+                (Some(s), _) => self.literal.insert(litstr!(s)),
+                (None, Some(ident)) => {
                     let s_refer = self.string.insert(Rc::from(ident.to_string()));
                     self.literal.insert(litstr!(s_refer))
                 }

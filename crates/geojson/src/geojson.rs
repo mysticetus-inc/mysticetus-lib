@@ -62,7 +62,7 @@ impl<C, P> GeoJson<C, P> {
     /// ```
     pub fn to_feature_collection_mut(&mut self) -> &mut FeatureCollection<C, P> {
         match self {
-            Self::FeatureCollection(ref mut collec) => collec,
+            Self::FeatureCollection(collec) => collec,
             Self::Feature(_) => {
                 let old = std::mem::replace(
                     self,
@@ -70,7 +70,7 @@ impl<C, P> GeoJson<C, P> {
                 );
 
                 let collec = match self {
-                    Self::FeatureCollection(ref mut collec) => collec,
+                    Self::FeatureCollection(collec) => collec,
                     Self::Feature(_) => unreachable!(),
                 };
 

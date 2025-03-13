@@ -906,6 +906,7 @@ impl From<Timestamp> for prost_types::Timestamp {
     }
 }
 
+/*
 #[cfg(feature = "schemars")]
 impl schemars::JsonSchema for Timestamp {
     fn schema_name() -> String {
@@ -916,6 +917,7 @@ impl schemars::JsonSchema for Timestamp {
         chrono::DateTime::<chrono::Utc>::json_schema(gen)
     }
 }
+*/
 
 #[cfg(feature = "rand")]
 mod rand_impls {

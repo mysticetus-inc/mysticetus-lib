@@ -30,12 +30,15 @@ impl fmt::Debug for KeyCache {
 
         f.debug_struct("KeyCache")
             .field("client", &self.client)
-            .field("state", match guard_result.as_deref() {
-                Ok(CacheState::Empty) => &"Empty" as &dyn fmt::Debug,
-                Ok(CacheState::Requesting(_)) => &"Requesting" as &dyn fmt::Debug,
-                Ok(CacheState::Cached(ref cached)) => cached as &dyn fmt::Debug,
-                Err(_) => &"..." as &dyn fmt::Debug,
-            })
+            .field(
+                "state",
+                match guard_result.as_deref() {
+                    Ok(CacheState::Empty) => &"Empty" as &dyn fmt::Debug,
+                    Ok(CacheState::Requesting(_)) => &"Requesting" as &dyn fmt::Debug,
+                    Ok(CacheState::Cached(cached)) => cached as &dyn fmt::Debug,
+                    Err(_) => &"..." as &dyn fmt::Debug,
+                },
+            )
             .finish()
     }
 }

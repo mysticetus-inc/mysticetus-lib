@@ -386,10 +386,7 @@ impl Validator {
 
     fn update(&mut self, bytes: &[u8], computed_crc: Option<u32>) {
         match self {
-            Self::Crc32c {
-                ref mut current_crc,
-                ..
-            } => {
+            Self::Crc32c { current_crc, .. } => {
                 let computed_crc = computed_crc.unwrap_or_else(|| crc32c::crc32c(bytes));
                 *current_crc = crc32c::crc32c_combine(*current_crc, computed_crc, bytes.len());
             }
@@ -544,7 +541,7 @@ impl Stream for ReadStream {
         loop {
             let resp = match std::task::ready!(this.stream.as_mut().poll_next(cx)) {
                 None => {
-                    if let Some(ref mut validator) = this.validator {
+                    if let Some(validator) = this.validator {
                         validator.finish()?;
                     }
                     return Poll::Ready(None);
@@ -589,10 +586,10 @@ fn handle_data(
             ))));
         }
 
-        if let Some(ref mut validator) = validator {
+        if let Some(validator) = validator {
             validator.update(&data.content, Some(computed));
         }
-    } else if let Some(ref mut validator) = validator {
+    } else if let Some(validator) = validator {
         validator.update(&data.content, None);
     }
 
@@ -606,7 +603,7 @@ fn poll_stream(
 ) -> Poll<Option<crate::Result<ReadObjectResponse>>> {
     match std::task::ready!(stream.as_mut().poll_next(cx)) {
         None => {
-            if let Some(ref mut validator) = validator {
+            if let Some(validator) = validator {
                 validator.finish()?;
             }
             Poll::Ready(None)

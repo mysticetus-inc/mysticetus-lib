@@ -91,13 +91,13 @@ pub enum Rewrite<'a> {
 impl<'a> Rewrite<'a> {
     pub async fn wait(&mut self) -> Result<&Object, Error> {
         match self {
-            Self::Done(ref done) => Ok(done),
+            Self::Done(done) => Ok(done),
             Self::Longrunning(lr) => {
                 let obj = lr.wait().await?;
                 *self = Self::Done(obj);
 
                 match self {
-                    Self::Done(ref d) => Ok(d),
+                    Self::Done(d) => Ok(d),
                     _ => unreachable!(),
                 }
             }

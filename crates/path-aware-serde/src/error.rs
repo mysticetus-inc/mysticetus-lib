@@ -183,6 +183,7 @@ impl<E: ser::Error> ser::Error for Error<E> {
     }
 }
 
+/*
 #[cfg(feature = "schemars")]
 mod schemars_impl {
     use schemars::JsonSchema;
@@ -217,3 +218,4 @@ mod schemars_impl {
         }
     }
 }
+*/

@@ -632,6 +632,7 @@ impl fmt::Display for InvalidCoordinateReason {
     }
 }
 
+/*
 #[cfg(feature = "aide")]
 impl schemars::JsonSchema for Latitude {
     fn schema_name() -> String {
@@ -673,6 +674,7 @@ impl schemars::JsonSchema for Longitude {
         })
     }
 }
+*/
 
 impl std::error::Error for InvalidCoordinate {}
 

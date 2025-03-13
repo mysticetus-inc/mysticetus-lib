@@ -24,14 +24,14 @@ impl MaybeOwnedSheet<'_> {
     fn as_sheet(&self) -> &rust_xlsxwriter::Worksheet {
         match self {
             Self::Ref(refer) => refer,
-            Self::Owned(ref owned) => owned,
+            Self::Owned(owned) => owned,
         }
     }
 
     fn as_sheet_mut(&mut self) -> &mut rust_xlsxwriter::Worksheet {
         match self {
             Self::Ref(refer) => refer,
-            Self::Owned(ref mut owned) => owned,
+            Self::Owned(owned) => owned,
         }
     }
 }

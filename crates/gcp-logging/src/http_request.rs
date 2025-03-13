@@ -148,7 +148,7 @@ mod serialize {
     {
         match opt {
             None => serializer.serialize_none(),
-            Some(ref header) => serializer.serialize_some(&SerializeHeader(header)),
+            Some(header) => serializer.serialize_some(&SerializeHeader(header)),
         }
     }
 

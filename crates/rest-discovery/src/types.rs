@@ -5,6 +5,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct Discovery {
     pub auth: Auth,
     pub base_path: String,
@@ -72,12 +73,14 @@ pub enum HttpMethod {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct Resource {
     pub methods: IndexMap<String, Endpoint>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct Methods {
     pub delete: Option<Endpoint>,
     pub get: Option<Endpoint>,
@@ -97,6 +100,7 @@ pub struct Methods {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct MediaUpload {
     pub accept: Vec<String>,
     pub protocols: MediaUploadProtocols,
@@ -104,6 +108,7 @@ pub struct MediaUpload {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct MediaUploadProtocols {
     pub resumable: MediaUploadProtocolType,
     pub simple: MediaUploadProtocolType,
@@ -111,6 +116,7 @@ pub struct MediaUploadProtocols {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct MediaUploadProtocolType {
     pub path: String,
     pub multipart: bool,
@@ -118,6 +124,7 @@ pub struct MediaUploadProtocolType {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct Endpoint {
     pub description: String,
     pub http_method: HttpMethod,

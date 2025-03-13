@@ -238,7 +238,7 @@ fn build_result_iter_from_partial<T: Table>(
 
         // use the existing iter if it exists, and is not empty.
         return match existing_iter {
-            Some(ref existing) if !existing.is_empty() => existing_iter.take(),
+            Some(existing) if !existing.is_empty() => existing_iter.take(),
             _ => None,
         };
     }

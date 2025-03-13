@@ -1,4 +1,4 @@
-//! An "IR" for generating types.  
+//! An "IR" for generating types.
 //!
 //! These types implement [`genco::prelude::FormatInto`], so to generate code, all the
 //! discovery docuemnt needs to do is generate these types.
@@ -254,7 +254,7 @@ impl GenerateCode<Rust> for TypeRef {
 impl GenerateCode<Rust> for TypeRefKind {
     fn generate_code(&self, ctx: &Context<'_>, tokens: &mut Tokens<Rust>) {
         match self {
-            Self::Generated(gen) => gen.format_into(tokens),
+            Self::Generated(gener) => gener.format_into(tokens),
             Self::Prim(prim) => prim.format_into(tokens),
             Self::Collec(collec) => collec.generate_code(ctx, tokens),
             Self::Undefined(name) => match ctx.find_type(name) {
@@ -296,7 +296,7 @@ impl TypeRef {
         }
 
         match &self.kind {
-            TypeRefKind::Generated(gen) => Some(gen.has_default),
+            TypeRefKind::Generated(gener) => Some(gener.has_default),
             TypeRefKind::Prim(p) => Some(p.has_default()),
             TypeRefKind::Collec(c) => c.has_default(ctx),
             TypeRefKind::Undefined(name) => {
@@ -322,7 +322,7 @@ impl TypeRef {
 
     pub fn has_lifetime(&self, ctx: &Context<'_>) -> Option<bool> {
         match &self.kind {
-            TypeRefKind::Generated(gen) => Some(gen.lifetime),
+            TypeRefKind::Generated(gener) => Some(gener.lifetime),
             TypeRefKind::Prim(prim) => Some(prim.has_lifetime()),
             TypeRefKind::Collec(collec) => collec.has_lifetime(ctx),
             TypeRefKind::Undefined(name) => {
@@ -795,12 +795,12 @@ impl<'a> StructField<'a> {
             println!("{parent_name}.{}: {:#?}", self.name, self.ty);
         }
 
-        let TypeRefKind::Generated(ref gen) = self.ty.kind else {
+        let TypeRefKind::Generated(ref gener) = self.ty.kind else {
             return;
         };
 
         if self.has_recursive_type(parent_name, ctx) {
-            gen.needs_boxing.set(true);
+            gener.needs_boxing.set(true);
         }
     }
 
@@ -809,11 +809,11 @@ impl<'a> StructField<'a> {
             println!("{parent_name}.{}: {:#?}", self.name, self.ty);
         }
 
-        let TypeRefKind::Generated(ref gen) = self.ty.kind else {
+        let TypeRefKind::Generated(ref gener) = self.ty.kind else {
             return false;
         };
 
-        let type_def = ctx.get_type_def(&gen.id);
+        let type_def = ctx.get_type_def(&gener.id);
 
         let type_def = type_def.borrow();
 

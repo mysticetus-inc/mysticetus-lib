@@ -16,6 +16,7 @@ pub struct Point {
     altitude: Option<f64>,
 }
 
+/*
 #[cfg(feature = "aide")]
 impl schemars::JsonSchema for Point {
     fn schema_name() -> String {
@@ -41,6 +42,7 @@ impl schemars::JsonSchema for Point {
         })
     }
 }
+*/
 
 impl PartialEq for Point {
     fn eq(&self, other: &Self) -> bool {

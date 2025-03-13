@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, linked_list_cursors, const_option_ext)]
+#![feature(const_trait_impl, linked_list_cursors)]
 
 mod client;
 pub mod list;
@@ -12,8 +12,8 @@ mod write;
 
 pub mod error;
 pub use client::{BucketClient, Client};
-pub(crate) use error::validate_response;
 pub use error::Error;
+pub(crate) use error::validate_response;
 pub use list::ListBuilder;
 use net_utils::backoff::Backoff;
 pub use object::{NewObject, Object};

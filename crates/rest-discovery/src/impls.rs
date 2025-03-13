@@ -318,8 +318,8 @@ impl Schema {
                 .name()
                 .is_some_and(|ty_name| name.eq_ignore_ascii_case(ty_name))
             {
-                if let TypeRefKind::Generated(ref gen) = kind.kind {
-                    gen.needs_boxing.set(true);
+                if let TypeRefKind::Generated(ref gener) = kind.kind {
+                    gener.needs_boxing.set(true);
                 }
 
                 // take the inner is_optional, that way we wrap the box in Option, not the inner

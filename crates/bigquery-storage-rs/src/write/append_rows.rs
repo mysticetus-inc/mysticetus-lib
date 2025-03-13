@@ -6,9 +6,7 @@ use std::task::{Context, Poll};
 
 use bytes::{Bytes, BytesMut};
 use futures::Stream;
-use gcp_auth_channel::AuthChannel;
-use gcp_auth_channel::channel::headers::{Http, WithHeaders};
-use net_utils::bidi2::{self, RequestSink, RequestStream};
+use net_utils::bidi2::{self, RequestSink};
 use prost::Message;
 use protos::bigquery_storage::append_rows_request::{
     self, MissingValueInterpretation, ProtoData, Rows,
@@ -18,13 +16,11 @@ use protos::bigquery_storage::{AppendRowsRequest, AppendRowsResponse, ProtoRows}
 use protos::protobuf::DescriptorProto;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot;
-use tokio::task::{JoinHandle, JoinSet};
-use tonic::transport::Channel;
+use tokio::task::JoinHandle;
 
-use super::WriteSessionInner;
 use super::schema::Schema;
 use crate::error::InternalError;
-use crate::proto::{EncodeError, ProtoSerializer};
+use crate::proto::ProtoSerializer;
 
 pub struct AppendRowsRequestIter<'a, W, R> {
     write_session: &'a mut super::WriteSession<W, R>,
@@ -115,7 +111,7 @@ where
             };
 
             match rows {
-                Some(ref mut rows) => &mut rows.serialized_rows,
+                Some(rows) => &mut rows.serialized_rows,
                 None => {
                     let (low, high) = size_hint();
                     let serialized_rows = Vec::with_capacity(high.unwrap_or(low).min(64));

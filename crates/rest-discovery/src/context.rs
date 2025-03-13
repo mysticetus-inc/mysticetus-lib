@@ -122,7 +122,7 @@ impl<'a> Context<'a> {
         &'b self,
         doc_string: &'b str,
         indent_level: usize,
-    ) -> crate::doc::DocFormatter<'b, RefMut<'_, String>> {
+    ) -> crate::doc::DocFormatter<'b, RefMut<'b, String>> {
         crate::doc::DocFormatter::new_doc(doc_string, indent_level, self.buffer.borrow_mut())
     }
 
@@ -130,7 +130,7 @@ impl<'a> Context<'a> {
         &'b self,
         doc_string: Option<&'b S>,
         indent_level: usize,
-    ) -> Option<crate::doc::DocFormatter<'b, RefMut<'_, String>>>
+    ) -> Option<crate::doc::DocFormatter<'b, RefMut<'b, String>>>
     where
         S: AsRef<str>,
     {

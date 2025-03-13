@@ -10,7 +10,7 @@ pub type StdError = Box<dyn std::error::Error + Send + Sync>;
 pub type InitResult<T, E = StdError> = core::result::Result<T, InitError<E>>;
 
 #[derive(Debug, thiserror::Error)]
-pub enum InitError<E: std::error::Error = StdError> {
+pub enum InitError<E = StdError> {
     #[error(transparent)]
     State(E),
     #[error(transparent)]

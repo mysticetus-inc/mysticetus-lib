@@ -144,7 +144,7 @@ macro_rules! serialize_with {
             }
         }
 
-        &SerializeWith(&$value)
+        SerializeWith(&$value)
     }};
     ($value:expr; $t:ty => $f:ident) => {{
         struct SerializeWith<'a>(&'a $t);
@@ -159,7 +159,7 @@ macro_rules! serialize_with {
             }
         }
 
-        &SerializeWith(&$value)
+        SerializeWith(&$value)
     }};
 }
 impl<'a, L, N, O> serde::Serialize for LogEntry<'a, L, N, O>
@@ -181,11 +181,11 @@ where
 
         map.serialize_entry(
             TIMESTAMP_KEY,
-            serialize_with!(timestamp; Timestamp::serialize_as_proto),
+            &serialize_with!(timestamp; Timestamp::serialize_as_proto),
         )?;
         map.serialize_entry(
             SEVERITY_KEY,
-            serialize_with!(meta.level(); tracing::Level => serialize_as_severity),
+            &serialize_with!(meta.level(); tracing::Level => serialize_as_severity),
         )?;
         map.serialize_entry(SOURCE_LOCATION_KEY, &SourceLocation::new(meta))?;
 
@@ -201,12 +201,15 @@ where
         }
 
         if labels > 0 {
-            map.serialize_entry(LABELS_KEY, &Labels {
-                labels,
-                stage: self.stage,
-                event: self.event,
-                options: self.options,
-            })?;
+            map.serialize_entry(
+                LABELS_KEY,
+                &Labels {
+                    labels,
+                    stage: self.stage,
+                    event: self.event,
+                    options: self.options,
+                },
+            )?;
         } else if self
             .options
             .include_stage(self.stage, self.event.metadata())
