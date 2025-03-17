@@ -9,13 +9,14 @@
 )]
 #![allow(stable_features)]
 
+pub mod borrow;
 pub mod debug_visitor;
 pub mod display_error;
 pub mod display_serialize;
 pub mod empty_to_option;
 pub mod find_key;
 pub mod flat_map_ser;
-pub mod from_str_visitor;
+pub mod from_str;
 pub mod inline_str_dst;
 pub mod key_capture;
 pub mod kvp;

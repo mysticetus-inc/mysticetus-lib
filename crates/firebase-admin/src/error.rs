@@ -9,19 +9,25 @@ pub enum Error {
     #[error(transparent)]
     Json(#[from] path_aware_serde::Error<serde_json::Error>),
     #[error(transparent)]
-    Auth(#[from] crate::auth::AuthError),
+    ValidateToken(#[from] crate::auth::ValidateTokenError),
+    #[error(transparent)]
+    Auth(#[from] gcp_auth_channel::Error),
 }
 
 impl From<jsonwebtoken::errors::Error> for Error {
     fn from(value: jsonwebtoken::errors::Error) -> Self {
-        Self::Auth(value.into())
+        Self::ValidateToken(value.into())
     }
 }
 
 impl Error {
     pub fn to_response_parts(&self) -> (StatusCode, Cow<'static, str>) {
         match self {
-            Self::Auth(auth) => auth.to_response_parts(),
+            Self::ValidateToken(auth) => auth.to_response_parts(),
+            Self::Auth(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Cow::Owned(error.to_string()),
+            ),
             Self::Json(error) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Cow::Owned(error.to_string()),

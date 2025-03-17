@@ -10,6 +10,8 @@ http-body.workspace = true
 tower.workspace = true
 fxhash.workspace = true
 tokio.workspace = true
+futures.workspace = true
+tokio-util.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
@@ -17,6 +19,7 @@ thiserror.workspace = true
 axum.workspace = true
 jsonwebtoken.workspace = true
 timestamp = { path = "../timestamp" }
+gcp-auth-channel = { path = "../gcp-auth-channel" }
 reqwest = { workspace = true, features = ["json"] }
 tracing.workspace = true
 pin-project-lite.workspace = true

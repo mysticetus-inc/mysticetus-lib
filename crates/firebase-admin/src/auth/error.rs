@@ -4,7 +4,7 @@ use http::StatusCode;
 use jsonwebtoken::Algorithm;
 
 #[derive(Debug, thiserror::Error)]
-pub enum AuthError {
+pub enum ValidateTokenError {
     #[error("jwt has no key id")]
     MissingKeyId,
     #[error("jwt key id is unknown")]
@@ -21,7 +21,7 @@ pub enum AuthError {
     InvalidToken(#[from] http::header::ToStrError),
 }
 
-impl AuthError {
+impl ValidateTokenError {
     pub fn to_response_parts(&self) -> (StatusCode, Cow<'static, str>) {
         // don't give any detail on why a token failed to validate, only
         // if a token is missing or is obviusly the wrong kind.

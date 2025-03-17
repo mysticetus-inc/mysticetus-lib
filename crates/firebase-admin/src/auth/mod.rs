@@ -1,13 +1,22 @@
-mod error;
-mod key_cache;
-mod layer_service;
 use std::collections::HashSet;
 
-pub use error::AuthError;
 use jsonwebtoken::Validation;
-use key_cache::KeyCache;
-pub use layer_service::{ValidateIdTokenLayer, ValidateIdTokenService};
 use timestamp::Timestamp;
+
+mod error;
+pub use error::ValidateTokenError;
+
+mod key_cache;
+use key_cache::KeyCache;
+
+mod layer_service;
+pub use layer_service::{ValidateIdTokenLayer, ValidateIdTokenService};
+
+pub mod manager;
+pub use manager::AuthManager;
+
+pub mod user;
+pub use user::UserInfo;
 
 #[derive(Debug)]
 struct ValidateIdTokenShared {

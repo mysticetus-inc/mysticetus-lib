@@ -4,18 +4,13 @@ use std::str::FromStr;
 
 use serde::de;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct FromStrVisitor<T> {
-    _marker: PhantomData<fn(T)>,
-}
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FromStrVisitor<T>(PhantomData<fn(T)>);
 
 impl<T> FromStrVisitor<T> {
     #[inline]
     pub const fn new() -> Self {
-        Self {
-            _marker: PhantomData,
-        }
+        Self(PhantomData)
     }
 }
 
@@ -43,12 +38,6 @@ where
 
         v.parse()
             .map_err(|err| de::Error::invalid_value(Str(v), &FromStrError(self, err)))
-    }
-}
-
-impl<T> Default for FromStrVisitor<T> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -107,5 +96,48 @@ where
         std::fmt::Display::fmt(&self.1, formatter)?;
         formatter.write_str(": ")?;
         de::Visitor::expecting(&self.0, formatter)
+    }
+}
+
+#[inline]
+pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+where
+    T: ?Sized + serde::Serialize,
+    S: serde::Serializer,
+{
+    T::serialize(value, serializer)
+}
+
+#[inline]
+pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: FromStr<Err: std::fmt::Display>,
+    D: serde::Deserializer<'de>,
+{
+    deserializer.deserialize_str(FromStrVisitor::new())
+}
+
+pub mod optional {
+    use std::str::FromStr;
+
+    use serde::de::DeserializeSeed;
+
+    #[inline]
+    pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: serde::Serialize,
+        S: serde::Serializer,
+    {
+        serde::Serialize::serialize(value, serializer)
+    }
+
+    #[inline]
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+    where
+        T: FromStr<Err: std::fmt::Display>,
+        D: serde::Deserializer<'de>,
+    {
+        crate::optional_visitor::OptionalVisitor(super::FromStrVisitor::new())
+            .deserialize(deserializer)
     }
 }

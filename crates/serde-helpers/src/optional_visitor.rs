@@ -27,9 +27,9 @@ macro_rules! impl_passthrough_fn {
 
 impl<'de, V> de::Visitor<'de> for OptionalVisitor<V>
 where
-    V: de::Visitor<'de>,
+    V: de::DeserializeSeed<'de> + de::Visitor<'de, Value = <V as de::DeserializeSeed<'de>>::Value>,
 {
-    type Value = Option<V::Value>;
+    type Value = Option<<V as de::Visitor<'de>>::Value>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> std::fmt::Result {
         self.0.expecting(formatter)?;
@@ -58,7 +58,7 @@ where
     where
         D: de::Deserializer<'de>,
     {
-        deserializer.deserialize_any(self.0).map(Some)
+        self.0.deserialize(deserializer).map(Some)
     }
 
     //  ---------- passthrough methods ------------
@@ -125,9 +125,9 @@ where
 
 impl<'de, V> de::DeserializeSeed<'de> for OptionalVisitor<V>
 where
-    V: de::Visitor<'de>,
+    V: de::DeserializeSeed<'de> + de::Visitor<'de, Value = <V as de::DeserializeSeed<'de>>::Value>,
 {
-    type Value = Option<V::Value>;
+    type Value = Option<<V as de::Visitor<'de>>::Value>;
 
     #[inline]
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>

@@ -9,7 +9,7 @@ use jsonwebtoken::TokenData;
 use tower::{Layer, Service};
 
 use super::key_cache::KeyId;
-use super::{AuthError, Claims, ValidateIdTokenShared};
+use super::{Claims, ValidateIdTokenShared, ValidateTokenError};
 
 #[derive(Debug, Clone)]
 pub struct ValidateIdTokenLayer {
@@ -118,17 +118,17 @@ where
     }
 }
 
-fn extract_header<Body>(req: &mut http::Request<Body>) -> Result<HeaderValue, AuthError> {
+fn extract_header<Body>(req: &mut http::Request<Body>) -> Result<HeaderValue, ValidateTokenError> {
     let header = req
         .headers_mut()
         .remove(header::AUTHORIZATION)
-        .ok_or(AuthError::NoBearerToken)?;
+        .ok_or(ValidateTokenError::NoBearerToken)?;
 
     if header.as_bytes().starts_with(b"Bearer ") {
         Ok(header)
     } else {
         req.headers_mut().insert(header::AUTHORIZATION, header);
-        Err(AuthError::NotABearerToken)
+        Err(ValidateTokenError::NotABearerToken)
     }
 }
 
@@ -170,7 +170,7 @@ where
 
         let token = token_header
             .to_str()
-            .map_err(AuthError::InvalidToken)?
+            .map_err(ValidateTokenError::InvalidToken)?
             .trim_start_matches("Bearer ");
 
         let key_id = shared.key_cache.decode_key_id(token)?;
@@ -225,7 +225,7 @@ async fn decode_token(
 
     let token = token_header
         .to_str()
-        .map_err(AuthError::InvalidToken)?
+        .map_err(ValidateTokenError::InvalidToken)?
         .trim_start_matches("Bearer ");
 
     decoder.decode_token(token, &shared.validation)

@@ -10,7 +10,7 @@ use timestamp::{Duration, Timestamp};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
-use super::{AuthError, Claims};
+use super::{Claims, ValidateTokenError};
 
 const PUBLIC_KEY_URI: &str =
     "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
@@ -85,7 +85,10 @@ impl KeyCache {
 
         match &*read_guard {
             CacheState::Cached(cached) if now < cached.expires_at => {
-                let key = cached.keys.get(&key_id).ok_or(AuthError::UnknownKeyId)?;
+                let key = cached
+                    .keys
+                    .get(&key_id)
+                    .ok_or(ValidateTokenError::UnknownKeyId)?;
                 Ok(Ok(Decoder {
                     key_id,
                     decoding_key: Arc::clone(key),
@@ -102,7 +105,10 @@ impl KeyCache {
 
         match &*read_guard {
             CacheState::Cached(cached) if now < cached.expires_at => {
-                let key = cached.keys.get(&key_id).ok_or(AuthError::UnknownKeyId)?;
+                let key = cached
+                    .keys
+                    .get(&key_id)
+                    .ok_or(ValidateTokenError::UnknownKeyId)?;
                 return Ok(Decoder {
                     key_id,
                     decoding_key: Arc::clone(key),
@@ -121,7 +127,10 @@ impl KeyCache {
                 // waiting for a write guard and/or refreshing may take time,
                 // so use a new 'now' timestamp when we check.
                 if Timestamp::now() < cached.expires_at {
-                    let key = cached.keys.get(&key_id).ok_or(AuthError::UnknownKeyId)?;
+                    let key = cached
+                        .keys
+                        .get(&key_id)
+                        .ok_or(ValidateTokenError::UnknownKeyId)?;
                     return Ok(Decoder {
                         key_id,
                         decoding_key: Arc::clone(key),
@@ -147,10 +156,10 @@ impl KeyCache {
         let mut header = jsonwebtoken::decode_header(token)?;
 
         if header.alg != Algorithm::RS256 {
-            return Err(AuthError::UnsupportedAlgo(header.alg).into());
+            return Err(ValidateTokenError::UnsupportedAlgo(header.alg).into());
         }
 
-        let kid = header.kid.take().ok_or(AuthError::MissingKeyId)?;
+        let kid = header.kid.take().ok_or(ValidateTokenError::MissingKeyId)?;
         Ok(KeyId(kid.into_boxed_str()))
     }
 }
