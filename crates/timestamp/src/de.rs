@@ -172,10 +172,6 @@ struct TimestampVisitor<Parser>(Parser);
 trait ParseUnit {
     fn expected_unit(&self) -> &str;
 
-    // fn handle_str(&self, s: &str) -> Result<Timestamp, error::Error> {
-    //    s.parse::<Timestamp>()
-    // }
-
     fn handle_f64(&self, f: f64) -> Result<Timestamp, ConvertError>;
 
     fn handle_i64(&self, i: i64) -> Result<Timestamp, ConvertError>;
@@ -279,13 +275,34 @@ impl<'de, Parser: ParseUnit> de::Visitor<'de> for TimestampVisitor<Parser> {
         )
     }
 
-    fn visit_str<E>(self, string: &str) -> Result<Self::Value, E>
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
-        string
-            .parse::<Timestamp>()
-            .map_err(|e| e.into_serde(Unexpected::Str(string)))
+        let s = std::str::from_utf8(v)
+            .map_err(|_| de::Error::invalid_value(de::Unexpected::Bytes(v), &self))?;
+
+        self.visit_str(s)
+    }
+
+    fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        if s.chars().all(|c| c.is_ascii_digit() || c == '.') {
+            if let Ok(int) = s.parse::<i64>() {
+                self.visit_i64(int)
+            } else {
+                let f = s
+                    .parse::<f64>()
+                    .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(s), &self))?;
+
+                self.visit_f64(f)
+            }
+        } else {
+            s.parse::<Timestamp>()
+                .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(s), &self))
+        }
     }
 
     fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
