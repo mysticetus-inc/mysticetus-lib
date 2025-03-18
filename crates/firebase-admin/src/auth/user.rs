@@ -11,9 +11,13 @@ pub struct UserInfo {
     email: Arc<str>,
     #[serde(alias = "localId")]
     uid: Arc<str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     valid_since: Option<Timestamp>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     photo_url: Option<Box<str>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     last_login_at: Option<Timestamp>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     display_name: Option<Box<str>>,
 }
 
