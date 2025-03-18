@@ -15,7 +15,7 @@ pub struct UserInfo {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "Timestamp::deserialize_from_millis_opt"
+        deserialize_with = "Timestamp::deserialize_from_seconds_opt"
     )]
     valid_since: Option<Timestamp>,
     #[serde(skip_serializing_if = "Option::is_none")]
