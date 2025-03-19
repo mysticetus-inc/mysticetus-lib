@@ -18,6 +18,8 @@ pub use manager::AuthManager;
 pub mod user;
 pub use user::UserInfo;
 
+pub type Token = jsonwebtoken::TokenData<Claims>;
+
 #[derive(Debug)]
 struct ValidateIdTokenShared {
     validation: Validation,
