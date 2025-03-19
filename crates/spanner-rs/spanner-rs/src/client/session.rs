@@ -5,6 +5,7 @@ use timestamp::Timestamp;
 
 use super::ClientParts;
 use super::connection::ConnectionParts;
+use crate::error::ConvertError;
 use crate::key_set::WriteBuilder;
 use crate::private::SealedConnection;
 use crate::tx::{ShouldCommit, Transaction};
@@ -162,6 +163,13 @@ impl SessionClient {
         ResultIter::from_result_set(result_set)
     }
 
+    pub fn mutate(&self, capacity: usize) -> MutationBuilder<'_> {
+        MutationBuilder {
+            mutations: Vec::with_capacity(capacity),
+            client: self,
+        }
+    }
+
     pub(crate) async fn refresh_session(&self) -> crate::Result<()> {
         let res = self
             .connection_parts()?
@@ -181,5 +189,51 @@ impl SessionClient {
         let _ = res;
 
         Ok(())
+    }
+}
+
+pub struct MutationBuilder<'a> {
+    mutations: Vec<protos::spanner::Mutation>,
+    client: &'a SessionClient,
+}
+
+macro_rules! impl_methods {
+    ($(
+        [$main_method:ident, $one_method:ident, $variant:ident]
+    ),* $(,)?) => {
+        $(
+            pub fn $main_method<T: crate::Table>(&mut self, write_builder: WriteBuilder<T>) -> &mut Self {
+                self.append_mutation(protos::spanner::Mutation {
+                    operation: Some(protos::spanner::mutation::Operation::$variant(
+                        write_builder.into_proto(),
+                    )),
+                })
+            }
+
+            pub fn $one_method<T: crate::Table>(&mut self, row: T) -> Result<&mut Self, ConvertError> {
+                let mut builder = WriteBuilder::with_row_capacity(1);
+                builder.add_row(row)?;
+                Ok(self.$main_method(builder))
+            }
+        )*
+    };
+}
+
+impl<'a> MutationBuilder<'a> {
+    pub async fn commit(&mut self) -> crate::Result<Option<CommitStats>> {
+        let mutations = std::mem::take(&mut self.mutations);
+        self.client.write_inner(mutations).await
+    }
+
+    fn append_mutation(&mut self, mutation: protos::spanner::Mutation) -> &mut Self {
+        self.mutations.push(mutation);
+        self
+    }
+
+    impl_methods! {
+        [insert_or_update, insert_or_update_one, InsertOrUpdate],
+        [update, update_one, Update],
+        [replace, replace_one, Replace],
+        [insert, insert_one, Insert],
     }
 }
