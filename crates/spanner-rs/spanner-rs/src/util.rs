@@ -1,7 +1,7 @@
 //! Internal utility functions/types.
 
 use std::fmt;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use crate::Table;
 
@@ -43,47 +43,57 @@ pub(crate) fn slice_to_buf(bytes: &[u8]) -> Vec<u8> {
 }
 */
 
-pub enum MaybeOwned<'a, T> {
+pub enum MaybeOwnedMut<'a, T> {
     Owned(T),
-    Borrowed(&'a T),
+    MutRef(&'a mut T),
 }
 
-impl<'a, T> MaybeOwned<'a, T> {
+impl<'a, T> MaybeOwnedMut<'a, T> {
     #[inline]
-    pub(crate) fn reborrow(&self) -> MaybeOwned<'_, T> {
-        MaybeOwned::Borrowed(self)
+    pub(crate) fn reborrow(&mut self) -> MaybeOwnedMut<'_, T> {
+        MaybeOwnedMut::MutRef(&mut *self)
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for MaybeOwned<'_, T> {
+impl<T: fmt::Debug> fmt::Debug for MaybeOwnedMut<'_, T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         T::fmt(&self, f)
     }
 }
 
-impl<T> From<T> for MaybeOwned<'_, T> {
+impl<T> From<T> for MaybeOwnedMut<'_, T> {
     #[inline]
     fn from(value: T) -> Self {
         Self::Owned(value)
     }
 }
 
-impl<'a, T> From<&'a T> for MaybeOwned<'a, T> {
+impl<'a, T> From<&'a mut T> for MaybeOwnedMut<'a, T> {
     #[inline]
-    fn from(value: &'a T) -> Self {
-        Self::Borrowed(value)
+    fn from(value: &'a mut T) -> Self {
+        Self::MutRef(value)
     }
 }
 
-impl<T> Deref for MaybeOwned<'_, T> {
+impl<T> Deref for MaybeOwnedMut<'_, T> {
     type Target = T;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Owned(owned) => owned,
-            Self::Borrowed(refer) => refer,
+            Self::MutRef(refer) => refer,
+        }
+    }
+}
+
+impl<T> DerefMut for MaybeOwnedMut<'_, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Owned(owned) => owned,
+            Self::MutRef(refer) => refer,
         }
     }
 }

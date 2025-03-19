@@ -1,9 +1,9 @@
 use std::num::NonZeroUsize;
 use std::sync::atomic::AtomicU64;
-use std::sync::{MappedRwLockReadGuard, PoisonError, RwLock, RwLockReadGuard};
 use std::time::Instant;
 
 use protos::spanner;
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -26,25 +26,21 @@ pub struct Session {
 }
 
 impl Session {
-    pub(super) fn close(&self) -> Option<Box<spanner::Session>> {
-        self.state
-            .write()
-            .unwrap_or_else(PoisonError::into_inner)
-            .close()
+    pub(super) async fn close(&self) -> Option<Box<spanner::Session>> {
+        self.state.write().await.close()
     }
 
     pub(super) fn is_closed(&self) -> bool {
         self.state
-            .read()
-            .unwrap_or_else(PoisonError::into_inner)
-            .raw_session()
-            .is_none()
+            .try_read()
+            .map(|inner| inner.raw_session().is_none())
+            .unwrap_or(false)
     }
 
-    pub(crate) fn raw_session(
+    pub(crate) async fn raw_session(
         &self,
-    ) -> Option<MappedRwLockReadGuard<'_, protos::spanner::Session>> {
-        let guard = self.state.read().unwrap_or_else(PoisonError::into_inner);
+    ) -> Option<RwLockReadGuard<'_, protos::spanner::Session>> {
+        let guard = self.state.read().await;
         RwLockReadGuard::try_map(guard, |session| session.raw_session()).ok()
     }
 

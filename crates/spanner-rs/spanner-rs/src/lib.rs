@@ -56,14 +56,14 @@ pub mod __private {
 ///
 /// Used to abstract bare [`Session`]s and different transaction types, while
 /// providing the same interface between them all.
-pub trait ReadableConnection<'a, 'sess>:
-    private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx> + 'a
+pub trait ReadableConnection:
+    for<'a, 'sess> private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx>
 {
 }
 
 /// Blanket impl over the real implementors.
-impl<'a, 'sess, T> ReadableConnection<'a, 'sess> for T where
-    T: private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx> + 'a
+impl<T> ReadableConnection for T where
+    for<'a, 'sess> T: private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx>
 {
 }
 
@@ -120,11 +120,7 @@ mod private {
         where
             Self: 'a;
 
-        type Error: Into<crate::Error>;
-
-        fn connection_parts(
-            &self,
-        ) -> Result<ConnectionParts<'_, 'session, Self::Tx<'_>>, Self::Error>;
+        fn connection_parts(&self) -> ConnectionParts<'_, 'session, Self::Tx<'_>>;
     }
 
     /// Base transaction trait. Really only used as a bound for the supertraits to keep implementors

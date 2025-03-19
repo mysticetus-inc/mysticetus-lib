@@ -228,20 +228,16 @@ impl<T: Table> KeySet<T> {
 
     pub async fn read<C>(&mut self, conn: &C) -> crate::Result<ResultIter<T>>
     where
-        for<'a, 'sess> C: crate::ReadableConnection<'a, 'sess>,
+        C: crate::ReadableConnection,
     {
-        conn.connection_parts()
-            .map_err(Into::into)?
-            .read_key_set(self.take())
-            .await
+        conn.connection_parts().read_key_set(self.take()).await
     }
 
     pub async fn streaming_read<C>(&mut self, conn: &C) -> crate::Result<StreamingRead<T>>
     where
-        for<'a, 'sess> C: crate::ReadableConnection<'a, 'sess>,
+        C: crate::ReadableConnection,
     {
         conn.connection_parts()
-            .map_err(Into::into)?
             .streaming_read_key_set(self.take())
             .await
     }

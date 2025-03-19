@@ -4,7 +4,7 @@ use protos::spanner::commit_response::CommitStats;
 use timestamp::Timestamp;
 
 use super::ClientParts;
-use super::connection::ConnectionParts;
+use super::connection::{ConnectionParts, RawSession};
 use crate::error::ConvertError;
 use crate::key_set::WriteBuilder;
 use crate::private::SealedConnection;
@@ -22,20 +22,13 @@ impl<'session> SealedConnection<'session> for &'session SessionClient {
     where
         'session: 'a;
 
-    type Error = crate::Error;
-
     #[inline]
-    fn connection_parts(&self) -> crate::Result<ConnectionParts<'_, 'session, Self::Tx<'_>>> {
-        let raw_session = self
-            .session
-            .raw_session()
-            .ok_or(crate::Error::SessionDeleted)?;
-
-        Ok(ConnectionParts::from_parts(
+    fn connection_parts(&self) -> ConnectionParts<'_, 'session, Self::Tx<'_>> {
+        ConnectionParts::from_parts(
             &self.parts,
-            raw_session,
+            RawSession::Pending(&self.session),
             crate::tx::SingleUse,
-        ))
+        )
     }
 }
 impl SessionClient {
@@ -50,7 +43,7 @@ impl SessionClient {
         mutations: Vec<protos::spanner::Mutation>,
     ) -> crate::Result<Option<CommitStats>> {
         let resp = self
-            .connection_parts()?
+            .connection_parts()
             .commit_inner(mutations)
             .await?
             .into_inner();
@@ -99,13 +92,11 @@ impl SessionClient {
     }
 
     pub async fn begin_transaction(&self) -> crate::Result<Transaction<'_, '_>> {
-        let raw_session = self
-            .session
-            .raw_session()
-            .ok_or(crate::Error::SessionDeleted)?;
-
-        let parts =
-            ConnectionParts::from_parts(&self.parts, raw_session, crate::tx::Begin::default());
+        let mut parts = ConnectionParts::from_parts(
+            &self.parts,
+            RawSession::Pending(&self.session),
+            crate::tx::Begin::default(),
+        );
 
         let tx = parts.begin_tx().await?;
 
@@ -119,6 +110,7 @@ impl SessionClient {
         let raw_session = self
             .session
             .raw_session()
+            .await
             .ok_or(crate::Error::SessionDeleted)?;
 
         let req = protos::spanner::ExecuteBatchDmlRequest {
@@ -143,7 +135,7 @@ impl SessionClient {
         params: Option<crate::sql::Params>,
     ) -> crate::Result<StreamingRead<T>> {
         let streaming = self
-            .connection_parts()?
+            .connection_parts()
             .execute_streaming_sql_inner(sql, params)
             .await?;
 
@@ -156,7 +148,7 @@ impl SessionClient {
         params: Option<crate::sql::Params>,
     ) -> crate::Result<ResultIter<T>> {
         let result_set = self
-            .connection_parts()?
+            .connection_parts()
             .execute_sql_inner(sql, params)
             .await?;
 
@@ -172,7 +164,7 @@ impl SessionClient {
 
     pub(crate) async fn refresh_session(&self) -> crate::Result<()> {
         let res = self
-            .connection_parts()?
+            .connection_parts()
             .execute_sql_inner("SELECT 1".into(), None)
             .await?;
 

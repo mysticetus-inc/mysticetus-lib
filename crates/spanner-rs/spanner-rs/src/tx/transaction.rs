@@ -8,11 +8,11 @@ use crate::client::ClientParts;
 use crate::client::connection::{ConnectionParts, RawSession};
 use crate::error::ConvertError;
 use crate::key_set::{KeySet, WriteBuilder};
-use crate::util::MaybeOwned;
+use crate::util::MaybeOwnedMut;
 
 #[must_use = "a transaction must be committed or rolled back"]
 pub struct Transaction<'a, 'session> {
-    raw_session: MaybeOwned<'a, RawSession<'session>>,
+    raw_session: MaybeOwnedMut<'a, RawSession<'session>>,
     client_parts: &'a ClientParts,
     mutations: Vec<Mutation>,
     tx: spanner::Transaction,
@@ -52,7 +52,7 @@ impl<'a, 'session> Transaction<'a, 'session> {
     }
 
     pub(crate) fn parts(
-        &self,
+        &mut self,
     ) -> ConnectionParts<'_, 'session, super::Existing<'_, super::ReadWrite>> {
         crate::client::connection::ConnectionParts::from_parts(
             self.client_parts,
@@ -62,19 +62,20 @@ impl<'a, 'session> Transaction<'a, 'session> {
     }
 }
 
+/*
 impl<'tx, 'session> crate::private::SealedConnection<'session> for Transaction<'tx, 'session> {
     type Tx<'a>
         = super::Existing<'a, super::ReadWrite>
     where
         Self: 'a;
 
-    type Error = std::convert::Infallible;
-
     #[inline]
-    fn connection_parts(&self) -> Result<ConnectionParts<'_, 'session, Self::Tx<'_>>, Self::Error> {
-        Ok(self.parts())
+    fn connection_parts(&self) -> ConnectionParts<'_, 'session, Self::Tx<'_>> {
+        // self.parts()
+        todo!()
     }
 }
+*/
 
 fn build_single_row_write<R: Table>(row: R) -> Result<Write, ConvertError> {
     let mut wb = WriteBuilder::with_row_capacity(1);
@@ -222,8 +223,8 @@ impl Transaction<'_, '_> {
                 self.completed_successfully = true;
                 Ok(Some(resp.into_inner()))
             }
-            Err(err) if err.code() == Code::Aborted => Ok(None),
-            Err(error) => Err(error.into()),
+            Err(crate::Error::Status(err)) if err.code() == Code::Aborted => Ok(None),
+            Err(error) => Err(error),
         }
     }
 

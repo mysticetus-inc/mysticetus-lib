@@ -9,8 +9,6 @@
 //! [`Transaction`]: crate::tx::Transaction
 #![allow(dead_code)]
 
-use std::sync::MappedRwLockReadGuard;
-
 use bytes::Bytes;
 use gcp_auth_channel::AuthChannel;
 use protos::spanner::transaction_options::read_only::TimestampBound;
@@ -26,11 +24,36 @@ use crate::key_set::KeySet;
 use crate::results::{ResultIter, StreamingRead};
 use crate::sql::Params;
 use crate::tx::ReadWriteTx;
-use crate::util::MaybeOwned;
+use crate::util::MaybeOwnedMut;
 use crate::{Table, tx};
 
-/// Type alias for a borrowed session that is known to be active
-pub(crate) type RawSession<'session> = MappedRwLockReadGuard<'session, protos::spanner::Session>;
+pub(crate) enum RawSession<'session> {
+    Borrowed(tokio::sync::RwLockReadGuard<'session, spanner::Session>),
+    Pending(&'session super::pool::BorrowedSession),
+}
+
+impl<'a> RawSession<'a> {
+    pub async fn get_raw_session(
+        &mut self,
+    ) -> crate::Result<&tokio::sync::RwLockReadGuard<'a, spanner::Session>> {
+        match self {
+            Self::Borrowed(guard) => Ok(guard),
+            Self::Pending(pending) => {
+                let raw_session = pending
+                    .raw_session()
+                    .await
+                    .ok_or(crate::Error::SessionDeleted)?;
+
+                *self = Self::Borrowed(raw_session);
+
+                match self {
+                    Self::Borrowed(guard) => Ok(guard),
+                    Self::Pending(_) => unreachable!(),
+                }
+            }
+        }
+    }
+}
 
 /// A const proto key set to read an entire table
 const ALL_KEY_SET: spanner::KeySet = spanner::KeySet {
@@ -61,7 +84,7 @@ const DEFAULT_READ_ONLY: TransactionOptions = TransactionOptions {
 /// and provides internal helper functions to simplify things internally.
 pub struct ConnectionParts<'a, 'session, T> {
     pub(crate) client_parts: &'a crate::client::ClientParts,
-    pub(crate) raw_session: MaybeOwned<'a, RawSession<'session>>,
+    pub(crate) raw_session: MaybeOwnedMut<'a, RawSession<'session>>,
     tx: T,
 }
 
@@ -69,7 +92,7 @@ impl<'a, 'session, T> ConnectionParts<'a, 'session, T> {
     #[inline]
     pub(crate) fn from_parts(
         client_parts: &'a crate::client::ClientParts,
-        raw_session: impl Into<MaybeOwned<'a, RawSession<'session>>>,
+        raw_session: impl Into<MaybeOwnedMut<'a, RawSession<'session>>>,
         tx: T,
     ) -> Self {
         Self {
@@ -155,7 +178,7 @@ where
     // -------------- Read + Streaming Read Inner ---------------- //
 
     pub(crate) async fn read_inner(
-        &self,
+        &mut self,
         key_set: spanner::KeySet,
         table: String,
         cols: Vec<String>,
@@ -163,8 +186,10 @@ where
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
     ) -> crate::Result<ResultSet> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let request = build_read_request(
-            self.raw_session.name.clone(),
+            raw_session.name.clone(),
             self.tx.build_read_only_selector(),
             key_set,
             table,
@@ -182,12 +207,14 @@ where
     }
 
     pub(crate) async fn execute_sql_inner(
-        &self,
+        &mut self,
         sql: String,
         params: Option<Params>,
     ) -> crate::Result<ResultSet> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let request = build_sql_request(
-            self.raw_session.name.clone(),
+            raw_session.name.clone(),
             self.tx.build_read_only_selector(),
             sql,
             params,
@@ -201,7 +228,7 @@ where
     }
 
     pub(crate) async fn streaming_read_inner(
-        &self,
+        &mut self,
         key_set: spanner::KeySet,
         table: String,
         cols: Vec<String>,
@@ -209,8 +236,10 @@ where
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
     ) -> crate::Result<tonic::Streaming<PartialResultSet>> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let req = build_read_request(
-            self.raw_session.name.clone(),
+            raw_session.name.clone(),
             self.tx.build_read_only_selector(),
             key_set,
             table,
@@ -228,12 +257,14 @@ where
     }
 
     pub(crate) async fn execute_streaming_sql_inner(
-        &self,
+        &mut self,
         sql: String,
         params: Option<Params>,
     ) -> crate::Result<tonic::Streaming<PartialResultSet>> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let request = build_sql_request(
-            self.raw_session.name.clone(),
+            raw_session.name.clone(),
             self.tx.build_read_only_selector(),
             sql,
             params,
@@ -249,7 +280,7 @@ where
     // ------------ Read + Streaming Read Table -------------- //
 
     pub(crate) async fn read_table<T: Table>(
-        &self,
+        &mut self,
         key_set: spanner::KeySet,
         lim: Option<u32>,
     ) -> crate::Result<ResultIter<T>> {
@@ -264,7 +295,7 @@ where
     }
 
     pub(crate) async fn streaming_read_table<T: Table>(
-        &self,
+        &mut self,
         key_set: spanner::KeySet,
         lim: Option<u32>,
     ) -> crate::Result<StreamingRead<T>> {
@@ -281,7 +312,7 @@ where
     // --------- Read + Streaming Read from KeySet ------------ //
 
     pub(crate) async fn read_key_set<T: Table>(
-        &self,
+        &mut self,
         key_set: KeySet<T>,
     ) -> crate::Result<ResultIter<T>> {
         let lim = key_set.get_limit();
@@ -290,7 +321,7 @@ where
     }
 
     pub(crate) async fn streaming_read_key_set<T: Table>(
-        &self,
+        &mut self,
         key_set: KeySet<T>,
     ) -> crate::Result<StreamingRead<T>> {
         let lim = key_set.get_limit();
@@ -301,19 +332,19 @@ where
     // ------------- Read Entire Table ----------- //
 
     #[inline]
-    pub(crate) async fn streaming_read_all<T: Table>(&self) -> crate::Result<StreamingRead<T>> {
+    pub(crate) async fn streaming_read_all<T: Table>(&mut self) -> crate::Result<StreamingRead<T>> {
         self.streaming_read_table::<T>(ALL_KEY_SET, None).await
     }
 
     #[inline]
-    pub(crate) async fn read_all<T: Table>(&self) -> crate::Result<ResultIter<T>> {
+    pub(crate) async fn read_all<T: Table>(&mut self) -> crate::Result<ResultIter<T>> {
         self.read_table::<T>(ALL_KEY_SET, None).await
     }
 
     // -------------- Read from 1 or more PK --------------- //
 
     #[inline]
-    pub(crate) async fn read_one<T: Table>(&self, pk: T::Pk) -> crate::Result<Option<T>> {
+    pub(crate) async fn read_one<T: Table>(&mut self, pk: T::Pk) -> crate::Result<Option<T>> {
         let mut key_set = KeySet::<T>::with_capacity(1, 0);
         key_set.add_key(pk);
 
@@ -330,7 +361,7 @@ where
     }
 
     #[inline]
-    pub(crate) async fn read_rows<T: Table, I>(&self, pks: I) -> crate::Result<ResultIter<T>>
+    pub(crate) async fn read_rows<T: Table, I>(&mut self, pks: I) -> crate::Result<ResultIter<T>>
     where
         I: IntoIterator<Item = T::Pk>,
     {
@@ -341,7 +372,7 @@ where
 
     #[inline]
     pub(crate) async fn streaming_read_rows<T: Table, I>(
-        &self,
+        &mut self,
         pks: I,
     ) -> crate::Result<StreamingRead<T>>
     where
@@ -377,22 +408,28 @@ impl<Tx: ReadWriteTx> ConnectionParts<'_, '_, Tx> {
     pub(crate) async fn commit_inner(
         &mut self,
         mutations: Vec<spanner::Mutation>,
-    ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
+    ) -> crate::Result<tonic::Response<CommitResponse>> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let request = build_commit_request(
-            self.raw_session.name.clone(),
+            raw_session.name.clone(),
             self.tx.build_read_write(),
             mutations,
         );
 
-        self.client().commit(request).await
+        self.client()
+            .commit(request)
+            .await
+            .map_err(crate::Error::Status)
     }
 }
 
 // ----------- Existing, Read-write Transaction specific ----------- //
 impl ConnectionParts<'_, '_, tx::Existing<'_, tx::ReadWrite>> {
-    pub(crate) async fn rollback(&self) -> crate::Result<()> {
+    pub(crate) async fn rollback(&mut self) -> crate::Result<()> {
+        let raw_session = self.raw_session.get_raw_session().await?;
         let request = spanner::RollbackRequest {
-            session: self.raw_session.name.clone(),
+            session: raw_session.name.clone(),
             transaction_id: self.tx.clone_id(),
         };
 
@@ -405,9 +442,11 @@ impl ConnectionParts<'_, '_, tx::Existing<'_, tx::ReadWrite>> {
 // ----------- Special begin tx methods --------------- //
 impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
     /// Begins a standalone transaction, not tied to a specific read.
-    pub(crate) async fn begin_tx(&self) -> crate::Result<spanner::Transaction> {
+    pub(crate) async fn begin_tx(&mut self) -> crate::Result<spanner::Transaction> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let request = BeginTransactionRequest {
-            session: self.raw_session.name.clone(),
+            session: raw_session.name.clone(),
             options: Some(Tx::OPTIONS),
             request_options: None,
             mutation_key: None,
@@ -422,7 +461,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
 
     /// Start a transaction, and do a read at the same time (within the started transaction).
     pub(crate) async fn begin_tx_read_inner(
-        &self,
+        &mut self,
         key_set: spanner::KeySet,
         table: String,
         cols: Vec<String>,
@@ -430,8 +469,10 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
     ) -> crate::Result<(spanner::Transaction, ResultSet)> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let req = build_read_request(
-            self.raw_session.name.clone(),
+            raw_session.name.clone(),
             self.tx.build_selector(),
             key_set,
             table,
@@ -455,7 +496,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
     /// Start a transaction, and do a streaming read at the same time (within the started
     /// transaction).
     pub(crate) async fn begin_tx_streaming_read_inner(
-        &self,
+        &mut self,
         key_set: spanner::KeySet,
         table: String,
         cols: Vec<String>,
@@ -467,8 +508,10 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
         PartialResultSet,
         tonic::Streaming<PartialResultSet>,
     )> {
+        let raw_session = self.raw_session.get_raw_session().await?;
+
         let req = build_read_request(
-            self.raw_session.name.clone(),
+            raw_session.name.clone(),
             self.tx.build_selector(),
             key_set,
             table,
@@ -495,7 +538,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
     }
 
     pub(crate) async fn begin_tx_read_table<T: Table>(
-        &self,
+        &mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
@@ -514,7 +557,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
     }
 
     pub(crate) async fn begin_tx_streaming_read_table<T: Table>(
-        &self,
+        &mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
@@ -536,7 +579,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
 // ------------ Specific begin read-write tx functions ------------- //
 impl<'a, 'session> ConnectionParts<'a, 'session, tx::Begin<tx::ReadWrite>> {
     pub(crate) async fn begin_tx_read<T: Table>(
-        self,
+        mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
@@ -549,7 +592,7 @@ impl<'a, 'session> ConnectionParts<'a, 'session, tx::Begin<tx::ReadWrite>> {
     }
 
     pub(crate) async fn begin_tx_streaming_read<T: Table>(
-        self,
+        mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
@@ -570,7 +613,7 @@ macro_rules! impl_deferred_read_functions {
             T: $crate::Table,
             K: $crate::key_set::IntoKeySet<T>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)?
+            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
                 .read_key_set(key_set.into_key_set())
                 .await
         }
@@ -584,7 +627,7 @@ macro_rules! impl_deferred_read_functions {
             T: $crate::Table,
             K: $crate::key_set::IntoKeySet<T>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)?
+            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
                 .streaming_read_key_set(key_set.into_key_set())
                 .await
         }
@@ -594,7 +637,7 @@ macro_rules! impl_deferred_read_functions {
         where
             T: $crate::Table,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)?
+            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
                 .read_all()
                 .await
         }
@@ -606,7 +649,7 @@ macro_rules! impl_deferred_read_functions {
         where
             T: $crate::Table,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)?
+            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
                 .streaming_read_all()
                 .await
         }
@@ -616,7 +659,7 @@ macro_rules! impl_deferred_read_functions {
         where
             T: $crate::Table,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)?
+            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
                 .read_one(pk)
                 .await
         }
@@ -629,7 +672,7 @@ macro_rules! impl_deferred_read_functions {
         where
             I: IntoIterator<Item = T::Pk>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)?
+            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
                 .read_rows(pks)
                 .await
         }
@@ -642,7 +685,7 @@ macro_rules! impl_deferred_read_functions {
         where
             I: IntoIterator<Item = T::Pk>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)?
+            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
                 .streaming_read_rows(pks)
                 .await
         }

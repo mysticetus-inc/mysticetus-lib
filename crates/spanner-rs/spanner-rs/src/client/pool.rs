@@ -90,10 +90,6 @@ impl BorrowedSession {
             session,
         }
     }
-
-    fn close(&self) -> Option<Box<spanner::Session>> {
-        self.session.close()
-    }
 }
 
 impl Deref for BorrowedSession {
