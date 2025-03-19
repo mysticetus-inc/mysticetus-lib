@@ -247,7 +247,7 @@ impl Client {
     }
     */
 
-    pub fn shutdown_task(&self) -> impl FnOnce() -> ShutdownFuture {
+    pub fn shutdown_task(&self) -> impl FnOnce() -> ShutdownFuture + 'static {
         let pool = self.session_pool.clone();
 
         move || ShutdownFuture {
