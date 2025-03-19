@@ -25,6 +25,12 @@ pub enum Value {
     Map(Map),
 }
 
+impl From<firestore::Value> for Value {
+    fn from(value: firestore::Value) -> Self {
+        Self::from_proto_value(value)
+    }
+}
+
 impl Value {
     #[inline]
     pub(crate) fn into_proto_value(self) -> firestore::Value {
