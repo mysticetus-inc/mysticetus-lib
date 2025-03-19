@@ -1,9 +1,12 @@
 use std::fmt;
+use std::pin::Pin;
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
 use protos::spanner::spanner_client::SpannerClient;
 use timestamp::Timestamp;
+use tokio::task::JoinSet;
 use tonic::transport::ClientTlsConfig;
 
 use crate::info::Database;
@@ -244,8 +247,12 @@ impl Client {
     }
     */
 
-    pub(crate) fn grpc(&self) -> SpannerClient<AuthChannel> {
-        SpannerClient::new(self.parts.channel.clone())
+    pub fn shutdown_task(&self) -> impl FnOnce() -> ShutdownFuture {
+        let pool = self.session_pool.clone();
+
+        move || ShutdownFuture {
+            tasks: pool.delete_sessions(),
+        }
     }
 
     pub async fn borrow_session(
@@ -320,5 +327,36 @@ impl Client {
             .await?
             .execute_sql(sql, params)
             .await
+    }
+}
+
+pin_project_lite::pin_project! {
+    pub struct ShutdownFuture {
+        #[pin]
+        tasks: Option<JoinSet<crate::Result<()>>>,
+    }
+}
+
+impl std::future::Future for ShutdownFuture {
+    type Output = crate::Result<()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut this = self.project();
+
+        let Some(mut tasks) = this.tasks.as_mut().as_pin_mut() else {
+            return Poll::Ready(Ok(()));
+        };
+
+        loop {
+            match std::task::ready!(tasks.poll_join_next(cx)) {
+                Some(result) => {
+                    result.map_err(|task_err| crate::Error::Misc(task_err.into()))??
+                }
+                None => {
+                    this.tasks.set(None);
+                    return Poll::Ready(Ok(()));
+                }
+            }
+        }
     }
 }

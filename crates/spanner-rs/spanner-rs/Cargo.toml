@@ -9,7 +9,7 @@ edition = "2024"
 http.workspace = true
 tokio = { workspace = true, features = ["signal", "time", "fs", "macros"] }
 gcp-auth-channel = { path = "../../gcp-auth-channel", features = ["channel"] }
-# data-structures = { path = "../../data-structures" }
+
 protos = { path = "../../protos", features = ["spanner"] }
 serde = { workspace = true, features = ["derive"] }
 timestamp = { path = "../../timestamp" }
@@ -19,34 +19,27 @@ futures.workspace = true
 thiserror.workspace = true
 pin-project-lite.workspace = true
 net-utils = { path = "../../net-utils" }
-slab = "0.4.7"
 tracing.workspace = true
 uuid.workspace = true
 itoa.workspace = true
 longrunning = { path = "../../longrunning" }
 static-casing.workspace = true
 http-body.workspace = true
-deadpool = { version = "0.12", default-features = false, features = [
-    "unmanaged",
-    "rt_tokio_1",
-] }
 serde_json = { workspace = true, optional = true }
 shared.workspace = true
 spanner-rs-macros = { path = "../spanner-rs-macros" }
 tower = { workspace = true, features = ["retry"] }
-either = "1.8.0"
-anyhow = "1.0.68"
 base64 = "0.21.0"
 bytes.workspace = true
-path-aware-serde = { version = "0.0.0", path = "../../path-aware-serde", features = [
+anyhow = "1"
+path-aware-serde = { path = "../../path-aware-serde", features = [
     "json",
     "serde_json",
 ] }
-generic-array = "1.0.0"
 typenum.workspace = true
-crossbeam = "0.8.2"
 tokio-util.workspace = true
 fxhash = "0.2.1"
+generic-array = "1.2.0"
 
 
 [dev-dependencies]
@@ -57,7 +50,7 @@ ryu = "1.0.12"
 
 
 [features]
-default = ["debug-table-macro"]                                            # ["serde_json", "admin", "emulator"]
+default = []                                                               # ["serde_json", "admin", "emulator"]
 serde_json = ["dep:serde_json"]
 admin = ["protos/spanner-admin-database", "protos/spanner-admin-instance"]
 emulator = ["tokio/process", "gcp-auth-channel/emulator"]

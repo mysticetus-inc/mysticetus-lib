@@ -4,6 +4,7 @@ use std::ops::Deref;
 use std::sync::{Arc, LazyLock, Weak};
 
 use protos::spanner::{self};
+use tokio::task::JoinSet;
 
 mod internal;
 mod session;
@@ -44,6 +45,10 @@ impl SessionPool {
         Self {
             inner: Arc::new(internal::SessionPoolInner::new(client)),
         }
+    }
+
+    pub(crate) fn delete_sessions(&self) -> Option<JoinSet<crate::Result<()>>> {
+        self.inner.delete_sessions()
     }
 
     pub(super) async fn borrow_session(
