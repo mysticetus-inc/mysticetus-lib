@@ -1,5 +1,6 @@
 use std::fmt;
 use std::num::NonZeroUsize;
+use std::ops::Deref;
 use std::sync::{Arc, LazyLock, Weak};
 
 use protos::spanner::{self};
@@ -45,20 +46,29 @@ impl SessionPool {
         }
     }
 
-    async fn borrow_session(
+    pub(super) async fn borrow_session(
         &self,
         timeout: Option<timestamp::Duration>,
     ) -> Option<BorrowedSession> {
         self.inner.borrow_session(timeout).await
     }
 
-    async fn get_or_create_session<'a>(
+    pub(super) async fn get_or_create_session(
         &self,
         timeout: Option<timestamp::Duration>,
         batch_create: NonZeroUsize,
     ) -> crate::Result<BorrowedSession> {
         self.inner
             .get_or_create_session(timeout, batch_create)
+            .await
+    }
+
+    pub(super) async fn get_or_create_session_according_to_load(
+        &self,
+        timeout: Option<timestamp::Duration>,
+    ) -> crate::Result<BorrowedSession> {
+        self.inner
+            .get_or_create_session_according_to_load(timeout)
             .await
     }
 }
@@ -78,6 +88,13 @@ impl BorrowedSession {
 
     fn close(&self) -> Option<Box<spanner::Session>> {
         self.session.close()
+    }
+}
+
+impl Deref for BorrowedSession {
+    type Target = session::Session;
+    fn deref(&self) -> &Self::Target {
+        &self.session
     }
 }
 

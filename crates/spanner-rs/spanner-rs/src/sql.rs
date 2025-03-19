@@ -4,7 +4,7 @@ use protos::{protobuf, spanner};
 
 use crate::IntoSpanner;
 use crate::convert::SpannerEncode;
-use crate::ty::{SpannerType, Type};
+use crate::ty::Type;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Params {
@@ -34,7 +34,7 @@ impl Params {
         N: Into<String>,
         T: IntoSpanner,
     {
-        self.insert_inner(name.into(), T::TYPE, value.into_value());
+        self.insert_inner(name.into(), crate::ty::ty::<T>(), value.into_value());
         self
     }
 
@@ -45,7 +45,7 @@ impl Params {
     {
         self.insert_inner(
             name.into(),
-            <T::SpannerType as SpannerType>::TYPE,
+            crate::ty::ty::<T::SpannerType>(),
             value.encode()?.into_value(),
         );
         Ok(self)

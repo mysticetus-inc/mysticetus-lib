@@ -121,6 +121,32 @@ impl SessionPoolInner {
         }
     }
 
+    pub(crate) async fn get_or_create_session_according_to_load<'a>(
+        self: &Arc<Self>,
+        timeout: Option<timestamp::Duration>,
+    ) -> crate::Result<super::BorrowedSession> {
+        if let Some(session) = self.borrow_session(timeout).await {
+            return Ok(session);
+        }
+
+        let stats = self.stats();
+
+        let to_create = (stats.total / 2).clamp(1, 5);
+
+        match to_create {
+            0 => unreachable!("clamped to 1-5"),
+            1 => {
+                let new_session = create_session(&self.client).await?;
+                Ok(self.add_sessions([new_session]))
+            }
+            to_create => {
+                let to_create = (to_create as u8).min(10);
+                let sessions = batch_create_sessions(&self.client, to_create).await?;
+                Ok(self.add_sessions(sessions))
+            }
+        }
+    }
+
     fn add_sessions(
         self: &Arc<Self>,
         sessions: impl IntoIterator<Item = protos::spanner::Session>,

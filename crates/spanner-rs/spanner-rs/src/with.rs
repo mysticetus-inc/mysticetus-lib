@@ -1,11 +1,10 @@
 //! <code>#[spanner(with = ...)]</code> adapter types.
 use bytes::Bytes;
 use protos::protobuf::value::Kind;
-use shared::static_or_boxed::StaticOrBoxed;
 
 use crate::error::{ConvertError, FromError};
 use crate::ty::SpannerType;
-use crate::{FromSpanner, IntoSpanner, Scalar, Type, Value};
+use crate::{FromSpanner, IntoSpanner, Value};
 
 // -------------------- Json<T> ------------------ //
 
@@ -17,8 +16,8 @@ pub struct Json<T>(pub T);
 
 #[cfg(feature = "serde_json")]
 impl<T: serde::Serialize> SpannerType for Json<T> {
-    const TYPE: &'static Type = &Type::Scalar(Scalar::Json);
-    const NULLABLE: bool = true;
+    type Type = crate::ty::markers::Json;
+    type Nullable = typenum::True;
 }
 
 #[cfg(feature = "serde_json")]
@@ -84,11 +83,8 @@ where
     I: IntoIterator,
     I::Item: SpannerType,
 {
-    const TYPE: &'static Type = &Type::Array {
-        element: StaticOrBoxed::Static(<I::Item as SpannerType>::TYPE),
-    };
-
-    const NULLABLE: bool = false;
+    type Type = crate::ty::markers::Array<<I::Item as SpannerType>::Type>;
+    type Nullable = typenum::False;
 }
 
 // -------------- Bytes ------------------ //
@@ -99,8 +95,8 @@ where
 pub struct AsBytes<T = Bytes>(pub T);
 
 impl<T: AsRef<[u8]>> SpannerType for AsBytes<T> {
-    const TYPE: &'static Type = &Type::Scalar(Scalar::Bytes);
-    const NULLABLE: bool = false;
+    type Type = crate::ty::markers::Bytes;
+    type Nullable = typenum::False;
 }
 
 // inner encode/decode function with no generic params to avoid
@@ -145,22 +141,18 @@ impl<T: AsRef<[u8]> + From<Vec<u8>>> FromSpanner for AsBytes<T> {
 
 pub struct Proto<T>(pub T);
 
-impl<T: prost::Name> SpannerType for Proto<T> {
-    const TYPE: &'static Type = &Type::Proto(crate::ty::ProtoName::Split {
-        package: T::PACKAGE,
-        name: T::NAME,
-    });
-
-    const NULLABLE: bool = false;
+impl<T: prost::Name + crate::ty::markers::SpannerProto> SpannerType for Proto<T> {
+    type Type = crate::ty::markers::Proto<T>;
+    type Nullable = typenum::False;
 }
 
-impl<T: prost::Name> IntoSpanner for Proto<T> {
+impl<T: prost::Name + crate::ty::markers::SpannerProto> IntoSpanner for Proto<T> {
     fn into_value(self) -> Value {
         encode(&self.0.encode_to_vec()).into_value()
     }
 }
 
-impl<T: prost::Name + Default> FromSpanner for Proto<T> {
+impl<T: prost::Name + crate::ty::markers::SpannerProto + Default> FromSpanner for Proto<T> {
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let string = value.into_string::<Self>()?;
 
@@ -180,20 +172,16 @@ impl<T: prost::Name + Default> FromSpanner for Proto<T> {
 
 pub struct AsProtoEnum<T>(pub T);
 
-pub trait ProtoEnum: Into<i32> + TryFrom<i32> {
-    const TYPE_NAME: &'static str;
-    const PACKAGE: &'static str;
+impl<T: Into<i32> + TryFrom<i32> + crate::ty::markers::SpannerProto> SpannerType
+    for AsProtoEnum<T>
+{
+    type Type = crate::ty::markers::Proto<T>;
+    type Nullable = typenum::False;
 }
 
-impl<T: ProtoEnum> SpannerType for AsProtoEnum<T> {
-    const NULLABLE: bool = false;
-    const TYPE: &'static Type = &Type::Proto(crate::ty::ProtoName::Split {
-        package: T::PACKAGE,
-        name: T::TYPE_NAME,
-    });
-}
-
-impl<T: ProtoEnum> IntoSpanner for AsProtoEnum<T> {
+impl<T: Into<i32> + TryFrom<i32> + crate::ty::markers::SpannerProto> IntoSpanner
+    for AsProtoEnum<T>
+{
     fn into_value(self) -> Value {
         let int_repr: i32 = self.0.into();
 
@@ -221,8 +209,8 @@ where
     T: TryFrom<i32>,
     <T as TryFrom<i32>>::Error: std::error::Error + Send + Sync + 'static,
 {
-    const TYPE: &'static Type = &Type::Scalar(Scalar::Enum);
-    const NULLABLE: bool = false;
+    type Type = crate::ty::markers::Enum;
+    type Nullable = typenum::False;
 }
 
 impl<T> IntoSpanner for Enum<T>

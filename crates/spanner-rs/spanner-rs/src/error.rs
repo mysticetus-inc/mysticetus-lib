@@ -333,13 +333,13 @@ impl FromError {
                 value: value.into(),
                 error: None,
             },
-            expected: Some(Cow::Borrowed(&<T::SpannerType as SpannerType>::TYPE)),
+            expected: Some(Cow::Borrowed(crate::ty::ty::<T::SpannerType>())),
             column: None,
         }
     }
 
     pub fn with_type<T: SpannerEncode>(self) -> Self {
-        self.replace_type(Cow::Borrowed(<T::SpannerType as SpannerType>::TYPE))
+        self.replace_type(Cow::Borrowed(crate::ty::ty::<T::SpannerType>()))
     }
 
     pub fn replace_type<C>(mut self, replacement_ty: C) -> Self
@@ -367,7 +367,7 @@ impl FromError {
                 value: value.into(),
                 error: Some(anyhow::anyhow!(error)),
             },
-            expected: Some(Cow::Borrowed(<T::SpannerType as SpannerType>::TYPE)),
+            expected: Some(Cow::Borrowed(crate::ty::ty::<T::SpannerType>())),
             column: None,
         }
     }
@@ -377,7 +377,7 @@ impl FromError {
     ) -> Self {
         Self {
             info: TypeErrorInfo::Error(anyhow::anyhow!(error)),
-            expected: Some(Cow::Borrowed(<T::SpannerType as SpannerType>::TYPE)),
+            expected: Some(Cow::Borrowed(crate::ty::ty::<T::SpannerType>())),
             column: None,
         }
     }
@@ -385,7 +385,7 @@ impl FromError {
     pub fn from_anyhow<T: SpannerEncode>(error: anyhow::Error) -> Self {
         Self {
             info: TypeErrorInfo::Error(error),
-            expected: Some(Cow::Borrowed(<T::SpannerType as SpannerType>::TYPE)),
+            expected: Some(Cow::Borrowed(crate::ty::ty::<T::SpannerType>())),
             column: None,
         }
     }
@@ -399,7 +399,7 @@ impl FromError {
                 value: value.into(),
                 error: Some(error),
             },
-            expected: Some(Cow::Borrowed(<T::SpannerType as SpannerType>::TYPE)),
+            expected: Some(Cow::Borrowed(crate::ty::ty::<T::SpannerType>())),
             column: None,
         }
     }

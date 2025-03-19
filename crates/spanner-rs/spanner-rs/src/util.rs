@@ -1,4 +1,7 @@
-//! Internal utility functions.
+//! Internal utility functions/types.
+
+use std::fmt;
+use std::ops::Deref;
 
 use crate::Table;
 
@@ -15,6 +18,7 @@ pub(crate) fn table_col_names<T: Table>() -> Vec<String> {
     unsafe { buf.assume_init().into_vec() }
 }
 
+/*
 #[inline]
 pub(crate) fn slice_to_owned(slice: &[&str]) -> Vec<String> {
     let mut buf = Box::new_uninit_slice(slice.len());
@@ -32,9 +36,54 @@ pub(crate) fn slice_to_owned(slice: &[&str]) -> Vec<String> {
 pub(crate) fn slice_to_buf(bytes: &[u8]) -> Vec<u8> {
     let mut dst = Box::<[u8]>::new_uninit_slice(bytes.len());
 
-    std::mem::MaybeUninit::copy_from_slice(&mut dst, bytes);
-
+    dst.write_copy_of_slice(bytes);
     // SAFETY: the above call to 'write_slice' filled 'dst' with 'bytes',
     // and since they share the same length 'dst' is fully initialized.
     unsafe { dst.assume_init().into_vec() }
+}
+*/
+
+pub enum MaybeOwned<'a, T> {
+    Owned(T),
+    Borrowed(&'a T),
+}
+
+impl<'a, T> MaybeOwned<'a, T> {
+    #[inline]
+    pub(crate) fn reborrow(&self) -> MaybeOwned<'_, T> {
+        MaybeOwned::Borrowed(self)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for MaybeOwned<'_, T> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        T::fmt(&self, f)
+    }
+}
+
+impl<T> From<T> for MaybeOwned<'_, T> {
+    #[inline]
+    fn from(value: T) -> Self {
+        Self::Owned(value)
+    }
+}
+
+impl<'a, T> From<&'a T> for MaybeOwned<'a, T> {
+    #[inline]
+    fn from(value: &'a T) -> Self {
+        Self::Borrowed(value)
+    }
+}
+
+impl<T> Deref for MaybeOwned<'_, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Owned(owned) => owned,
+            Self::Borrowed(refer) => refer,
+        }
+    }
 }

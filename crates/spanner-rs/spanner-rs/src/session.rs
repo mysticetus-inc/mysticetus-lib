@@ -2,35 +2,25 @@ use bytes::Bytes;
 use gcp_auth_channel::AuthChannel;
 use protos::spanner::commit_response::CommitStats;
 use protos::spanner::spanner_client::SpannerClient;
-use protos::spanner::transaction_options::read_write::ReadLockMode;
 use protos::spanner::transaction_options::Mode;
+use protos::spanner::transaction_options::read_write::ReadLockMode;
 use protos::spanner::{
-    self, transaction_options, BeginTransactionRequest, CommitRequest, TransactionOptions,
+    self, BeginTransactionRequest, CommitRequest, TransactionOptions, transaction_options,
 };
 use timestamp::Timestamp;
 
-use crate::connection::impl_deferred_read_functions;
+use crate::Table;
 use crate::error::Error;
 use crate::key_set::{IntoKeySet, WriteBuilder};
 use crate::private::SealedConnection;
 use crate::results::{ResultIter, StreamingRead};
 use crate::tx::{ShouldCommit, Transaction};
-use crate::Table;
 
 #[derive(Debug)]
 pub struct Session {
     pub(crate) client: SpannerClient<AuthChannel>,
     pub(crate) session: spanner::Session,
     is_deleted: bool,
-}
-
-impl crate::private::SealedConnection for Session {
-    type Tx<'a> = crate::tx::SingleUse;
-
-    #[inline]
-    fn connection_parts(&self) -> crate::connection::ConnectionParts<'_, Self::Tx<'_>> {
-        crate::connection::ConnectionParts::from_parts(self, crate::tx::SingleUse)
-    }
 }
 
 macro_rules! check_if_deleted {

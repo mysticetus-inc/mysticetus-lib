@@ -12,78 +12,188 @@ use timestamp::{Date, Timestamp};
 use crate::error::{ConvertError, FromError, MissingTypeInfo};
 use crate::value::EncodedArray;
 
-/// Implemented by types that have a 'native' spanner analog, i.e
-/// [`String`] == 'STRING', [`i64`] == 'INT64', etc.
+/// Implemented by types that have a spanner encoded counterpart.
 pub trait SpannerType {
-    /// The native Spanner [`Type`].
-    const TYPE: &'static Type;
+    /// The underlying spanner type.
+    type Type: markers::SpannerTypeSealed;
 
     /// Whether a type is nullable or not.
-    const NULLABLE: bool;
+    type Nullable: typenum::Bit;
+}
+
+pub(crate) const fn ty<T: SpannerType + ?Sized>() -> &'static Type {
+    <T::Type as markers::SpannerTypeSealed>::TYPE
+}
+
+pub(crate) const fn nullable<T: SpannerType + ?Sized>() -> bool {
+    <T::Nullable as typenum::Bit>::BOOL
 }
 
 impl<T: SpannerType + ?Sized> SpannerType for &T {
-    const TYPE: &'static Type = T::TYPE;
-
-    const NULLABLE: bool = T::NULLABLE;
+    type Type = T::Type;
+    type Nullable = T::Nullable;
 }
 
 impl<T: SpannerType + ?Sized> SpannerType for &mut T {
-    const TYPE: &'static Type = T::TYPE;
+    type Type = T::Type;
+    type Nullable = T::Nullable;
+}
 
-    const NULLABLE: bool = T::NULLABLE;
+pub mod markers {
+    use std::marker::PhantomData;
+
+    pub(super) use private::SpannerTypeSealed;
+
+    mod private {
+        pub trait SpannerTypeSealed {
+            const TYPE: &'static super::super::Type;
+        }
+
+        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for &T {
+            const TYPE: &'static super::super::Type = T::TYPE;
+        }
+
+        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for &mut T {
+            const TYPE: &'static super::super::Type = T::TYPE;
+        }
+
+        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for Box<T> {
+            const TYPE: &'static super::super::Type = T::TYPE;
+        }
+
+        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for std::sync::Arc<T> {
+            const TYPE: &'static super::super::Type = T::TYPE;
+        }
+    }
+
+    macro_rules! impl_primitive_spanner_marker_types {
+        ($($name:ident = $t:expr),* $(,)?) => {
+            $(
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                pub enum $name {}
+
+                impl private::SpannerTypeSealed for $name {
+                    const TYPE: &'static super::Type = $t;
+                }
+            )*
+        };
+    }
+
+    impl_primitive_spanner_marker_types! {
+        Int64 = &super::Type::INT64,
+        String = &super::Type::STRING,
+        Float64 = &super::Type::FLOAT64,
+        Numeric = &super::Type::NUMERIC,
+        Bool = &super::Type::BOOL,
+        Timestamp = &super::Type::TIMESTAMP,
+        Date = &super::Type::DATE,
+        Interval = &super::Type::INTERVAL,
+        Bytes = &super::Type::BYTES,
+        Json = &super::Type::JSON,
+        Enum = &super::Type::ENUM,
+    }
+
+    // --- Array impl -----
+
+    #[non_exhaustive]
+    pub enum Array<T: private::SpannerTypeSealed + ?Sized> {
+        #[doc(hidden)]
+        __Type(PhantomData<for<'a> fn(&'a T)>),
+    }
+
+    impl<T: private::SpannerTypeSealed + ?Sized> private::SpannerTypeSealed for Array<T> {
+        const TYPE: &'static super::Type = &super::Type::Array {
+            element: shared::static_or_boxed::StaticOrBoxed::Static(T::TYPE),
+        };
+    }
+
+    // --- Struct impl -----
+
+    pub trait SpannerStruct {
+        const FIELDS: &'static [super::Field];
+    }
+
+    #[non_exhaustive]
+    pub enum Struct<T: SpannerStruct + ?Sized> {
+        #[doc(hidden)]
+        __Type(PhantomData<for<'a> fn(&'a T)>),
+    }
+
+    impl<T: SpannerStruct + ?Sized> private::SpannerTypeSealed for Struct<T> {
+        const TYPE: &'static self::super::Type = &super::Type::Struct {
+            fields: shared::static_or_boxed::StaticOrBoxed::Static(T::FIELDS),
+        };
+    }
+
+    // --- Proto impl -----
+    pub trait SpannerProto {
+        const PACKAGE: &'static str;
+        const NAME: &'static str;
+    }
+
+    #[non_exhaustive]
+    pub enum Proto<T: SpannerProto + ?Sized> {
+        #[doc(hidden)]
+        __Type(PhantomData<for<'a> fn(&'a T)>),
+    }
+
+    impl<T: SpannerProto + ?Sized> private::SpannerTypeSealed for Proto<T> {
+        const TYPE: &'static self::super::Type = &super::Type::Proto(super::ProtoName::Split {
+            package: T::PACKAGE,
+            name: T::NAME,
+        });
+    }
 }
 
 macro_rules! impl_scalar {
     ($(
         $(#[$cfg_attr:meta])?
-        $name:ty => $t:expr
+        $name:ty => $t:ident
     ),* $(,)?) => {
         $(
             $(#[$cfg_attr])?
             impl SpannerType for $name {
-                const TYPE: &'static Type = &$t;
-
-                const NULLABLE: bool = false;
+                type Type = markers::$t;
+                type Nullable = typenum::B0;
             }
         )*
     };
 }
 
 impl_scalar! {
-    isize => Type::Scalar(Scalar::Int64),
-    i128 => Type::Scalar(Scalar::Numeric),
-    i64 => Type::Scalar(Scalar::Int64),
-    i32 => Type::Scalar(Scalar::Int64),
-    i16 => Type::Scalar(Scalar::Int64),
-    i8 => Type::Scalar(Scalar::Int64),
-    usize => Type::Scalar(Scalar::Int64),
-    u128 => Type::Scalar(Scalar::Numeric),
-    u64 => Type::Scalar(Scalar::Int64),
-    u32 => Type::Scalar(Scalar::Int64),
-    u16 => Type::Scalar(Scalar::Int64),
-    u8 => Type::Scalar(Scalar::Int64),
-    f64 => Type::Scalar(Scalar::Float64),
-    f32 => Type::Scalar(Scalar::Float64),
-    bool => Type::Scalar(Scalar::Bool),
-    Timestamp => Type::Scalar(Scalar::Timestamp),
-    Date => Type::Scalar(Scalar::Date),
-    str => Type::Scalar(Scalar::String),
-    String => Type::Scalar(Scalar::String),
-    Bytes => Type::Scalar(Scalar::Bytes),
-    [u8] => Type::Scalar(Scalar::Bytes),
-    Vec<u8> => Type::Scalar(Scalar::Bytes),
+    isize => Int64,
+    i128 => Numeric,
+    i64 => Int64,
+    i32 => Int64,
+    i16 => Int64,
+    i8 => Int64,
+    usize => Int64,
+    u128 => Numeric,
+    u64 => Int64,
+    u32 => Int64,
+    u16 => Int64,
+    u8 => Int64,
+    f64 => Float64,
+    f32 => Float64,
+    bool => Bool,
+    Timestamp => Timestamp,
+    Date => Date,
+    str => String,
+    String => String,
+    Bytes => Bytes,
+    [u8] => Bytes,
+    Vec<u8> => Bytes,
     #[cfg(feature = "serde_json")]
-    serde_json::Value => Type::Scalar(Scalar::Json),
+    serde_json::Value => Json,
 }
 
 macro_rules! spanner_type_defer_to {
     ($($parent:ty: $deferred:ty),* $(,)?) => {
         $(
             impl $crate::ty::SpannerType for $parent {
-                const TYPE: &'static Type = <$deferred as $crate::ty::SpannerType>::TYPE;
+                type Type = <$deferred as $crate::ty::SpannerType>::Type;
 
-                const NULLABLE: bool = false;
+                type Nullable = <$deferred as $crate::ty::SpannerType>::Nullable;
             }
         )*
     };
@@ -105,17 +215,16 @@ spanner_type_defer_to! {
 }
 
 impl<T: SpannerType> SpannerType for Option<T> {
-    const TYPE: &'static Type = T::TYPE;
-
-    const NULLABLE: bool = true;
+    type Type = T::Type;
+    type Nullable = typenum::B1;
 }
 
 macro_rules! impl_for_wrapper_type {
     ($($t:ty),* $(,)?) => {
         $(
             impl<T: SpannerType + ?Sized> SpannerType for $t {
-                const TYPE: &'static Type = T::TYPE;
-                const NULLABLE: bool = T::NULLABLE;
+                type Type = T::Type;
+                type Nullable = T::Nullable;
             }
         )*
     };
@@ -132,8 +241,8 @@ where
     T: ToOwned + ?Sized,
     T::Owned: SpannerType,
 {
-    const TYPE: &'static Type = <T::Owned as SpannerType>::TYPE;
-    const NULLABLE: bool = <T::Owned as SpannerType>::NULLABLE;
+    type Type = <T::Owned as SpannerType>::Type;
+    type Nullable = <T::Owned as SpannerType>::Nullable;
 }
 
 #[derive(
@@ -162,11 +271,11 @@ impl<S: SpannerStruct> SpannerStruct for Struct<S> {
     }
 }
 
-impl<S: SpannerStruct> crate::FromSpanner for Struct<S> {
+impl<S: SpannerStruct + markers::SpannerStruct> crate::FromSpanner for Struct<S> {
     fn from_value(value: crate::Value) -> Result<Self, ConvertError> {
         let values = value.into_array::<Self>()?.values;
 
-        let expected = S::FIELDS.len();
+        let expected = <S as markers::SpannerStruct>::FIELDS.len();
         let count = values.len();
 
         let fields = EncodedArray::new(values);
@@ -193,7 +302,7 @@ impl<S: SpannerStruct> crate::FromSpanner for Struct<S> {
 
 impl<S> crate::convert::SpannerEncode for Struct<S>
 where
-    S: SpannerStruct,
+    S: SpannerStruct + markers::SpannerStruct,
 {
     type Error = ConvertError;
     type SpannerType = EncodedStruct<S>;
@@ -237,15 +346,12 @@ impl<S: SpannerStruct + ?Sized> EncodedStruct<S> {
     }
 }
 
-impl<S: SpannerStruct + ?Sized> SpannerType for EncodedStruct<S> {
-    const TYPE: &'static Type = &Type::Struct {
-        fields: StaticOrBoxed::Static(S::FIELDS),
-    };
-
-    const NULLABLE: bool = false;
+impl<S: SpannerStruct + markers::SpannerStruct + ?Sized> SpannerType for EncodedStruct<S> {
+    type Type = markers::Struct<S>;
+    type Nullable = typenum::False;
 }
 
-impl<S: SpannerStruct + ?Sized> crate::IntoSpanner for EncodedStruct<S> {
+impl<S: SpannerStruct + markers::SpannerStruct + ?Sized> crate::IntoSpanner for EncodedStruct<S> {
     fn into_value(self) -> crate::Value {
         crate::Value(Kind::ListValue(ListValue {
             values: self.fields.values,
@@ -253,12 +359,9 @@ impl<S: SpannerStruct + ?Sized> crate::IntoSpanner for EncodedStruct<S> {
     }
 }
 
-impl<S: SpannerStruct> SpannerType for Struct<S> {
-    const TYPE: &'static Type = &Type::Struct {
-        fields: StaticOrBoxed::Static(S::FIELDS),
-    };
-
-    const NULLABLE: bool = false;
+impl<S: SpannerStruct + markers::SpannerStruct> SpannerType for Struct<S> {
+    type Nullable = typenum::False;
+    type Type = markers::Struct<S>;
 }
 
 pub struct EncodedProto<T: ?Sized> {
@@ -266,16 +369,14 @@ pub struct EncodedProto<T: ?Sized> {
     ty: PhantomData<T>,
 }
 
-impl<T: prost::Name + ?Sized> SpannerType for EncodedProto<T> {
-    const TYPE: &'static Type = &Type::Proto(ProtoName::Split {
-        package: T::PACKAGE,
-        name: T::NAME,
-    });
-
-    const NULLABLE: bool = false;
+impl<T: prost::Name + ?Sized + markers::SpannerProto> SpannerType for EncodedProto<T> {
+    type Nullable = typenum::False;
+    type Type = markers::Proto<T>;
 }
 
-impl<T: prost::Name + ?Sized> crate::convert::IntoSpanner for EncodedProto<T> {
+impl<T: prost::Name + ?Sized + markers::SpannerProto> crate::convert::IntoSpanner
+    for EncodedProto<T>
+{
     #[inline]
     fn into_value(self) -> crate::Value {
         self.encoded.into_value()
@@ -397,6 +498,7 @@ impl Type {
 
     pub const NUMERIC: Self = Self::Scalar(Scalar::Numeric);
     pub const JSON: Self = Self::Scalar(Scalar::Json);
+    pub const ENUM: Self = Self::Scalar(Scalar::Enum);
 
     pub(crate) fn to_type_code(&self) -> TypeCode {
         match self {

@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 use std::sync::atomic::AtomicU64;
-use std::sync::{PoisonError, RwLock};
+use std::sync::{MappedRwLockReadGuard, PoisonError, RwLock, RwLockReadGuard};
 use std::time::Instant;
 
 use protos::spanner;
@@ -39,6 +39,13 @@ impl Session {
             .unwrap_or_else(PoisonError::into_inner)
             .raw_session()
             .is_none()
+    }
+
+    pub(crate) fn raw_session(
+        &self,
+    ) -> Option<MappedRwLockReadGuard<'_, protos::spanner::Session>> {
+        let guard = self.state.read().unwrap_or_else(PoisonError::into_inner);
+        RwLockReadGuard::try_map(guard, |session| session.raw_session()).ok()
     }
 
     pub(super) fn key(&self) -> SessionKey {

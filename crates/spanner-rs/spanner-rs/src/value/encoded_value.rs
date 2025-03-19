@@ -65,9 +65,8 @@ impl<T> From<Value> for EncodedValue<T> {
 }
 
 impl<T: SpannerEncode> SpannerType for EncodedValue<T> {
-    const TYPE: &'static Type = <T::SpannerType as SpannerType>::TYPE;
-    // while technically the inner value can be null, this is meant to match the encoded type itself
-    const NULLABLE: bool = <T::SpannerType as SpannerType>::NULLABLE;
+    type Type = <T::SpannerType as SpannerType>::Type;
+    type Nullable = <T::SpannerType as SpannerType>::Nullable;
 }
 
 impl<T: SpannerEncode> IntoSpanner for EncodedValue<T> {

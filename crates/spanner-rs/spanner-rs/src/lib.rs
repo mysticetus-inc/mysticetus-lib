@@ -3,7 +3,8 @@
     exact_size_is_empty,
     extend_one,
     maybe_uninit_write_slice,
-    int_roundings
+    int_roundings,
+    mapped_lock_guards
 )]
 #[macro_use]
 extern crate tracing;
@@ -11,7 +12,6 @@ extern crate tracing;
 mod batch_write;
 mod client;
 pub mod column;
-mod connection;
 pub mod convert;
 pub mod error;
 pub mod info;
@@ -23,7 +23,7 @@ pub mod pk;
 pub mod queryable;
 pub mod results;
 pub mod serde;
-mod session;
+// mod session;
 pub mod sql;
 pub mod table;
 pub mod tx;
@@ -32,17 +32,17 @@ mod util;
 mod value;
 pub mod with;
 
-pub use client::Client;
 #[cfg(feature = "admin")]
 pub use client::admin;
 #[cfg(feature = "emulator")]
 pub use client::emulator;
+pub use client::{Client, SessionClient};
 pub use convert::{FromSpanner, IntoSpanner, SpannerEncode};
 pub use error::Error;
 pub use info::Database;
 pub use pk::{PartialPkParts, PkParts, PrimaryKey};
 pub use results::{ResultIter, StreamingRead};
-pub use session::Session;
+// pub use session::Session;
 pub use table::Table;
 pub use ty::{Field, Scalar, Type};
 pub use value::{Row, Value};
@@ -56,18 +56,14 @@ pub mod __private {
 ///
 /// Used to abstract bare [`Session`]s and different transaction types, while
 /// providing the same interface between them all.
-pub trait ReadableConnection
-where
-    for<'a> Self: private::SealedConnection,
-    for<'a> Self::Tx<'a>: tx::ReadOnlyTx,
+pub trait ReadableConnection<'a, 'sess>:
+    private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx> + 'a
 {
 }
 
 /// Blanket impl over the real implementors.
-impl<T> ReadableConnection for T
-where
-    T: private::SealedConnection,
-    for<'a> T::Tx<'a>: tx::ReadOnlyTx,
+impl<'a, 'sess, T> ReadableConnection<'a, 'sess> for T where
+    T: private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx> + 'a
 {
 }
 
@@ -100,7 +96,9 @@ pub mod __macro_internals {
 mod private {
     use protos::protobuf::ListValue;
 
-    pub trait Sealed {}
+    use crate::client::connection::ConnectionParts;
+
+    // pub trait Sealed {}
 
     /// Sealed trait for primary keys (or partial primary keys). Implemented only for tuples,
     /// with special impls for tuples last N types being () as a marker for an unpopulated key
@@ -110,104 +108,23 @@ mod private {
         fn to_key(self) -> ListValue;
     }
 
-    // TODO: rewrite spanner_rs_macros::impl_pk_sealed as a macro_rules macro,
-    // that way we can totally get rid of spanner_rs_macros
-    #[allow(unused_macros)]
-    macro_rules! impl_sealed_to_key {
-        ($($gen:ident: $index:tt),*) => {
-            const _: () = {
-                impl_sealed_to_key! {
-                    @INNER
-                    generics = [$($gen: $index),*],
-                    last = [],
-                    units = [],
-                }
-            };
-        };
-        (
-            @INNER
-            generics = [$gen:ident : $index:tt $(,)?],
-            last = [],
-            units = [$($unit:ty),* $(,)?],
-        ) => {
-            // last impl, ends recursion
-            impl<$gen> SealedToKey for ($gen, $($unit,)*)
-            where
-                $($gen: $crate::convert::IntoSpanner,)*
-            {
-                fn to_key(self) -> ListValue {
-                    ListValue {
-                        values: vec![
-                            $(self.$index.into_spanner(),)*
-                        ]
-                    }
-                }
-            }
-        };
-        (
-            @INNER
-            generics = [$($gen:ident : $index:tt),* $(,)?],
-            last = [],
-            units = [$($unit:ty),* $(,)?],
-        ) => {
-            impl<$($gen,)* $last_gen> SealedToKey for ($($gen,)* $last_gen, $($unit)*)
-            where
-                $($gen: $crate::convert::IntoSpanner,)*
-                $last_gen: $crate::convert::IntoSpanner,
-            {
-                fn to_key(self) -> ListValue {
-                    ListValue {
-                        values: vec![
-                            $(self.$index.into_spanner(),)*
-                            self.$last_index.into_spanner(),
-                        ]
-                    }
-                }
-            }
-
-            impl_sealed_to_key! {
-                @INNER
-                generics = [$($gen: $index),*],
-                last = [],
-                units = [$($unit),* ()]
-            }
-        };
-    }
-
-    // impl_sealed_to_key!(A: 1, B: 2, C: 3, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9, J: 10, K: 11, L:
-    // 12, M: 13, N: 14, O: 15, P: 16);
-
     // Spanner itself limits primary keys to 16 columns
     spanner_rs_macros::impl_pk_sealed!(SealedToKey; T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16);
 
     /// Trait representing types that can hand out a [`Session`], and interact with spanner data.
     ///
     /// Used mainly to treat bare [`Session`]'s + the different transaction types opaquely
-    pub trait SealedConnection {
+    pub trait SealedConnection<'session> {
         /// The type of transaction that 'self' implicitely contains into (by default).
-        ///
-        /// Generic over lifetimes, so 'Tx' can borrow from 'self' (used mainly for borrowing the id
-        /// bytes of a transaction).
         type Tx<'a>: SealedTx
         where
             Self: 'a;
 
-        fn connection_parts(&self) -> crate::connection::ConnectionParts<'_, Self::Tx<'_>>;
-    }
+        type Error: Into<crate::Error>;
 
-    /// Blanket impl over &mut T
-    impl<T> SealedConnection for &T
-    where
-        T: SealedConnection,
-    {
-        type Tx<'a>
-            = T::Tx<'a>
-        where
-            Self: 'a;
-
-        fn connection_parts(&self) -> crate::connection::ConnectionParts<'_, Self::Tx<'_>> {
-            T::connection_parts(self)
-        }
+        fn connection_parts(
+            &self,
+        ) -> Result<ConnectionParts<'_, 'session, Self::Tx<'_>>, Self::Error>;
     }
 
     /// Base transaction trait. Really only used as a bound for the supertraits to keep implementors

@@ -338,8 +338,8 @@ impl FromSpanner for f32 {
 // -------------- char ------------------ //
 
 impl SpannerType for char {
-    const TYPE: &'static Type = &Type::Scalar(Scalar::String);
-    const NULLABLE: bool = false;
+    type Nullable = typenum::False;
+    type Type = crate::ty::markers::String;
 }
 
 impl IntoSpanner for char {
@@ -554,13 +554,13 @@ impl FromSpanner for Timestamp {
 pub struct CommitTimestamp<T = Option<Timestamp>>(pub T);
 
 impl SpannerType for CommitTimestamp<Option<Timestamp>> {
-    const TYPE: &'static Type = &Type::Scalar(Scalar::Timestamp);
-    const NULLABLE: bool = true;
+    type Nullable = typenum::True;
+    type Type = crate::ty::markers::Timestamp;
 }
 
 impl SpannerType for CommitTimestamp<()> {
-    const TYPE: &'static Type = &Type::Scalar(Scalar::Timestamp);
-    const NULLABLE: bool = false;
+    type Nullable = typenum::False;
+    type Type = crate::ty::markers::Timestamp;
 }
 
 impl<T> CommitTimestamp<T> {
@@ -596,8 +596,8 @@ impl FromSpanner for CommitTimestamp<()> {
 
 // ------------------ Uuid --------------------- //
 impl SpannerType for uuid::Uuid {
-    const TYPE: &'static Type = &Type::Scalar(Scalar::String);
-    const NULLABLE: bool = false;
+    type Nullable = typenum::False;
+    type Type = crate::ty::markers::String;
 }
 
 impl IntoSpanner for uuid::Uuid {
@@ -625,8 +625,8 @@ impl FromSpanner for uuid::Uuid {
 pub struct NullableString(pub Option<String>);
 
 impl SpannerType for NullableString {
-    const TYPE: &'static Type = &Type::STRING;
-    const NULLABLE: bool = true;
+    type Nullable = typenum::True;
+    type Type = crate::ty::markers::String;
 }
 
 impl IntoSpanner for NullableString {

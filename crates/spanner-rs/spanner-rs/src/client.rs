@@ -3,10 +3,13 @@ use std::sync::Arc;
 
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
 use protos::spanner::spanner_client::SpannerClient;
+use timestamp::Timestamp;
 use tonic::transport::ClientTlsConfig;
 
 use crate::info::Database;
-use crate::session::Session;
+use crate::key_set::WriteBuilder;
+use crate::tx::{ShouldCommit, Transaction};
+use crate::{ResultIter, StreamingRead, Table};
 
 pub mod pool;
 
@@ -17,7 +20,10 @@ pub mod emulator;
 
 mod session;
 
+pub(crate) mod connection;
+
 use pool::SessionPool;
+pub use session::SessionClient;
 
 const DOMAIN: &str = "spanner.googleapis.com";
 const ENDPOINT: &str = "https://spanner.googleapis.com";
@@ -242,30 +248,77 @@ impl Client {
         SpannerClient::new(self.parts.channel.clone())
     }
 
-    async fn create_session_inner(&self, role: Option<String>) -> crate::Result<Session> {
-        let req = protos::spanner::CreateSessionRequest {
-            database: self.parts.info.qualified_database().to_owned(),
-            session: Some(protos::spanner::Session {
-                creator_role: role.unwrap_or_else(String::new),
-                ..Default::default()
-            }),
-        };
-
-        let mut grpc = self.grpc();
-
-        let session = grpc.create_session(req).await?.into_inner();
-
-        Ok(Session::new(session, grpc))
-    }
-
-    pub async fn create_session(&self) -> crate::Result<Session> {
-        self.create_session_inner(None).await
-    }
-
-    pub async fn create_session_with_role(
+    pub async fn borrow_session(
         &self,
-        role: impl Into<String>,
-    ) -> crate::Result<Session> {
-        self.create_session_inner(Some(role.into())).await
+        timeout: Option<timestamp::Duration>,
+    ) -> crate::Result<SessionClient> {
+        let session = self
+            .session_pool
+            .get_or_create_session_according_to_load(timeout)
+            .await?;
+
+        Ok(SessionClient {
+            parts: self.parts.clone(),
+            session,
+        })
+    }
+
+    pub fn session_role(&self) -> Option<&str> {
+        self.parts.role.as_deref()
+    }
+
+    // crate::connection::impl_deferred_read_functions!();
+
+    pub async fn insert_or_update<T: crate::Table>(
+        &self,
+        rows: WriteBuilder<T>,
+    ) -> crate::Result<Option<protos::spanner::commit_response::CommitStats>> {
+        self.borrow_session(None)
+            .await?
+            .insert_or_update(rows)
+            .await
+    }
+
+    pub async fn run_in_transaction<F, Fut>(&self, func: F) -> crate::Result<Option<Timestamp>>
+    where
+        F: FnMut(&mut Transaction<'_, '_>) -> Fut,
+        Fut: std::future::Future<Output = crate::Result<ShouldCommit>>,
+    {
+        self.borrow_session(None)
+            .await?
+            .run_in_transaction(func)
+            .await
+    }
+
+    pub(crate) async fn execute_dml(
+        &self,
+        statements: Vec<protos::spanner::execute_batch_dml_request::Statement>,
+    ) -> crate::Result<protos::spanner::ExecuteBatchDmlResponse> {
+        self.borrow_session(None)
+            .await?
+            .execute_dml(statements)
+            .await
+    }
+
+    pub async fn execute_streaming_sql<T: Table>(
+        &mut self,
+        sql: String,
+        params: Option<crate::sql::Params>,
+    ) -> crate::Result<StreamingRead<T>> {
+        self.borrow_session(None)
+            .await?
+            .execute_streaming_sql(sql, params)
+            .await
+    }
+
+    pub async fn execute_sql<T: Table>(
+        &mut self,
+        sql: String,
+        params: Option<crate::sql::Params>,
+    ) -> crate::Result<ResultIter<T>> {
+        self.borrow_session(None)
+            .await?
+            .execute_sql(sql, params)
+            .await
     }
 }

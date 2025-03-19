@@ -1,6 +1,5 @@
 use crate::convert::SpannerEncode;
 use crate::queryable::Queryable;
-use crate::ty::SpannerType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Column<'a> {
@@ -15,8 +14,8 @@ impl Column<'static> {
         Self {
             index,
             name,
-            ty: &<T::SpannerType as SpannerType>::TYPE,
-            nullable: <T::SpannerType as SpannerType>::NULLABLE,
+            ty: crate::ty::ty::<T::SpannerType>(),
+            nullable: crate::ty::nullable::<T::SpannerType>(),
         }
     }
 }

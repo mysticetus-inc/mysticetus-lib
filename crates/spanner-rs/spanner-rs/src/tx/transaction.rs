@@ -4,14 +4,16 @@ use protos::spanner::{self, CommitResponse, Mutation};
 use tonic::Code;
 
 use crate::Table;
+use crate::client::ClientParts;
+use crate::client::connection::{ConnectionParts, RawSession};
 use crate::error::ConvertError;
 use crate::key_set::{KeySet, WriteBuilder};
-use crate::private::SealedConnection;
-use crate::session::Session;
+use crate::util::MaybeOwned;
 
 #[must_use = "a transaction must be committed or rolled back"]
-pub struct Transaction<'a> {
-    session: &'a Session,
+pub struct Transaction<'a, 'session> {
+    raw_session: MaybeOwned<'a, RawSession<'session>>,
+    client_parts: &'a ClientParts,
     mutations: Vec<Mutation>,
     tx: spanner::Transaction,
     /// [`None`] is an uncommitted, not rolled-back transaction. When one of those 2 occurs,
@@ -34,27 +36,43 @@ pub enum ShouldCommit {
     No,
 }
 
-impl<'a> Transaction<'a> {
-    pub(crate) fn new(session: &'a Session, tx: spanner::Transaction) -> Self {
+impl<'a, 'session> Transaction<'a, 'session> {
+    pub(crate) fn new(
+        parts: ConnectionParts<'a, 'session, crate::tx::Begin<crate::tx::ReadWrite>>,
+        tx: spanner::Transaction,
+    ) -> Self {
         Self {
             mutations: vec![],
-            session,
+            client_parts: parts.client_parts,
+            raw_session: parts.raw_session,
             tx,
             state: None,
             completed_successfully: false,
         }
     }
+
+    pub(crate) fn parts(
+        &self,
+    ) -> ConnectionParts<'_, 'session, super::Existing<'_, super::ReadWrite>> {
+        crate::client::connection::ConnectionParts::from_parts(
+            self.client_parts,
+            self.raw_session.reborrow(),
+            super::Existing::new(&self.tx),
+        )
+    }
 }
 
-impl<'tx> crate::private::SealedConnection for Transaction<'tx> {
+impl<'tx, 'session> crate::private::SealedConnection<'session> for Transaction<'tx, 'session> {
     type Tx<'a>
         = super::Existing<'a, super::ReadWrite>
     where
-        'tx: 'a;
+        Self: 'a;
+
+    type Error = std::convert::Infallible;
 
     #[inline]
-    fn connection_parts(&self) -> crate::connection::ConnectionParts<'_, Self::Tx<'_>> {
-        crate::connection::ConnectionParts::from_parts(self.session, super::Existing::new(&self.tx))
+    fn connection_parts(&self) -> Result<ConnectionParts<'_, 'session, Self::Tx<'_>>, Self::Error> {
+        Ok(self.parts())
     }
 }
 
@@ -77,7 +95,7 @@ where
     Ok(dst.into_proto())
 }
 
-impl Transaction<'_> {
+impl Transaction<'_, '_> {
     pub fn delete<R: Table>(&mut self, key_set: &mut KeySet<R>) -> &mut Self {
         self.add_mutation(Operation::Delete(Delete {
             table: R::NAME.to_owned(),
@@ -195,7 +213,7 @@ impl Transaction<'_> {
 
         let mutations = self.mutations.clone();
 
-        let result = self.connection_parts().commit_inner(mutations).await;
+        let result = self.parts().commit_inner(mutations).await;
 
         match result {
             Ok(resp) => {
@@ -216,7 +234,7 @@ impl Transaction<'_> {
         );
         self.state = Some(TxState::RolledBack);
 
-        self.connection_parts().rollback().await?;
+        self.parts().rollback().await?;
 
         self.completed_successfully = true;
         Ok(())

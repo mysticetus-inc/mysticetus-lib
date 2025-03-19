@@ -18,11 +18,8 @@ impl<T> SpannerType for EncodedArray<T>
 where
     T: SpannerType,
 {
-    const TYPE: &'static Type = &Type::Array {
-        element: shared::static_or_boxed::StaticOrBoxed::Static(T::TYPE),
-    };
-
-    const NULLABLE: bool = false;
+    type Nullable = typenum::False;
+    type Type = crate::ty::markers::Array<T::Type>;
 }
 
 impl<T: SpannerType> IntoSpanner for EncodedArray<T> {
