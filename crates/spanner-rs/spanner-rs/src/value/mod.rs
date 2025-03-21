@@ -6,15 +6,17 @@ use protos::protobuf::{self, NullValue};
 use protos::spanner::TypeCode;
 
 mod encoded_array;
+mod encoded_struct;
 mod encoded_value;
-mod struct_value;
 
 pub use encoded_array::EncodedArray;
+pub use encoded_struct::EncodedStruct;
 pub use encoded_value::EncodedValue;
 
 use crate::convert::SpannerEncode;
 use crate::error::{ConvertError, FromError};
-use crate::{IntoSpanner, Table};
+use crate::ty::SpannerType;
+use crate::{IntoSpanner, Table, Type};
 
 /// A Spanner value.
 #[derive(Clone, PartialEq)]
@@ -155,11 +157,79 @@ impl From<Vec<protobuf::Value>> for Row {
     }
 }
 
+fn matches_type_inner(kind: &Kind, ty: &crate::Type, nullable: bool) -> Option<bool> {
+    match (kind, ty) {
+        (Kind::NullValue(_), _) if nullable => None,
+        (Kind::NullValue(_), _) => Some(false),
+        (Kind::BoolValue(_), &Type::BOOL) => Some(true),
+        (Kind::NumberValue(_), &Type::FLOAT64 | &Type::INT64) => Some(true),
+        // TODO: check for string encoded NaN/Inf
+        (Kind::StringValue(_), &Type::STRING | &Type::BYTES) => Some(true),
+        (Kind::StructValue(struct_value), Type::Struct { fields }) => {
+            if struct_value.fields.len() != fields.len() {
+                return Some(false);
+            }
+
+            for (field, value) in struct_value.fields.iter() {
+                let Some(field_def) = fields.iter().find(|f| &f.name == field) else {
+                    return Some(false);
+                };
+
+                let Some(ref elem_kind) = value.kind else {
+                    return None;
+                };
+
+                if !matches_type_inner(elem_kind, &field_def.ty, true)? {
+                    return Some(false);
+                }
+            }
+
+            Some(true)
+        }
+        (Kind::ListValue(list), Type::Array { element }) => {
+            for value in list.values.iter() {
+                let Some(ref elem_kind) = value.kind else {
+                    return None;
+                };
+
+                if !matches_type_inner(elem_kind, element, true)? {
+                    return Some(false);
+                }
+            }
+
+            Some(true)
+        }
+        _ => Some(false),
+    }
+}
+
 impl Value {
     pub const NULL: Self = Self(Kind::NullValue(NullValue::NullValue as i32));
 
     pub(crate) fn from_proto(v: protobuf::Value) -> Self {
         v.kind.map(Self).unwrap_or(Value::NULL)
+    }
+
+    pub(crate) fn matches_type(&self, ty: &crate::Type, nullable: bool) -> Option<bool> {
+        match matches_type_inner(&self.0, ty, nullable) {
+            Some(inner) => Some(inner),
+            None if nullable => None,
+            None => Some(false),
+        }
+    }
+
+    pub(crate) fn matches_type_of<T: SpannerType + ?Sized>(&self) -> Option<bool> {
+        self.matches_type(crate::ty::ty::<T>(), crate::ty::nullable::<T>())
+    }
+
+    pub(crate) fn matches_type_of_non_nullable<T>(&self) -> bool
+    where
+        T: SpannerType<Nullable = typenum::False> + ?Sized,
+    {
+        // if 'self' is null and T is non-nullable, we clearly dont match,
+        // so we can unwrap to false
+        self.matches_type(crate::ty::ty::<T>(), false)
+            .unwrap_or(false)
     }
 
     pub fn from_array(values: impl IntoIterator<Item: IntoSpanner>) -> Self {

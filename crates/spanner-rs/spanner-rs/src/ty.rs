@@ -246,7 +246,7 @@ where
     type Type = <T::Owned as SpannerType>::Type;
     type Nullable = <T::Owned as SpannerType>::Nullable;
 }
-
+/*
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
@@ -365,7 +365,7 @@ impl<S: SpannerStruct + markers::SpannerStruct> SpannerType for Struct<S> {
     type Nullable = typenum::False;
     type Type = markers::Struct<S>;
 }
-
+*/
 pub struct EncodedProto<T: ?Sized> {
     encoded: bytes::Bytes,
     ty: PhantomData<T>,

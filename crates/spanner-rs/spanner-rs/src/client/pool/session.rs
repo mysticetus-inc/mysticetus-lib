@@ -57,23 +57,10 @@ impl Session {
         self.state.load(Ordering::Acquire) == SESSION_PENDING_DELETION
     }
 
-    pub(super) fn deleted(&self) -> bool {
-        self.state.load(Ordering::Relaxed) == SESSION_DELETED
-    }
-
     pub(super) fn mark_for_deletion(&self) {
-        self.state.compare_exchange_weak(
+        _ = self.state.compare_exchange_weak(
             SESSION_ALIVE,
             SESSION_PENDING_DELETION,
-            Ordering::SeqCst,
-            Ordering::Relaxed,
-        );
-    }
-
-    pub(super) fn mark_deleted(&self) {
-        self.state.compare_exchange_weak(
-            SESSION_PENDING_DELETION,
-            SESSION_DELETED,
             Ordering::SeqCst,
             Ordering::Relaxed,
         );

@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::convert::SpannerEncode;
 use crate::error::ConvertError;
 use crate::ty::SpannerType;
-use crate::{FromSpanner, IntoSpanner, Type, Value};
+use crate::{FromSpanner, IntoSpanner, Value};
 
 /// A transparent wrapper around [`Value`] that retains type information, allowing it to implement
 /// [`IntoSpanner`]. Useful in situations where implementing [`SpannerEncode`] runs into conflicts.

@@ -29,7 +29,7 @@ pub mod table;
 pub mod tx;
 pub mod ty;
 mod util;
-mod value;
+pub mod value;
 pub mod with;
 
 #[cfg(feature = "admin")]
