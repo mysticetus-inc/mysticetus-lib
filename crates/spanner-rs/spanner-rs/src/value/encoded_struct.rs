@@ -15,7 +15,40 @@ pub struct EncodedStruct<T> {
     _marker: PhantomData<T>,
 }
 
+pub struct EncodedStructBuilder<T> {
+    fields: HashMap<String, protobuf::Value>,
+    _marker: PhantomData<T>,
+}
+
+impl<T: SpannerStruct> EncodedStructBuilder<T> {
+    pub fn insert_field(mut self, key: &'static str, value: impl IntoSpanner) -> Self {
+        self.fields
+            .insert(key.to_owned(), value.into_value().into_protobuf());
+        self
+    }
+
+    pub fn build(self) -> EncodedStruct<T> {
+        debug_assert_eq!(
+            self.fields.len(),
+            T::FIELDS.len(),
+            "mismatched number of fields"
+        );
+
+        EncodedStruct {
+            fields: self.fields,
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<T: SpannerStruct> EncodedStruct<T> {
+    pub fn builder() -> EncodedStructBuilder<T> {
+        EncodedStructBuilder {
+            fields: HashMap::with_capacity(T::FIELDS.len()),
+            _marker: PhantomData,
+        }
+    }
+
     pub fn from_fields(
         fields: impl IntoIterator<Item = (impl Into<String>, impl IntoSpanner)>,
     ) -> Self {
