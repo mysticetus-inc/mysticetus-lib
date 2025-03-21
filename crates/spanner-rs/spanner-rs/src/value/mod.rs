@@ -162,6 +162,15 @@ impl Value {
         v.kind.map(Self).unwrap_or(Value::NULL)
     }
 
+    pub fn from_array(values: impl IntoIterator<Item: IntoSpanner>) -> Self {
+        Self(Kind::ListValue(protobuf::ListValue {
+            values: values
+                .into_iter()
+                .map(|value| value.into_value().into_protobuf())
+                .collect(),
+        }))
+    }
+
     pub fn from_struct_fields<K, V>(
         fields: impl IntoIterator<Item = (impl Into<String>, impl IntoSpanner)>,
     ) -> Self {
