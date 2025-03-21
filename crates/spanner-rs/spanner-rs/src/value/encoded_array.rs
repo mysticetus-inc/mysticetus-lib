@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use protos::protobuf::{self, ListValue};
 
 use crate::convert::SpannerEncode;
-use crate::ty::{SpannerType, Type};
+use crate::ty::SpannerType;
 use crate::{IntoSpanner, Value};
 
 #[derive(Clone, PartialEq)]

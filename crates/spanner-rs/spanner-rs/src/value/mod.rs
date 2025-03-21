@@ -401,7 +401,7 @@ pub(crate) mod fmt_helpers {
                 Kind::BoolValue(b) => fmt!(f; "Bool", b),
                 Kind::NumberValue(n) => fmt!(f; "Number", n),
                 Kind::StringValue(s) => fmt!(f; "String", s),
-                Kind::StructValue(map) => fmt!(f; "Map", DebugMap(&map.fields)),
+                Kind::StructValue(map) => fmt!(f; "Struct", DebugMap(&map.fields)),
                 Kind::ListValue(list) => fmt!(f; "List", DebugList(&list.values)),
             }
         }

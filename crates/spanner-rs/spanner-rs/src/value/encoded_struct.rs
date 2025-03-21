@@ -11,19 +11,27 @@ use crate::ty::SpannerType;
 use crate::ty::markers::SpannerStruct;
 
 pub struct EncodedStruct<T> {
-    fields: HashMap<String, protobuf::Value>,
+    // structs are encoded as lists, with fields in the order they're
+    // defined in in <T as SpannerStruct>::FIELDS.
+    fields: Vec<protobuf::Value>,
     _marker: PhantomData<T>,
 }
 
 pub struct EncodedStructBuilder<T> {
-    fields: HashMap<String, protobuf::Value>,
+    fields: Vec<protobuf::Value>,
     _marker: PhantomData<T>,
 }
 
 impl<T: SpannerStruct> EncodedStructBuilder<T> {
-    pub fn insert_field(mut self, key: &'static str, value: impl IntoSpanner) -> Self {
-        self.fields
-            .insert(key.to_owned(), value.into_value().into_protobuf());
+    pub fn insert_field(mut self, key: &str, value: impl IntoSpanner) -> Self {
+        let Some(idx) = T::FIELDS.iter().position(|f| f.name == key) else {
+            panic!(
+                "field '{key}' not found in the struct field definitions for {}",
+                std::any::type_name::<T>()
+            );
+        };
+
+        self.fields[idx].kind = Some(value.into_value().0);
         self
     }
 
@@ -44,21 +52,21 @@ impl<T: SpannerStruct> EncodedStructBuilder<T> {
 impl<T: SpannerStruct> EncodedStruct<T> {
     pub fn builder() -> EncodedStructBuilder<T> {
         EncodedStructBuilder {
-            fields: HashMap::with_capacity(T::FIELDS.len()),
+            fields: vec![protobuf::Value { kind: None }; T::FIELDS.len()],
             _marker: PhantomData,
         }
     }
 
     pub fn from_fields(
-        fields: impl IntoIterator<Item = (impl Into<String>, impl IntoSpanner)>,
+        fields: impl IntoIterator<Item = (impl AsRef<str>, impl IntoSpanner)>,
     ) -> Self {
-        Self {
-            fields: fields
-                .into_iter()
-                .map(|(k, v)| (k.into(), v.into_value().into_protobuf()))
-                .collect(),
-            _marker: PhantomData,
+        let mut builder = Self::builder();
+
+        for (field, value) in fields {
+            builder = builder.insert_field(field.as_ref(), value);
         }
+
+        builder.build()
     }
 
     /*
@@ -78,8 +86,8 @@ impl<T: SpannerStruct> SpannerType for EncodedStruct<T> {
 
 impl<T: SpannerStruct> IntoSpanner for EncodedStruct<T> {
     fn into_value(self) -> super::Value {
-        super::Value(Kind::StructValue(protobuf::Struct {
-            fields: self.fields,
+        super::Value(Kind::ListValue(protobuf::ListValue {
+            values: self.fields,
         }))
     }
 }
