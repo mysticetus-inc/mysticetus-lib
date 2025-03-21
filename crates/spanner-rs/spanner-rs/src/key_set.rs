@@ -73,6 +73,7 @@ impl<T: Table> WriteBuilder<T> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct KeySet<T> {
+    all: bool,
     keys: Vec<ListValue>,
     ranges: Vec<KeyRange>,
     limit: Option<NonZeroU32>,
@@ -122,6 +123,7 @@ impl<T: Table> FromIterator<T::Pk> for KeySet<T> {
 
         Self {
             keys,
+            all: false,
             ranges: Vec::new(),
             limit: None,
             _marker: PhantomData,
@@ -141,9 +143,18 @@ impl<T: Table> Extend<T::Pk> for KeySet<T> {
 }
 
 impl<T> KeySet<T> {
+    pub const ALL: Self = Self {
+        all: true,
+        keys: Vec::new(),
+        ranges: Vec::new(),
+        limit: None,
+        _marker: PhantomData,
+    };
+
     #[inline]
     pub const fn new() -> Self {
         Self {
+            all: false,
             keys: Vec::new(),
             ranges: Vec::new(),
             limit: None,
@@ -158,6 +169,7 @@ impl<T> KeySet<T> {
     #[inline]
     pub fn with_capacity(keys: usize, ranges: usize) -> Self {
         Self {
+            all: false,
             keys: Vec::with_capacity(keys),
             ranges: Vec::with_capacity(ranges),
             limit: None,
@@ -185,7 +197,7 @@ impl<T> KeySet<T> {
         spanner::KeySet {
             keys: self.keys,
             ranges: self.ranges,
-            all: false,
+            all: self.all,
         }
     }
 
