@@ -1,9 +1,11 @@
 use std::num::NonZeroUsize;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use std::time::Instant;
 
-use protos::spanner;
-use tokio::sync::{RwLock, RwLockReadGuard};
+use protos::spanner::spanner_client::SpannerClient;
+use protos::spanner::{self, DeleteSessionRequest};
+
+use crate::client::ClientParts;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -17,31 +19,84 @@ impl SessionKey {
     }
 }
 
+const SESSION_ALIVE: u8 = 0;
+const SESSION_PENDING_DELETION: u8 = 1;
+const SESSION_DELETED: u8 = 2;
+
 #[derive(Debug)]
 pub struct Session {
-    state: RwLock<SessionState>,
+    raw: Box<spanner::Session>,
+    state: AtomicU8,
     created: Instant,
     last_used: AtomicU64,
     key: SessionKey,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionState {
+    Alive,
+    PendingDeletion,
+    Deleted,
+}
+
 impl Session {
-    pub(super) async fn close(&self) -> Option<Box<spanner::Session>> {
-        self.state.write().await.close()
+    pub(super) fn state(&self, order: Ordering) -> SessionState {
+        match self.state.load(order) {
+            SESSION_ALIVE => SessionState::Alive,
+            SESSION_PENDING_DELETION => SessionState::PendingDeletion,
+            SESSION_DELETED => SessionState::Deleted,
+            _ => unreachable!(),
+        }
     }
 
-    pub(super) fn is_closed(&self) -> bool {
-        self.state
-            .try_read()
-            .map(|inner| inner.raw_session().is_none())
-            .unwrap_or(false)
+    pub(super) fn alive(&self) -> bool {
+        self.state.load(Ordering::Acquire) == SESSION_ALIVE
     }
 
-    pub(crate) async fn raw_session(
-        &self,
-    ) -> Option<RwLockReadGuard<'_, protos::spanner::Session>> {
-        let guard = self.state.read().await;
-        RwLockReadGuard::try_map(guard, |session| session.raw_session()).ok()
+    pub(super) fn pending_deletion(&self) -> bool {
+        self.state.load(Ordering::Acquire) == SESSION_PENDING_DELETION
+    }
+
+    pub(super) fn deleted(&self) -> bool {
+        self.state.load(Ordering::Relaxed) == SESSION_DELETED
+    }
+
+    pub(super) fn mark_for_deletion(&self) {
+        self.state.compare_exchange_weak(
+            SESSION_ALIVE,
+            SESSION_PENDING_DELETION,
+            Ordering::SeqCst,
+            Ordering::Relaxed,
+        );
+    }
+
+    pub(super) fn mark_deleted(&self) {
+        self.state.compare_exchange_weak(
+            SESSION_PENDING_DELETION,
+            SESSION_DELETED,
+            Ordering::SeqCst,
+            Ordering::Relaxed,
+        );
+    }
+
+    pub(crate) async fn delete(&self, parts: &ClientParts) -> crate::Result<()> {
+        self.mark_for_deletion();
+
+        if self.pending_deletion() {
+            SpannerClient::new(parts.channel.clone())
+                .delete_session(DeleteSessionRequest {
+                    name: self.raw.name.clone(),
+                })
+                .await?;
+
+            self.state.store(SESSION_DELETED, Ordering::Release);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn raw_session(&self) -> Option<&protos::spanner::Session> {
+        if self.alive() { Some(&self.raw) } else { None }
     }
 
     pub(super) fn key(&self) -> SessionKey {
@@ -53,29 +108,8 @@ impl Session {
             created,
             key,
             last_used: AtomicU64::new(0),
-            state: RwLock::new(SessionState::Live(Box::new(raw_session))),
-        }
-    }
-}
-
-#[derive(Debug)]
-enum SessionState {
-    Live(Box<spanner::Session>),
-    Closed,
-}
-
-impl SessionState {
-    fn raw_session(&self) -> Option<&spanner::Session> {
-        match self {
-            Self::Live(raw) => Some(raw),
-            Self::Closed => None,
-        }
-    }
-
-    pub fn close(&mut self) -> Option<Box<spanner::Session>> {
-        match std::mem::replace(self, Self::Closed) {
-            Self::Live(session) => Some(session),
-            Self::Closed => None,
+            state: AtomicU8::new(SESSION_ALIVE),
+            raw: Box::new(raw_session),
         }
     }
 }

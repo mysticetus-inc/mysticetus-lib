@@ -2,10 +2,9 @@ use std::borrow::Cow;
 use std::fmt;
 
 use crate::Value;
-use crate::client::pool::PoolError;
+use crate::client::PoolError;
 use crate::column::InvalidColumnIndex;
 use crate::convert::SpannerEncode;
-use crate::ty::SpannerType;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

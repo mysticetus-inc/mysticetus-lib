@@ -4,7 +4,6 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
-use protos::spanner::spanner_client::SpannerClient;
 use timestamp::Timestamp;
 use tokio::task::JoinSet;
 use tonic::transport::ClientTlsConfig;
@@ -14,7 +13,7 @@ use crate::key_set::WriteBuilder;
 use crate::tx::{ShouldCommit, Transaction};
 use crate::{ResultIter, StreamingRead, Table};
 
-pub mod pool;
+mod pool;
 
 #[cfg(feature = "admin")]
 pub mod admin;
@@ -25,7 +24,8 @@ mod session;
 
 pub(crate) mod connection;
 
-use pool::SessionPool;
+pub use pool::{PoolError, Session};
+use pool::{SESSION_POOL, SessionPool};
 pub use session::SessionClient;
 
 const DOMAIN: &str = "spanner.googleapis.com";
@@ -34,7 +34,6 @@ const ENDPOINT: &str = "https://spanner.googleapis.com";
 #[derive(Clone)]
 pub struct Client {
     parts: Arc<ClientParts>,
-    session_pool: SessionPool,
 }
 
 impl fmt::Debug for Client {
@@ -42,7 +41,6 @@ impl fmt::Debug for Client {
         f.debug_struct("Client")
             .field("info", &self.parts.info)
             .field("channel", &self.parts.channel)
-            .field("session_pool", &self.session_pool)
             .finish()
     }
 }
@@ -73,15 +71,12 @@ impl Client {
     }
 
     pub(crate) fn from_parts(info: Database, channel: AuthChannel, role: Option<Box<str>>) -> Self {
-        let parts = Arc::new(ClientParts {
-            info,
-            channel,
-            role,
-        });
-
         Self {
-            session_pool: SessionPool::new(Arc::clone(&parts)),
-            parts,
+            parts: Arc::new(ClientParts {
+                info,
+                channel,
+                role,
+            }),
         }
     }
 
@@ -186,16 +181,8 @@ impl Client {
         Self::new_inner(info, scope, role).await
     }
 
-    pub(crate) fn parts(&self) -> &Arc<ClientParts> {
-        &self.parts
-    }
-
     pub fn database_info(&self) -> &Database {
         &self.parts.info
-    }
-
-    pub(crate) fn channel(&self) -> &AuthChannel {
-        &self.parts.channel
     }
 
     #[cfg(feature = "admin")]
@@ -248,10 +235,10 @@ impl Client {
     */
 
     pub fn shutdown_task(&self) -> impl FnOnce() -> ShutdownFuture + 'static {
-        let pool = self.session_pool.clone();
+        let parts = Arc::clone(&self.parts);
 
         move || ShutdownFuture {
-            tasks: pool.delete_sessions(),
+            tasks: SESSION_POOL.delete_sessions(&parts),
         }
     }
 
@@ -259,10 +246,8 @@ impl Client {
         &self,
         timeout: Option<timestamp::Duration>,
     ) -> crate::Result<SessionClient> {
-        let session = self
-            .session_pool
-            .get_or_create_session_according_to_load(timeout)
-            .await?;
+        let session =
+            SessionPool::get_or_create_session_according_to_load(&self.parts, timeout).await?;
 
         Ok(SessionClient {
             parts: self.parts.clone(),
@@ -288,7 +273,7 @@ impl Client {
 
     pub async fn run_in_transaction<F, Fut>(&self, func: F) -> crate::Result<Option<Timestamp>>
     where
-        F: FnMut(&mut Transaction<'_, '_>) -> Fut,
+        F: FnMut(&mut Transaction<'_>) -> Fut,
         Fut: std::future::Future<Output = crate::Result<ShouldCommit>>,
     {
         self.borrow_session(None)

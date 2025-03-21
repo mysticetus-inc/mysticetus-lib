@@ -9,6 +9,8 @@
 //! [`Transaction`]: crate::tx::Transaction
 #![allow(dead_code)]
 
+use std::sync::Arc;
+
 use bytes::Bytes;
 use gcp_auth_channel::AuthChannel;
 use protos::spanner::transaction_options::read_only::TimestampBound;
@@ -26,34 +28,6 @@ use crate::sql::Params;
 use crate::tx::ReadWriteTx;
 use crate::util::MaybeOwnedMut;
 use crate::{Table, tx};
-
-pub(crate) enum RawSession<'session> {
-    Borrowed(tokio::sync::RwLockReadGuard<'session, spanner::Session>),
-    Pending(&'session super::pool::BorrowedSession),
-}
-
-impl<'a> RawSession<'a> {
-    pub async fn get_raw_session(
-        &mut self,
-    ) -> crate::Result<&tokio::sync::RwLockReadGuard<'a, spanner::Session>> {
-        match self {
-            Self::Borrowed(guard) => Ok(guard),
-            Self::Pending(pending) => {
-                let raw_session = pending
-                    .raw_session()
-                    .await
-                    .ok_or(crate::Error::SessionDeleted)?;
-
-                *self = Self::Borrowed(raw_session);
-
-                match self {
-                    Self::Borrowed(guard) => Ok(guard),
-                    Self::Pending(_) => unreachable!(),
-                }
-            }
-        }
-    }
-}
 
 /// A const proto key set to read an entire table
 const ALL_KEY_SET: spanner::KeySet = spanner::KeySet {
@@ -82,22 +56,22 @@ const DEFAULT_READ_ONLY: TransactionOptions = TransactionOptions {
 
 /// Helper type that contains everything needed to make a request,
 /// and provides internal helper functions to simplify things internally.
-pub struct ConnectionParts<'a, 'session, T> {
+pub struct ConnectionParts<'a, T> {
     pub(crate) client_parts: &'a crate::client::ClientParts,
-    pub(crate) raw_session: MaybeOwnedMut<'a, RawSession<'session>>,
+    pub(crate) session: &'a Arc<Session>,
     tx: T,
 }
 
-impl<'a, 'session, T> ConnectionParts<'a, 'session, T> {
+impl<'a, T> ConnectionParts<'a, T> {
     #[inline]
     pub(crate) fn from_parts(
         client_parts: &'a crate::client::ClientParts,
-        raw_session: impl Into<MaybeOwnedMut<'a, RawSession<'session>>>,
+        session: &'a Arc<Session>,
         tx: T,
     ) -> Self {
         Self {
             client_parts,
-            raw_session: raw_session.into(),
+            session,
             tx,
         }
     }
@@ -162,7 +136,7 @@ fn build_sql_request(
     }
 }
 
-impl<Tx> ConnectionParts<'_, '_, Tx> {
+impl<Tx> ConnectionParts<'_, Tx> {
     pub(crate) fn client(
         &self,
     ) -> spanner::spanner_client::SpannerClient<AuthChannel<tonic::transport::Channel>> {
@@ -171,7 +145,7 @@ impl<Tx> ConnectionParts<'_, '_, Tx> {
 }
 
 // ------------ Read only functions -------------- //
-impl<Tx> ConnectionParts<'_, '_, Tx>
+impl<Tx> ConnectionParts<'_, Tx>
 where
     Tx: tx::ReadOnlyTx,
 {
@@ -186,10 +160,13 @@ where
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
     ) -> crate::Result<ResultSet> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let request = build_read_request(
-            raw_session.name.clone(),
+            raw.name.clone(),
             self.tx.build_read_only_selector(),
             key_set,
             table,
@@ -211,7 +188,10 @@ where
         sql: String,
         params: Option<Params>,
     ) -> crate::Result<ResultSet> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let request = build_sql_request(
             raw_session.name.clone(),
@@ -236,7 +216,10 @@ where
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
     ) -> crate::Result<tonic::Streaming<PartialResultSet>> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let req = build_read_request(
             raw_session.name.clone(),
@@ -261,7 +244,10 @@ where
         sql: String,
         params: Option<Params>,
     ) -> crate::Result<tonic::Streaming<PartialResultSet>> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let request = build_sql_request(
             raw_session.name.clone(),
@@ -403,13 +389,16 @@ fn build_commit_request(
 
 // ----------- read/write Transaction specific ----------- //
 
-impl<Tx: ReadWriteTx> ConnectionParts<'_, '_, Tx> {
+impl<Tx: ReadWriteTx> ConnectionParts<'_, Tx> {
     #[inline]
     pub(crate) async fn commit_inner(
         &mut self,
         mutations: Vec<spanner::Mutation>,
     ) -> crate::Result<tonic::Response<CommitResponse>> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let request = build_commit_request(
             raw_session.name.clone(),
@@ -425,9 +414,13 @@ impl<Tx: ReadWriteTx> ConnectionParts<'_, '_, Tx> {
 }
 
 // ----------- Existing, Read-write Transaction specific ----------- //
-impl ConnectionParts<'_, '_, tx::Existing<'_, tx::ReadWrite>> {
+impl ConnectionParts<'_, tx::Existing<'_, tx::ReadWrite>> {
     pub(crate) async fn rollback(&mut self) -> crate::Result<()> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
+
         let request = spanner::RollbackRequest {
             session: raw_session.name.clone(),
             transaction_id: self.tx.clone_id(),
@@ -440,10 +433,13 @@ impl ConnectionParts<'_, '_, tx::Existing<'_, tx::ReadWrite>> {
 }
 
 // ----------- Special begin tx methods --------------- //
-impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
+impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, tx::Begin<Tx>> {
     /// Begins a standalone transaction, not tied to a specific read.
     pub(crate) async fn begin_tx(&mut self) -> crate::Result<spanner::Transaction> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let request = BeginTransactionRequest {
             session: raw_session.name.clone(),
@@ -469,7 +465,10 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
     ) -> crate::Result<(spanner::Transaction, ResultSet)> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let req = build_read_request(
             raw_session.name.clone(),
@@ -508,7 +507,10 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
         PartialResultSet,
         tonic::Streaming<PartialResultSet>,
     )> {
-        let raw_session = self.raw_session.get_raw_session().await?;
+        let raw_session = self
+            .session
+            .raw_session()
+            .ok_or(crate::Error::SessionDeleted)?;
 
         let req = build_read_request(
             raw_session.name.clone(),
@@ -577,13 +579,13 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, '_, tx::Begin<Tx>> {
 }
 
 // ------------ Specific begin read-write tx functions ------------- //
-impl<'a, 'session> ConnectionParts<'a, 'session, tx::Begin<tx::ReadWrite>> {
+impl<'a> ConnectionParts<'a, tx::Begin<tx::ReadWrite>> {
     pub(crate) async fn begin_tx_read<T: Table>(
         mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
-    ) -> crate::Result<(crate::tx::Transaction<'a, 'session>, ResultIter<T>)> {
+    ) -> crate::Result<(crate::tx::Transaction<'a>, ResultIter<T>)> {
         let (tx, iter) = self
             .begin_tx_read_table::<T>(key_set, order_by, lock_hint)
             .await?;
@@ -596,7 +598,7 @@ impl<'a, 'session> ConnectionParts<'a, 'session, tx::Begin<tx::ReadWrite>> {
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
         lock_hint: Option<read_request::LockHint>,
-    ) -> crate::Result<(crate::tx::Transaction<'a, 'session>, StreamingRead<T>)> {
+    ) -> crate::Result<(crate::tx::Transaction<'a>, StreamingRead<T>)> {
         let (tx, iter) = self
             .begin_tx_streaming_read_table(key_set, order_by, lock_hint)
             .await?;
@@ -613,7 +615,7 @@ macro_rules! impl_deferred_read_functions {
             T: $crate::Table,
             K: $crate::key_set::IntoKeySet<T>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
+            <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .read_key_set(key_set.into_key_set())
                 .await
         }
@@ -627,7 +629,7 @@ macro_rules! impl_deferred_read_functions {
             T: $crate::Table,
             K: $crate::key_set::IntoKeySet<T>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
+            <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .streaming_read_key_set(key_set.into_key_set())
                 .await
         }
@@ -637,7 +639,7 @@ macro_rules! impl_deferred_read_functions {
         where
             T: $crate::Table,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
+            <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .read_all()
                 .await
         }
@@ -649,7 +651,7 @@ macro_rules! impl_deferred_read_functions {
         where
             T: $crate::Table,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
+            <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .streaming_read_all()
                 .await
         }
@@ -659,7 +661,7 @@ macro_rules! impl_deferred_read_functions {
         where
             T: $crate::Table,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
+            <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .read_one(pk)
                 .await
         }
@@ -672,7 +674,7 @@ macro_rules! impl_deferred_read_functions {
         where
             I: IntoIterator<Item = T::Pk>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
+            <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .read_rows(pks)
                 .await
         }
@@ -685,7 +687,7 @@ macro_rules! impl_deferred_read_functions {
         where
             I: IntoIterator<Item = T::Pk>,
         {
-            <&Self as $crate::private::SealedConnection<'_>>::connection_parts(&self)
+            <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .streaming_read_rows(pks)
                 .await
         }
@@ -693,3 +695,5 @@ macro_rules! impl_deferred_read_functions {
 }
 
 pub(crate) use impl_deferred_read_functions;
+
+use super::pool::Session;

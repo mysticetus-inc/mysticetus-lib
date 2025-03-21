@@ -1,18 +1,21 @@
+use std::sync::Arc;
+
 use net_utils::backoff::Backoff;
 use protos::spanner::mutation::{Delete, Operation, Write};
 use protos::spanner::{self, CommitResponse, Mutation};
 use tonic::Code;
 
+use super::{Existing, ReadWrite};
 use crate::Table;
-use crate::client::ClientParts;
-use crate::client::connection::{ConnectionParts, RawSession};
+use crate::client::connection::ConnectionParts;
+use crate::client::{ClientParts, Session};
 use crate::error::ConvertError;
 use crate::key_set::{KeySet, WriteBuilder};
-use crate::util::MaybeOwnedMut;
+use crate::private::SealedConnection;
 
 #[must_use = "a transaction must be committed or rolled back"]
-pub struct Transaction<'a, 'session> {
-    raw_session: MaybeOwnedMut<'a, RawSession<'session>>,
+pub struct Transaction<'a> {
+    session: &'a Arc<Session>,
     client_parts: &'a ClientParts,
     mutations: Vec<Mutation>,
     tx: spanner::Transaction,
@@ -36,46 +39,37 @@ pub enum ShouldCommit {
     No,
 }
 
-impl<'a, 'session> Transaction<'a, 'session> {
+impl<'a> Transaction<'a> {
     pub(crate) fn new(
-        parts: ConnectionParts<'a, 'session, crate::tx::Begin<crate::tx::ReadWrite>>,
+        parts: ConnectionParts<'a, crate::tx::Begin<ReadWrite>>,
         tx: spanner::Transaction,
     ) -> Self {
         Self {
             mutations: vec![],
             client_parts: parts.client_parts,
-            raw_session: parts.raw_session,
+            session: parts.session,
             tx,
             state: None,
             completed_successfully: false,
         }
     }
-
-    pub(crate) fn parts(
-        &mut self,
-    ) -> ConnectionParts<'_, 'session, super::Existing<'_, super::ReadWrite>> {
-        crate::client::connection::ConnectionParts::from_parts(
-            self.client_parts,
-            self.raw_session.reborrow(),
-            super::Existing::new(&self.tx),
-        )
-    }
 }
 
-/*
-impl<'tx, 'session> crate::private::SealedConnection<'session> for Transaction<'tx, 'session> {
+impl<'tx> SealedConnection for Transaction<'tx> {
     type Tx<'a>
-        = super::Existing<'a, super::ReadWrite>
+        = Existing<'a, ReadWrite>
     where
         Self: 'a;
 
     #[inline]
-    fn connection_parts(&self) -> ConnectionParts<'_, 'session, Self::Tx<'_>> {
-        // self.parts()
-        todo!()
+    fn connection_parts(&self) -> ConnectionParts<'_, Self::Tx<'_>> {
+        crate::client::connection::ConnectionParts::from_parts(
+            self.client_parts,
+            self.session,
+            super::Existing::new(&self.tx),
+        )
     }
 }
-*/
 
 fn build_single_row_write<R: Table>(row: R) -> Result<Write, ConvertError> {
     let mut wb = WriteBuilder::with_row_capacity(1);
@@ -96,7 +90,7 @@ where
     Ok(dst.into_proto())
 }
 
-impl Transaction<'_, '_> {
+impl Transaction<'_> {
     pub fn delete<R: Table>(&mut self, key_set: &mut KeySet<R>) -> &mut Self {
         self.add_mutation(Operation::Delete(Delete {
             table: R::NAME.to_owned(),
@@ -214,7 +208,7 @@ impl Transaction<'_, '_> {
 
         let mutations = self.mutations.clone();
 
-        let result = self.parts().commit_inner(mutations).await;
+        let result = self.connection_parts().commit_inner(mutations).await;
 
         match result {
             Ok(resp) => {
@@ -235,7 +229,7 @@ impl Transaction<'_, '_> {
         );
         self.state = Some(TxState::RolledBack);
 
-        self.parts().rollback().await?;
+        self.connection_parts().rollback().await?;
 
         self.completed_successfully = true;
         Ok(())

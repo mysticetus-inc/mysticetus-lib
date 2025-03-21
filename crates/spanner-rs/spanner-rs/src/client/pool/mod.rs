@@ -1,19 +1,48 @@
 use std::num::NonZeroUsize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use protos::spanner::spanner_client::SpannerClient;
 use protos::spanner::{self};
 use tokio::sync::Notify;
-use tokio::task::JoinSet;
+use tokio::task::{JoinHandle, JoinSet};
 
-use super::session::SessionKey;
-use super::tracker::{Borrowed, SessionTracker, TryBorrowError};
+mod session;
+mod shutdown;
+mod tracker;
+
+pub use session::Session;
+use session::SessionKey;
+use tracker::{Borrowed, SessionTracker, TryBorrowError};
+
 use crate::client::ClientParts;
 
-pub(super) struct SessionPoolInner {
-    client: Arc<ClientParts>,
+pub const MAX_SESSION_COUNT: u8 = 100;
+
+/// Static session pool that all clients use.
+pub(crate) static SESSION_POOL: SessionPool = SessionPool {
+    closed: AtomicBool::new(false),
+    nofify_returned: Notify::const_new(),
+    state: Mutex::new(State {
+        sessions: SessionTracker::new(),
+        next_key: SessionKey::MIN,
+    }),
+};
+
+pub(crate) struct SessionPool {
+    closed: AtomicBool,
     nofify_returned: Notify,
     state: Mutex<State>,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub enum PoolError {
+    #[error("session pool is full")]
+    SessionPoolFull,
+    #[error("timed out waiting for session to become available")]
+    Timeout,
+    #[error("pool is closed pending shutdown")]
+    PoolClosed,
 }
 
 struct State {
@@ -27,20 +56,12 @@ pub(super) struct Stats {
     pub(super) available: usize,
 }
 
-impl SessionPoolInner {
-    pub(super) fn new(client: Arc<ClientParts>) -> Self {
-        Self {
-            client,
-            nofify_returned: Notify::new(),
-            state: Mutex::new(State {
-                sessions: SessionTracker::new(),
-                next_key: SessionKey::MIN,
-            }),
-        }
-    }
-
-    pub(super) fn stats(&self) -> Stats {
-        let guard = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+impl SessionPool {
+    pub(super) fn stats() -> Stats {
+        let guard = SESSION_POOL
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
 
         Stats {
             total: guard.sessions.total_sessions(),
@@ -48,31 +69,31 @@ impl SessionPoolInner {
         }
     }
 
-    pub(super) fn try_borrow_session(
-        self: &Arc<Self>,
-    ) -> Result<super::BorrowedSession, TryBorrowError> {
-        let session = self
+    fn try_borrow_session(&self) -> Result<Result<Arc<Session>, TryBorrowError>, PoolError> {
+        if self.closed.load(Ordering::Relaxed) {
+            return Err(PoolError::PoolClosed);
+        }
+
+        Ok(self
             .state
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .sessions
-            .borrow()?;
-
-        Ok(super::BorrowedSession::new(self, session))
+            .borrow())
     }
 
     /// Borrows a session, optionally with a timeout.
     ///
     /// Returns [`None`] if the pool is empty (i.e no sessions have been created yet, or we just
     /// deleted all of the sessions) or if the timeout is hit.
-    pub(super) async fn borrow_session(
-        self: &Arc<Self>,
+    async fn borrow_session(
+        &self,
         timeout: Option<timestamp::Duration>,
-    ) -> Option<super::BorrowedSession> {
-        match self.try_borrow_session() {
-            Ok(session) => return Some(session),
+    ) -> Result<Option<Arc<Session>>, PoolError> {
+        match self.try_borrow_session()? {
+            Ok(session) => return Ok(Some(session)),
             // no point in waiting if the pool is empty,
-            Err(TryBorrowError::PoolEmpty) => return None,
+            Err(TryBorrowError::PoolEmpty) => return Ok(None),
             Err(TryBorrowError::AllBorrowed) => (),
         }
 
@@ -80,10 +101,10 @@ impl SessionPoolInner {
             loop {
                 self.nofify_returned.notified().await;
 
-                match self.try_borrow_session() {
-                    Ok(session) => return Some(session),
+                match self.try_borrow_session()? {
+                    Ok(session) => return Ok(Some(session)),
                     // no point in waiting if the pool is empty,
-                    Err(TryBorrowError::PoolEmpty) => return None,
+                    Err(TryBorrowError::PoolEmpty) => return Ok(None),
                     Err(TryBorrowError::AllBorrowed) => (),
                 }
             }
@@ -93,64 +114,66 @@ impl SessionPoolInner {
             Some(timeout) => tokio::time::timeout(timeout.into(), borrow_fut)
                 .await
                 .ok()
-                .flatten(),
+                .transpose()
+                .map(Option::flatten),
             None => borrow_fut.await,
         }
     }
 
-    pub(crate) async fn get_or_create_session<'a>(
-        self: &Arc<Self>,
+    async fn get_or_create_session<'a>(
+        &self,
+        client: &ClientParts,
         timeout: Option<timestamp::Duration>,
         batch_create: NonZeroUsize,
-    ) -> crate::Result<super::BorrowedSession> {
-        if let Some(session) = self.borrow_session(timeout).await {
+    ) -> crate::Result<Arc<Session>> {
+        if let Some(session) = self.borrow_session(timeout).await? {
             return Ok(session);
         }
 
         match batch_create.get() {
             0 => unreachable!("non-zero type"),
             1 => {
-                let new_session = create_session(&self.client).await?;
+                let new_session = create_session(&client).await?;
                 Ok(self.add_sessions([new_session]))
             }
             to_create => {
                 let to_create = (to_create as u8).min(10);
-                let sessions = batch_create_sessions(&self.client, to_create).await?;
+                let sessions = batch_create_sessions(&client, to_create).await?;
                 Ok(self.add_sessions(sessions))
             }
         }
     }
 
-    pub(crate) async fn get_or_create_session_according_to_load<'a>(
-        self: &Arc<Self>,
+    pub async fn get_or_create_session_according_to_load<'a>(
+        client: &ClientParts,
         timeout: Option<timestamp::Duration>,
-    ) -> crate::Result<super::BorrowedSession> {
-        if let Some(session) = self.borrow_session(timeout).await {
+    ) -> crate::Result<Arc<Session>> {
+        if let Some(session) = SESSION_POOL.borrow_session(timeout).await? {
             return Ok(session);
         }
 
-        let stats = self.stats();
+        let stats = Self::stats();
 
         let to_create = (stats.total / 2).clamp(1, 5);
 
         match to_create {
             0 => unreachable!("clamped to 1-5"),
             1 => {
-                let new_session = create_session(&self.client).await?;
-                Ok(self.add_sessions([new_session]))
+                let new_session = create_session(client).await?;
+                Ok(SESSION_POOL.add_sessions([new_session]))
             }
             to_create => {
                 let to_create = (to_create as u8).min(10);
-                let sessions = batch_create_sessions(&self.client, to_create).await?;
-                Ok(self.add_sessions(sessions))
+                let sessions = batch_create_sessions(client, to_create).await?;
+                Ok(SESSION_POOL.add_sessions(sessions))
             }
         }
     }
 
     fn add_sessions(
-        self: &Arc<Self>,
+        &self,
         sessions: impl IntoIterator<Item = protos::spanner::Session>,
-    ) -> super::BorrowedSession {
+    ) -> Arc<Session> {
         let created = std::time::Instant::now();
 
         let mut new_session_iter = sessions.into_iter();
@@ -162,7 +185,7 @@ impl SessionPoolInner {
         let mut guard = self.state.lock().unwrap_or_else(PoisonError::into_inner);
 
         let session = guard.insert_new(created, Borrowed::Yes, first_session);
-        let to_return = super::BorrowedSession::new(self, Arc::clone(session));
+        let to_return = Arc::clone(session);
 
         for session in new_session_iter {
             guard.insert_new(created, Borrowed::No, session);
@@ -171,20 +194,33 @@ impl SessionPoolInner {
         to_return
     }
 
-    pub(super) fn return_session(&self, session: &super::session::Session) {
-        let returned = self
+    pub(super) fn return_session(
+        &self,
+        parts: &Arc<ClientParts>,
+        session: &Arc<Session>,
+    ) -> Option<JoinHandle<crate::Result<()>>> {
+        match self
             .state
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .sessions
-            .return_session(session);
-
-        if returned {
-            self.nofify_returned.notify_one();
+            .return_session(parts, session)
+        {
+            tracker::ReturnSessionResult::Deleted => None,
+            tracker::ReturnSessionResult::Deleting(handle) => Some(handle),
+            tracker::ReturnSessionResult::Returned => {
+                self.nofify_returned.notify_one();
+                None
+            }
         }
     }
 
-    pub(super) fn delete_sessions(&self) -> Option<JoinSet<crate::Result<()>>> {
+    pub(super) fn delete_sessions(
+        &self,
+        parts: &Arc<ClientParts>,
+    ) -> Option<JoinSet<crate::Result<()>>> {
+        self.closed.store(true, Ordering::SeqCst);
+
         let sessions = {
             let mut guard = self.state.lock().unwrap_or_else(PoisonError::into_inner);
             std::mem::take(&mut guard.sessions)
@@ -200,41 +236,11 @@ impl SessionPoolInner {
         let mut set = JoinSet::new();
 
         for session in sessions {
-            let mut client = SpannerClient::new(self.client.channel.clone());
-
-            set.spawn(async move {
-                if let Some(raw) = session.close().await {
-                    client
-                        .delete_session(spanner::DeleteSessionRequest { name: raw.name })
-                        .await?;
-                }
-                Ok(())
-            });
+            let parts = parts.clone();
+            set.spawn(async move { session.delete(&parts).await });
         }
 
         if set.is_empty() { None } else { Some(set) }
-    }
-}
-
-impl Drop for SessionPoolInner {
-    fn drop(&mut self) {
-        if let Some(mut session_delete_set) = self.delete_sessions() {
-            tokio::spawn(async move {
-                while let Some(result) = session_delete_set.join_next().await {
-                    match result {
-                        Ok(Ok(())) => (),
-                        Ok(Err(error)) => {
-                            tracing::warn!(message = "failed to delete session", ?error)
-                        }
-                        Err(join_error) => tracing::warn!(
-                            message = "delete session task failed",
-                            ?join_error,
-                            is_panic = join_error.is_panic()
-                        ),
-                    }
-                }
-            });
-        }
     }
 }
 
@@ -244,11 +250,11 @@ impl State {
         created: std::time::Instant,
         borrowed: Borrowed,
         session: spanner::Session,
-    ) -> &Arc<super::session::Session> {
+    ) -> &Arc<Session> {
         let key = self.next_key;
         self.next_key = self.next_key.next();
 
-        let session = super::session::Session::new(created, key, session);
+        let session = Session::new(created, key, session);
 
         self.sessions.insert(borrowed, Arc::new(session))
     }

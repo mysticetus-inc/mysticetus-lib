@@ -56,16 +56,10 @@ pub mod __private {
 ///
 /// Used to abstract bare [`Session`]s and different transaction types, while
 /// providing the same interface between them all.
-pub trait ReadableConnection:
-    for<'a, 'sess> private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx>
-{
-}
+pub trait ReadableConnection: for<'a> private::SealedConnection<Tx<'a>: tx::ReadOnlyTx> {}
 
 /// Blanket impl over the real implementors.
-impl<T> ReadableConnection for T where
-    for<'a, 'sess> T: private::SealedConnection<'sess, Tx<'a>: tx::ReadOnlyTx>
-{
-}
+impl<T> ReadableConnection for T where for<'a> T: private::SealedConnection<Tx<'a>: tx::ReadOnlyTx> {}
 
 #[doc(hidden)]
 pub mod __macro_internals {
@@ -114,13 +108,13 @@ mod private {
     /// Trait representing types that can hand out a [`Session`], and interact with spanner data.
     ///
     /// Used mainly to treat bare [`Session`]'s + the different transaction types opaquely
-    pub trait SealedConnection<'session> {
+    pub trait SealedConnection {
         /// The type of transaction that 'self' implicitely contains into (by default).
         type Tx<'a>: SealedTx
         where
             Self: 'a;
 
-        fn connection_parts(&self) -> ConnectionParts<'_, 'session, Self::Tx<'_>>;
+        fn connection_parts(&self) -> ConnectionParts<'_, Self::Tx<'_>>;
     }
 
     /// Base transaction trait. Really only used as a bound for the supertraits to keep implementors

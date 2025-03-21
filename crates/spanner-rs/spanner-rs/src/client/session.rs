@@ -4,31 +4,26 @@ use protos::spanner::commit_response::CommitStats;
 use timestamp::Timestamp;
 
 use super::ClientParts;
-use super::connection::{ConnectionParts, RawSession};
+use super::connection::ConnectionParts;
+use super::pool::Session;
 use crate::error::ConvertError;
-use crate::key_set::WriteBuilder;
+use crate::key_set::{IntoKeySet, KeySet, OwnedRangeBounds, WriteBuilder};
+use crate::pk::IntoPartialPkParts;
 use crate::private::SealedConnection;
-use crate::tx::{ShouldCommit, Transaction};
-use crate::{ResultIter, StreamingRead};
+use crate::tx::{ShouldCommit, SingleUse, Transaction};
+use crate::{ResultIter, StreamingRead, Table};
 
 pub struct SessionClient {
     pub(super) parts: Arc<ClientParts>,
-    pub(super) session: super::pool::BorrowedSession,
+    pub(super) session: Arc<Session>,
 }
 
-impl<'session> SealedConnection<'session> for &'session SessionClient {
-    type Tx<'a>
-        = crate::tx::SingleUse
-    where
-        'session: 'a;
+impl SealedConnection for SessionClient {
+    type Tx<'a> = SingleUse;
 
     #[inline]
-    fn connection_parts(&self) -> ConnectionParts<'_, 'session, Self::Tx<'_>> {
-        ConnectionParts::from_parts(
-            &self.parts,
-            RawSession::Pending(&self.session),
-            crate::tx::SingleUse,
-        )
+    fn connection_parts(&self) -> ConnectionParts<'_, Self::Tx<'_>> {
+        ConnectionParts::from_parts(&self.parts, &self.session, crate::tx::SingleUse)
     }
 }
 impl SessionClient {
@@ -65,7 +60,7 @@ impl SessionClient {
     }
     pub async fn run_in_transaction<F, Fut>(&self, mut func: F) -> crate::Result<Option<Timestamp>>
     where
-        F: FnMut(&mut Transaction<'_, '_>) -> Fut,
+        F: FnMut(&mut Transaction<'_>) -> Fut,
         Fut: std::future::Future<Output = crate::Result<ShouldCommit>>,
     {
         let mut tx = self.begin_transaction().await?;
@@ -91,12 +86,9 @@ impl SessionClient {
         }
     }
 
-    pub async fn begin_transaction(&self) -> crate::Result<Transaction<'_, '_>> {
-        let mut parts = ConnectionParts::from_parts(
-            &self.parts,
-            RawSession::Pending(&self.session),
-            crate::tx::Begin::default(),
-        );
+    pub async fn begin_transaction(&self) -> crate::Result<Transaction<'_>> {
+        let mut parts =
+            ConnectionParts::from_parts(&self.parts, &self.session, crate::tx::Begin::default());
 
         let tx = parts.begin_tx().await?;
 
@@ -110,7 +102,6 @@ impl SessionClient {
         let raw_session = self
             .session
             .raw_session()
-            .await
             .ok_or(crate::Error::SessionDeleted)?;
 
         let req = protos::spanner::ExecuteBatchDmlRequest {
@@ -220,6 +211,39 @@ impl<'a> MutationBuilder<'a> {
     fn append_mutation(&mut self, mutation: protos::spanner::Mutation) -> &mut Self {
         self.mutations.push(mutation);
         self
+    }
+
+    pub fn delete_row<T: Table>(&mut self, pk: T::Pk) -> &mut Self {
+        self.delete_rows::<T>([pk])
+    }
+
+    pub fn delete_rows<T: Table>(&mut self, rows: impl IntoIterator<Item = T::Pk>) -> &mut Self {
+        let iter = rows.into_iter();
+        let (low, high) = iter.size_hint();
+        let mut ks = KeySet::<T>::with_capacity(high.unwrap_or(low), 0);
+        ks.add_keys(iter);
+        self.delete::<T>(ks)
+    }
+
+    pub fn delete_range<T: Table, R, B>(&mut self, range: R) -> &mut Self
+    where
+        R: OwnedRangeBounds<B>,
+        B: IntoPartialPkParts<T>,
+    {
+        let mut ks = KeySet::<T>::with_capacity(0, 1);
+        ks.add_range(range);
+        self.delete(ks)
+    }
+
+    pub fn delete<T: Table>(&mut self, to_delete: impl IntoKeySet<T>) -> &mut Self {
+        self.append_mutation(protos::spanner::Mutation {
+            operation: Some(protos::spanner::mutation::Operation::Delete(
+                protos::spanner::mutation::Delete {
+                    table: T::NAME.to_owned(),
+                    key_set: Some(to_delete.into_key_set().into_proto()),
+                },
+            )),
+        })
     }
 
     impl_methods! {

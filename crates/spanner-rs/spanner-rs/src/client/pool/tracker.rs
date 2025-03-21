@@ -2,20 +2,31 @@
 
 use std::collections::BTreeSet;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use fxhash::{FxBuildHasher, FxHashMap};
+use tokio::task::JoinHandle;
 
 use super::session::{Session, SessionKey};
+use crate::client::ClientParts;
 
 #[derive(Default)]
 pub(super) struct SessionTracker {
     sessions: FxHashMap<SessionKey, Arc<Session>>,
+    // keeps sessions ordered by creation time, that way when we borrow one,
+    // we borrow the oldest first.
     alive: BTreeSet<SessionKey>,
 }
 
 pub(super) enum TryBorrowError {
     PoolEmpty,
     AllBorrowed,
+}
+
+pub(super) enum ReturnSessionResult {
+    Returned,
+    Deleting(JoinHandle<crate::Result<()>>),
+    Deleted,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,9 +36,9 @@ pub(super) enum Borrowed {
 }
 
 impl SessionTracker {
-    pub(super) fn new() -> Self {
+    pub(super) const fn new() -> Self {
         Self {
-            sessions: FxHashMap::with_capacity_and_hasher(32, FxBuildHasher::default()),
+            sessions: FxHashMap::with_hasher(FxBuildHasher::new()),
             alive: BTreeSet::new(),
         }
     }
@@ -56,13 +67,32 @@ impl SessionTracker {
     }
 
     /// returns true if the session was actually returned
-    pub(super) fn return_session(&mut self, session: &Session) -> bool {
-        // if the session is closed, remove it entirely
-        if session.is_closed() {
-            let _ = self.sessions.remove(&session.key());
-            false
-        } else {
-            self.alive.insert(session.key())
+    pub(super) fn return_session(
+        &mut self,
+        parts: &Arc<ClientParts>,
+        session: &Arc<Session>,
+    ) -> ReturnSessionResult {
+        match session.state(Ordering::Acquire) {
+            super::session::SessionState::Alive => {
+                self.alive.insert(session.key());
+                ReturnSessionResult::Returned
+            }
+            super::session::SessionState::Deleted => {
+                _ = self.sessions.remove(&session.key());
+                ReturnSessionResult::Deleted
+            }
+            super::session::SessionState::PendingDeletion => {
+                let session = self
+                    .sessions
+                    .remove(&session.key())
+                    .unwrap_or_else(|| Arc::clone(session));
+
+                let parts = Arc::clone(parts);
+
+                ReturnSessionResult::Deleting(tokio::spawn(
+                    async move { session.delete(&parts).await },
+                ))
+            }
         }
     }
 
