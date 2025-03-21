@@ -12,9 +12,9 @@ mod struct_value;
 pub use encoded_array::EncodedArray;
 pub use encoded_value::EncodedValue;
 
-use crate::Table;
 use crate::convert::SpannerEncode;
 use crate::error::{ConvertError, FromError};
+use crate::{IntoSpanner, Table};
 
 /// A Spanner value.
 #[derive(Clone, PartialEq)]
@@ -160,6 +160,17 @@ impl Value {
 
     pub(crate) fn from_proto(v: protobuf::Value) -> Self {
         v.kind.map(Self).unwrap_or(Value::NULL)
+    }
+
+    pub fn from_struct_fields<K, V>(
+        fields: impl IntoIterator<Item = (impl Into<String>, impl IntoSpanner)>,
+    ) -> Self {
+        Self(Kind::StructValue(protobuf::Struct {
+            fields: fields
+                .into_iter()
+                .map(|(k, v)| (k.into(), v.into_value().into_protobuf()))
+                .collect(),
+        }))
     }
 
     #[inline]
