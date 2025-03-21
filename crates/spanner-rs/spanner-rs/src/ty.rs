@@ -6,8 +6,10 @@ use bytes::Bytes;
 use protos::protobuf::ListValue;
 use protos::protobuf::value::Kind;
 use protos::spanner::{self, StructType, TypeAnnotationCode, TypeCode, struct_type};
-use shared::static_or_boxed::StaticOrBoxed;
+// re-export for downstream consumers
+pub use shared::static_or_boxed::StaticOrBoxed;
 use timestamp::{Date, Timestamp};
+pub use typenum::{False, True};
 
 use crate::error::{ConvertError, FromError, MissingTypeInfo};
 use crate::value::EncodedArray;
