@@ -2,21 +2,32 @@ use crate::convert::SpannerEncode;
 use crate::queryable::Queryable;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Column<'a> {
+pub struct Column<'a, Name = &'a str> {
     pub index: usize,
-    pub name: &'a str,
+    pub name: Name,
     pub ty: &'a crate::ty::Type,
     pub nullable: bool,
 }
 
-impl Column<'static> {
-    pub const fn new<T: SpannerEncode>(index: usize, name: &'static str) -> Self {
+/// Marker type for an unnamed column. Used to simple queries
+/// that read values into tuples, where the actual column names arent important.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Unnamed;
+
+impl<Name> Column<'static, Name> {
+    pub const fn new<T: SpannerEncode>(index: usize, name: Name) -> Self {
         Self {
             index,
             name,
             ty: crate::ty::ty::<T::SpannerType>(),
             nullable: crate::ty::nullable::<T::SpannerType>(),
         }
+    }
+}
+
+impl Column<'static, Unnamed> {
+    pub const fn unnamed<T: SpannerEncode>(index: usize) -> Self {
+        Self::new::<T>(index, Unnamed)
     }
 }
 

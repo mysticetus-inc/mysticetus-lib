@@ -4,7 +4,9 @@
     extend_one,
     maybe_uninit_write_slice,
     int_roundings,
-    mapped_lock_guards
+    mapped_lock_guards,
+    const_type_id,
+    // non_lifetime_binders
 )]
 #[macro_use]
 extern crate tracing;

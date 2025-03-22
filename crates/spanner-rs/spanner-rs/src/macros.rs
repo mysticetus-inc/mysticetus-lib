@@ -723,37 +723,25 @@ macro_rules! __parse_columns {
     }
 }
 
-/*
-// TODO: no real need for column implmenentations, we arent doing crazy queries yet.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __impl_col {
     (
         field = $field:ident,
-        field_ident = [$($field_ident:tt)*],
         field_ty = ($($field_ty:tt)*),
+        field_name = [$field_name:expr],
         col_index = $col_index:expr,
     ) => {
-        $crate::__impl_col! {
-            @INTERNAL
-            field = $field,
-            field_ident = $($field_ident)*,
-            field_ty = ($($field_ty)*),
-            col_index = $col_index,
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $field;
+
+        impl $crate::queryable::new::Column for $field {
+            const NAME: &'static str = $field_name;
+            type Type = $($field_ty)*;
+            type Index = typenum::U<{ $col_index }>;
         }
     };
-    (
-        @INTERNAL
-        field = $field:ident,
-        field_ident = $field_ident:ident,
-        field_ty = ($($field_ty:tt)*),
-        col_index = $col_index:expr,
-    ) => {
-        #[derive(Debug, Clone, PartialEq)]
-        pub struct $field_ident($($field_ty)*);
-    };
 }
-*/
 
 #[macro_export]
 #[doc(hidden)]
@@ -796,6 +784,7 @@ macro_rules! __row_impls {
 
         impl $crate::queryable::Queryable for $row {
             type NumColumns = $crate::__macro_internals::typenum::U<{ <[()]>::len(&[$($crate::__replace_with_unit!($field),)*]) }>;
+            type ColumnName = &'static str;
 
             const COLUMNS: $crate::__macro_internals::generic_array::GenericArray<$crate::column::Column<'static>, Self::NumColumns> = $crate::__macro_internals::generic_array::GenericArray::from_array([
                 $(
@@ -821,6 +810,19 @@ macro_rules! __row_impls {
                 ]))
             }
         }
+
+        /*
+        pub mod columns {
+            $(
+                $crate::__impl_col! {
+                    field = $field,
+                    field_ty = ($($column_ty)*),
+                    field_name = [$field_name],
+                    col_index = $col_idx,
+                }
+            )+
+        }
+        */
 
         $crate::__impl_table! {
             row = {
