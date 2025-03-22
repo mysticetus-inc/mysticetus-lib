@@ -666,6 +666,7 @@ macro_rules! impl_deferred_read_functions {
         }
 
         #[inline]
+        #[allow(dead_code)]
         pub(crate) async fn read_rows<T: $crate::Table, I>(
             &self,
             pks: I,
@@ -678,6 +679,7 @@ macro_rules! impl_deferred_read_functions {
                 .await
         }
 
+        #[allow(dead_code)]
         #[inline]
         pub(crate) async fn streaming_read_rows<T: $crate::Table, I>(
             &self,

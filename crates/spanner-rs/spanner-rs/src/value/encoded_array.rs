@@ -65,16 +65,6 @@ impl<T: SpannerType> EncodedArray<T> {
     }
 }
 
-impl<T> EncodedArray<T> {
-    #[inline]
-    pub(crate) fn new(values: Vec<protobuf::Value>) -> Self {
-        Self {
-            values,
-            _marker: PhantomData,
-        }
-    }
-}
-
 impl<T> fmt::Debug for EncodedArray<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use super::fmt_helpers::DebugValue;

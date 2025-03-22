@@ -8,7 +8,7 @@ use protos::spanner::transaction_options::read_only::TimestampBound;
 use protos::spanner::transaction_options::read_write::ReadLockMode;
 use protos::spanner::transaction_options::{self, Mode};
 use protos::spanner::transaction_selector::Selector;
-use protos::spanner::{self, commit_request, TransactionOptions, TransactionSelector};
+use protos::spanner::{self, TransactionOptions, TransactionSelector, commit_request};
 pub use transaction::{ShouldCommit, Transaction};
 
 pub(crate) const READ_WRITE: TransactionOptions = TransactionOptions {
@@ -133,14 +133,6 @@ impl ReadWriteTx for Existing<'_, ReadWrite> {
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Begin<T: Copy>(PhantomData<T>);
-
-impl Begin<ReadWrite> {
-    pub(crate) const READ_WRITE: Self = Self(PhantomData);
-}
-
-impl Begin<ReadOnly> {
-    pub(crate) const READ_ONLY: Self = Self(PhantomData);
-}
 
 impl<T: TxOptions> Begin<T> {
     #[inline]

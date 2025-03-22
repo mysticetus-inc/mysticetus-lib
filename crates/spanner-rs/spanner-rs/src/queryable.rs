@@ -77,6 +77,9 @@ impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8,
 impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8, J: 9, K: 10, L: 11, M: 12);
 
 pub mod new {
+    // TODO: figure out how to make tuple indexing at a type level work
+    // so we can replace Queryable::COLUMNS with a type parameter
+    // `type Columns: Columns;` instead
     use typenum::{IsLess, True, U, Unsigned};
 
     use crate::ty::SpannerType;
@@ -97,17 +100,6 @@ pub mod new {
         type Value: Column;
     }
 
-    macro_rules! count_idents {
-        ($next:ident, $($i:ident),+ $(,)?) => {
-            1 + count_idents!($($i)+)
-        };
-        ($last:ident $(,)?) => { 1 }
-    }
-
-    macro_rules! impl_column_at {
-        ($columns:ty, $index:literal, $col:ty) => {};
-    }
-
     impl<Idx, T: Column> ColumnAt<Idx> for (T,)
     where
         Idx: Unsigned + IsLess<Self::Number, Output = True>,
@@ -123,27 +115,4 @@ pub mod new {
         type ValueAt<Index: Unsigned + IsLess<Self::Number, Output = True>> =
             <Self as ColumnAt<Index>>::Value;
     }
-
-    type Lol<T, Index> = <(T,) as Columns>::ValueAt<Index>;
-
-    type Test<T> = Lol<T, U<0>>;
-
-    macro_rules! impl_columns {
-        (
-            $($t:ident: $index:literal),*
-            $(,)?
-        ) => {
-
-            impl<$($t,)*> Columns for ($($t,)*)
-            where
-                $($t: Column,)*
-            {
-                type Number = typenum::U<{ count_idents!($($t,)+)}>;
-            }
-        };
-    }
-
-    // impl_columns! {
-    //     T: 0,
-    // }
 }
