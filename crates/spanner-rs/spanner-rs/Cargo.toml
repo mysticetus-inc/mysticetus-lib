@@ -41,6 +41,7 @@ tokio-util.workspace = true
 fxhash = "0.2.1"
 generic-array = "1.2.0"
 
+# debug-macro = { path = "../../../../debug-macro" }
 
 [dev-dependencies]
 rand.workspace = true

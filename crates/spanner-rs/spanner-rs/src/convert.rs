@@ -264,12 +264,14 @@ macro_rules! impl_ints {
 
             // ------------ nonzero impl ----------------- //
             impl IntoSpanner for $non_zero_int {
+                #[inline]
                 fn into_value(self) -> Value {
                     self.get().into_value()
                 }
             }
 
             impl FromSpanner for $non_zero_int {
+                #[inline]
                 fn from_value(value: Value) -> Result<Self, ConvertError> {
                     let int = <$int>::from_value(value)?;
 

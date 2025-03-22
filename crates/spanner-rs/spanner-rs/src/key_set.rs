@@ -206,12 +206,22 @@ impl<T> KeySet<T> {
     }
 }
 
-fn convert_to_range<R, S, T: Table>(range: R) -> KeyRange
+enum KeyRangeResult {
+    All,
+    Range(KeyRange),
+}
+
+fn convert_to_range<R, S, T: Table>(range: R) -> KeyRangeResult
 where
     R: OwnedRangeBounds<S>,
     S: IntoPartialPkParts<T>,
 {
     let (start, end) = range.into_bounds();
+
+    match (&start, &end) {
+        (Bound::Unbounded, Bound::Unbounded) => return KeyRangeResult::All,
+        _ => (),
+    }
 
     let start = match start {
         Bound::Included(incl) => StartKeyType::StartClosed(incl.into_partial_parts().to_key()),
@@ -225,10 +235,10 @@ where
         Bound::Unbounded => EndKeyType::EndClosed(ListValue { values: vec![] }),
     };
 
-    KeyRange {
+    KeyRangeResult::Range(KeyRange {
         start_key_type: Some(start),
         end_key_type: Some(end),
-    }
+    })
 }
 
 impl<T: Table> KeySet<T> {
@@ -268,7 +278,11 @@ impl<T: Table> KeySet<T> {
         R: OwnedRangeBounds<S>,
         S: IntoPartialPkParts<T>,
     {
-        self.ranges.push(convert_to_range(range));
+        match convert_to_range(range) {
+            KeyRangeResult::All => self.all = true,
+            KeyRangeResult::Range(range) => self.ranges.push(range),
+        }
+
         self
     }
 

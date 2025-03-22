@@ -26,7 +26,6 @@ use crate::key_set::KeySet;
 use crate::results::{ResultIter, StreamingRead};
 use crate::sql::Params;
 use crate::tx::ReadWriteTx;
-use crate::util::MaybeOwnedMut;
 use crate::{Table, tx};
 
 /// A const proto key set to read an entire table

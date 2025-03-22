@@ -1,11 +1,15 @@
 use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use protos::spanner::spanner_client::SpannerClient;
 use protos::spanner::{self};
 use tokio::sync::Notify;
 use tokio::task::{JoinHandle, JoinSet};
+
+static POOL_DEBUG: LazyLock<bool> = LazyLock::new(|| {
+    std::env::var("SPANNER_POOL_DEBUG").is_ok_and(|value| !value.is_empty() && value != "0")
+});
 
 mod session;
 mod shutdown;

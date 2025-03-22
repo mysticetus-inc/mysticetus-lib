@@ -208,8 +208,9 @@ where
     T: Into<i32>,
     T: TryFrom<i32>,
     <T as TryFrom<i32>>::Error: std::error::Error + Send + Sync + 'static,
+    T: crate::ty::markers::SpannerEnum,
 {
-    type Type = crate::ty::markers::Enum;
+    type Type = crate::ty::markers::ProtoEnum<T>;
     type Nullable = typenum::False;
 }
 
@@ -218,6 +219,7 @@ where
     T: Into<i32>,
     T: TryFrom<i32>,
     <T as TryFrom<i32>>::Error: std::error::Error + Send + Sync + 'static,
+    T: crate::ty::markers::SpannerEnum,
 {
     fn into_value(self) -> Value {
         <i32 as IntoSpanner>::into_value(self.0.into())
@@ -229,6 +231,7 @@ where
     T: Into<i32>,
     T: TryFrom<i32>,
     <T as TryFrom<i32>>::Error: std::error::Error + Send + Sync + 'static,
+    T: crate::ty::markers::SpannerEnum,
 {
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         pub use Kind::*;

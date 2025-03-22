@@ -7,11 +7,11 @@ use protos::protobuf::{self, ListValue};
 use protos::spanner::{self, PartialResultSet};
 
 use super::iter::ResultIter;
+use crate::queryable::Queryable;
 use crate::results::FieldIndex;
-use crate::table::Table;
 
 pin_project_lite::pin_project! {
-    pub struct StreamingRead<T: Table> {
+    pub struct StreamingRead<T: Queryable> {
         #[pin]
         streaming: tonic::Streaming<PartialResultSet>,
         field_index: Option<FieldIndex<T::NumColumns>>,
@@ -23,7 +23,7 @@ pin_project_lite::pin_project! {
     }
 }
 
-impl<T: Table> StreamingRead<T> {
+impl<T: Queryable> StreamingRead<T> {
     pub async fn next_chunk(self: &mut Pin<&mut Self>) -> crate::Result<Option<ResultIter<T>>> {
         futures::future::poll_fn(move |cx| self.as_mut().poll_next(cx))
             .await
@@ -137,7 +137,7 @@ impl<T: Table> StreamingRead<T> {
     }
 }
 
-impl<T: Table> Stream for StreamingRead<T> {
+impl<T: Queryable> Stream for StreamingRead<T> {
     type Item = crate::Result<ResultIter<T>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -216,7 +216,7 @@ impl<T: Table> Stream for StreamingRead<T> {
     }
 }
 
-fn build_result_iter_from_partial<T: Table>(
+fn build_result_iter_from_partial<T: Queryable>(
     existing_iter: &mut Option<ResultIter<T>>,
     fields: &FieldIndex<T::NumColumns>,
     partial_row: &mut Vec<protobuf::Value>,

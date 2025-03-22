@@ -3,15 +3,15 @@ use protos::spanner;
 
 use super::stats::QueryStats;
 use super::{FieldIndex, RawRow};
-use crate::Table;
+use crate::queryable::Queryable;
 
-pub struct ResultIter<T: Table> {
+pub struct ResultIter<T: Queryable> {
     field_index: FieldIndex<T::NumColumns>,
     rows: std::vec::IntoIter<ListValue>,
     stats: Option<spanner::ResultSetStats>,
 }
 
-impl<T: Table> ResultIter<T> {
+impl<T: Queryable> ResultIter<T> {
     pub(crate) fn into_parts(self) -> (FieldIndex<T::NumColumns>, std::vec::IntoIter<ListValue>) {
         (self.field_index, self.rows)
     }
@@ -58,7 +58,7 @@ impl<T: Table> ResultIter<T> {
 }
 
 #[inline]
-fn handle_row<T: Table>(index: &FieldIndex<T::NumColumns>, row: ListValue) -> crate::Result<T> {
+fn handle_row<T: Queryable>(index: &FieldIndex<T::NumColumns>, row: ListValue) -> crate::Result<T> {
     if T::COLUMNS.len() != row.values.len() {
         return Err(crate::Error::MismatchedColumnCount {
             expected: T::COLUMNS.len(),
@@ -71,7 +71,7 @@ fn handle_row<T: Table>(index: &FieldIndex<T::NumColumns>, row: ListValue) -> cr
     T::from_row(raw).map_err(Into::into)
 }
 
-impl<T: Table> Iterator for ResultIter<T> {
+impl<T: Queryable> Iterator for ResultIter<T> {
     type Item = crate::Result<T>;
 
     #[inline]
@@ -84,14 +84,13 @@ impl<T: Table> Iterator for ResultIter<T> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.rows.len();
-
         (len, Some(len))
     }
 }
 
-impl<T: Table> ExactSizeIterator for ResultIter<T> {}
+impl<T: Queryable> ExactSizeIterator for ResultIter<T> {}
 
-impl<T: Table> DoubleEndedIterator for ResultIter<T> {
+impl<T: Queryable> DoubleEndedIterator for ResultIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.rows
@@ -100,4 +99,4 @@ impl<T: Table> DoubleEndedIterator for ResultIter<T> {
     }
 }
 
-impl<T: Table> std::iter::FusedIterator for ResultIter<T> {}
+impl<T: Queryable> std::iter::FusedIterator for ResultIter<T> {}

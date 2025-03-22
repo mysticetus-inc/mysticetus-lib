@@ -1,66 +1,79 @@
 /// Defines a struct as a spanner table, and implements all of the nessecary traits.
 ///
 /// Should be used within its own module, as names will clash if 2 invocations of
-/// [`table!`] are called in the same module, unless certain options are used (to override the
+/// [`row!`] are called in the same module, unless certain options are used (to override the
 /// defaults)
 ///
 /// Notes + Limitations:
 ///     - functions/modules specified in `encode_with`/`decode_with`/`with` field options need to be
 ///       single identifiers (i.e can't be a path like `crate::util::...`).
 #[macro_export]
-macro_rules! table {
+macro_rules! row {
     // adapted (heavily) from the diesel::table macro
     ($($tokens:tt)*) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = [$($tokens)*],
             imports = [],
             meta = [],
             unprocessed_spanner_meta = [],
-            table = unknown,
-            table_vis = unknown,
-            table_name = unknown,
+            row_ident = unknown,
+            row_vis = unknown,
+            table_name = [],
             pk_name = [PrimaryKey],
             pks = [],
         }
     }
 }
 
+crate::row! {
+    #[derive(Debug, Clone, PartialEq)]
+    #[spanner(table)]
+    pub struct TestRow {
+        #[spanner(pk = 1)]
+        pub sighting_time: timestamp::Timestamp,
+    }
+}
+
 #[macro_export]
 #[doc(hidden)]
-macro_rules! __invalid_table_syntax {
+macro_rules! __invalid_row_syntax {
     ($inside:literal) => {
-        compile_error!("Invalid `table!` syntax");
+        compile_error!("Invalid `row!` syntax");
     };
     ($inside:literal $($tokens:tt)+) => {
-        #[cfg(feature = "debug-table-macro")]
+        // debug_macro::debug_macro! {
+        //    const INSIDE: &str = $inside;
+        //    $($tokens)+
+        // }
+        // #[cfg(feature = "debug-table-macro")]
         compile_error!(concat!(
-            "Invalid `table!` syntax inside",
-            $inside,
-            " '",
-            $(stringify!($tokens))+
-            "'"
+           "Invalid `row!` syntax inside",
+           $inside,
+           " '",
+           $(stringify!($tokens),)+
+           "'"
         ));
-        #[cfg(not(feature = "debug-table-macro"))]
-        $crate::__invalid_table_syntax!($inside)
+        // #[cfg(not(feature = "debug-table-macro"))]
+        // $crate::__invalid_row_syntax!($inside)
     };
 }
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! __parse_table {
+macro_rules! __parse_row {
     // Found an import
     (
         tokens = [use $($import:tt)::+; $($rest:tt)*],
         imports = [$($imports:tt)*],
         $($args:tt)*
     ) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = [$($rest)*],
             imports = [$($imports)* use $($import)::+;],
             $($args)*
         }
     };
-    // we found a spanner table attribute
+    // we found a container-level spanner attribute
     (
         tokens = [#[spanner($($attrs:tt)*)] $($rest:tt)*],
         imports = $imports:tt,
@@ -68,7 +81,7 @@ macro_rules! __parse_table {
         unprocessed_spanner_meta = [$($prev:tt)*],
         $($args:tt)*
     ) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = [$($rest)*],
             imports = $imports,
             meta = $meta,
@@ -77,25 +90,47 @@ macro_rules! __parse_table {
         }
     };
 
-    // Found table_name attribute, override whatever we had before
+    // Found table = "" attribute, override whatever we had before
     (
         tokens = $tokens:tt,
         imports = $imports:tt,
         meta = $meta:tt,
-        unprocessed_spanner_meta = [$(,)? table_name = $table_name:literal $($rest_unprocessed:tt)*],
-        table = $table:tt,
-        table_vis = $table_vis:tt,
+        unprocessed_spanner_meta = [$(,)? table = $table_name:literal $($rest_unprocessed:tt)*],
+        row_ident = $row_ident:tt,
+        row_vis = $row_vis:tt,
         table_name = $ignore:tt,
         $($args:tt)*
     ) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = $tokens,
             imports = $imports,
             meta = $meta,
             unprocessed_spanner_meta = [$($rest_unprocessed)*],
-            table = $table,
-            table_vis = $table_vis,
+            row_ident = $row_ident,
+            row_vis = $row_vis,
             table_name = [$table_name],
+            $($args)*
+        }
+    };
+    // Found bare table attribute, override whatever we had before
+    (
+        tokens = $tokens:tt,
+        imports = $imports:tt,
+        meta = $meta:tt,
+        unprocessed_spanner_meta = [$(,)? table $($rest_unprocessed:tt)*],
+        row_ident = $row_ident:tt,
+        row_vis = $row_vis:tt,
+        table_name = $ignore:tt,
+        $($args:tt)*
+    ) => {
+        $crate::__parse_row! {
+            tokens = $tokens,
+            imports = $imports,
+            meta = $meta,
+            unprocessed_spanner_meta = [$($rest_unprocessed)*],
+            row_ident = $row_ident,
+            row_vis = $row_vis,
+            table_name = [__use_struct_ident],
             $($args)*
         }
     };
@@ -106,19 +141,19 @@ macro_rules! __parse_table {
         imports = $imports:tt,
         meta = $meta:tt,
         unprocessed_spanner_meta = [$(,)? pk_name = $pk_name:ident $($rest_unprocessed:tt)*],
-        table = $table:tt,
-        table_vis = $table_vis:tt,
+        row_ident = $row_ident:tt,
+        row_vis = $row_vis:tt,
         table_name = $table_name:tt,
         pk_name = $ignore:tt,
         $($args:tt)*
     ) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = $tokens,
             imports = $imports,
             meta = $meta,
             unprocessed_spanner_meta = [$($rest_unprocessed)*],
-            table = $table,
-            table_vis = $table_vis,
+            row_ident = $row_ident,
+            row_vis = $row_vis,
             table_name = $table_name,
             pk_name = [$pk_name],
             $($args)*
@@ -132,7 +167,7 @@ macro_rules! __parse_table {
         meta = [$($meta:tt)*],
         $($args:tt)*
     ) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = [$($rest)*],
             imports = $imports,
             meta = [$($meta)* #$new_meta],
@@ -147,31 +182,54 @@ macro_rules! __parse_table {
         unprocessed_spanner_meta = [$(,)? $unknown:ident $($ignored:tt)*]
         $($args:tt)*
     ) => {
-        compile_error!(concat!("unknown spanner table option `", stringify!($unknown), "`"));
+        compile_error!(concat!("unknown spanner::row! option `", stringify!($unknown), "`"));
     };
-    // Found the table/struct definition
+    // Bare #[spanner(table)] was used, so we need to stringify the struct identifier to
+    // make the table name.
     (
-        tokens = [$table_vis:vis struct $table:ident $($rest:tt)* ],
+        tokens = [$row_vis:vis struct $row_ident:ident $($rest:tt)* ],
         imports = $imports:tt,
         meta = $meta:tt,
         unprocessed_spanner_meta = [$(,)?],
-        table = $ignore:tt,
-        table_vis = $ignore2:tt,
-        table_name = $table_name:tt,
+        row_ident = $ignore:tt,
+        row_vis = $ignore2:tt,
+        table_name = [__use_struct_ident],
         $($args:tt)*
     ) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = [$($rest)*],
             imports = $imports,
             meta = $meta,
             unprocessed_spanner_meta = [],
-            table = $table,
-            table_vis = $table_vis,
+            row_ident = $row_ident,
+            row_vis = $row_vis,
+            table_name = [stringify!($row_ident)],
+            $($args)*
+        }
+    };
+    // Found the table/struct definition
+    (
+        tokens = [$row_vis:vis struct $row_ident:ident $($rest:tt)* ],
+        imports = $imports:tt,
+        meta = $meta:tt,
+        unprocessed_spanner_meta = [$(,)?],
+        row_ident = $ignore:tt,
+        row_vis = $ignore2:tt,
+        table_name = $table_name:tt,
+        $($args:tt)*
+    ) => {
+        $crate::__parse_row! {
+            tokens = [$($rest)*],
+            imports = $imports,
+            meta = $meta,
+            unprocessed_spanner_meta = [],
+            row_ident = $row_ident,
+            row_vis = $row_vis,
             table_name = $table_name,
             $($args)*
         }
     };
-
+    /*
     // Reached columns with no table_name, set a default
     (
         tokens = [{$($columns:tt)*}],
@@ -183,17 +241,18 @@ macro_rules! __parse_table {
         table_name = unknown,
         $($args:tt)*
     ) => {
-        $crate::__parse_table! {
+        $crate::__parse_row! {
             tokens = [{$($columns)*}],
             imports = $imports,
             meta = $meta,
             unprocessed_spanner_meta = [],
-            table = $table,
-            table_vis = $table_vis,
-            table_name = [stringify!($table)],
+            row_ident = $row_ident,
+            row_vis = $row_vis,
+            table_name = [],
             $($args)*
         }
     };
+    */
 
     // Parse the columns
     (
@@ -201,31 +260,31 @@ macro_rules! __parse_table {
         imports = $imports:tt,
         meta = $meta:tt,
         unprocessed_spanner_meta = [],
-        table = $table:tt,
-        table_vis = $table_vis:tt,
+        row_ident = $row_ident:tt,
+        row_vis = $row_vis:tt,
         table_name = $table_name:tt,
-        pk_name = $pk_name:tt,
+        pk_name = [$pk_name:ident],
         pks = [],
     ) => {
         $crate::__parse_columns! {
             tokens = [$($columns)*],
             next_column_index = [0],
-            table = {
+            row = {
                 imports = $imports,
                 meta = $meta,
-                table = $table,
-                table_vis = $table_vis,
+                row = $row_ident,
+                row_vis = $row_vis,
                 table_name = $table_name,
             },
             columns = [],
             pks = [],
-            pk_name = $pk_name,
+            pk_name = [$pk_name],
         }
     };
 
     // Invalid syntax
     ($($tokens:tt)*) => {
-        $crate::__invalid_table_syntax!("parse_table" $($tokens)*);
+        $crate::__invalid_row_syntax!("parse_row" $($tokens)*);
     }
 }
 
@@ -587,14 +646,14 @@ macro_rules! __parse_columns {
         },
         tokens = $tokens:tt,
         next_column_index = $next_col_idx:tt,
-        table = $table:tt,
+        row = $row:tt,
         columns = [$($columns:tt,)*],
         $($args:tt)*
     ) => {
         $crate::__parse_columns! {
             tokens = $tokens,
             next_column_index = $next_col_idx,
-            table = $table,
+            row = $row,
             columns = [$($columns,)* {
                 field = $field,
                 field_vis = $field_vis,
@@ -626,7 +685,7 @@ macro_rules! __parse_columns {
         },
         tokens = $tokens:tt,
         next_column_index = $next_col_idx:tt,
-        table = $table:tt,
+        row = $row:tt,
         columns = [$($columns:tt,)*],
         pks = [$($existing_pks:tt)*],
         pk_name = $pk_name:tt,
@@ -634,7 +693,7 @@ macro_rules! __parse_columns {
         $crate::__parse_columns! {
             tokens = $tokens,
             next_column_index = $next_col_idx,
-            table = $table,
+            row = $row,
             columns = [$($columns,)* {
                 field = $field,
                 field_vis = $field_vis,
@@ -656,11 +715,11 @@ macro_rules! __parse_columns {
         next_column_index = $ignore:tt,
         $($args:tt)*
     ) => {
-        $crate::__table_impls!($($args)*);
+        $crate::__row_impls!($($args)*);
     };
 
     ($($tokens:tt)*) => {
-        $crate::__invalid_table_syntax!("parse_columns" $($tokens)*);
+        $crate::__invalid_row_syntax!("parse_columns" $($tokens)*);
     }
 }
 
@@ -698,14 +757,14 @@ macro_rules! __impl_col {
 
 #[macro_export]
 #[doc(hidden)]
-macro_rules! __table_impls {
+macro_rules! __row_impls {
     (
-        table = {
+        row = {
             imports = [$($imports:tt)*],
             meta = [$($meta:tt)*],
-            table = $table:ident,
-            table_vis = $table_vis:vis,
-            table_name = [$table_name:expr],
+            row = $row:ident,
+            row_vis = $row_vis:vis,
+            table_name = [$($table_name:expr)?],
         },
         columns = [
 
@@ -727,7 +786,7 @@ macro_rules! __table_impls {
         pk_name = [$pk_name:ident],
     ) => {
         $($meta)*
-        $table_vis struct $table {
+        $row_vis struct $row {
             $(
                 $($column_metas)*
                 $field_vis $field: $($column_ty)*,
@@ -735,7 +794,7 @@ macro_rules! __table_impls {
         }
 
 
-        impl $crate::queryable::Queryable for $table {
+        impl $crate::queryable::Queryable for $row {
             type NumColumns = $crate::__macro_internals::typenum::U<{ <[()]>::len(&[$($crate::__replace_with_unit!($field),)*]) }>;
 
             const COLUMNS: $crate::__macro_internals::generic_array::GenericArray<$crate::column::Column<'static>, Self::NumColumns> = $crate::__macro_internals::generic_array::GenericArray::from_array([
@@ -753,7 +812,7 @@ macro_rules! __table_impls {
             }
         }
 
-        impl $crate::insertable::Insertable for $table {
+        impl $crate::insertable::Insertable for $row {
             fn into_row(self) -> ::core::result::Result<$crate::Row, $crate::error::ConvertError> {
                 Ok($crate::Row::from(vec![
                     $(
@@ -763,14 +822,58 @@ macro_rules! __table_impls {
             }
         }
 
-        impl $crate::table::Table for $table {
+        $crate::__impl_table! {
+            row = {
+                imports = [$($imports)*],
+                meta = [$($meta)*],
+                row = $row,
+                row_vis = $row_vis,
+                table_name = [$($table_name)?],
+            },
+            pks = [$(($pk_field, ($($pk_type)*), $pk_index)),*],
+            pk_name = [$pk_name],
+        }
+    };
+    ($($t:tt)*) => {
+        $crate::__invalid_row_syntax!($($t)*);
+    }
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __impl_table {
+    // if there's no table name, expand to nothing
+    (
+        row = {
+            imports = $ignore_imports:tt,
+            meta = $ignore_meta:tt,
+            row = $ignore_row:ident,
+            row_vis = $ignore_row_vis:vis,
+            table_name = [],
+        },
+        pks = $ignore_pks:tt,
+        pk_name = $ignore_pk_name:tt,
+    ) => {};
+    // if there is, impl Table
+    (
+        row = {
+            imports = [$($imports:tt)*],
+            meta = [$($meta:tt)*],
+            row = $row:ident,
+            row_vis = $row_vis:vis,
+            table_name = [$table_name:expr],
+        },
+        pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal)),* $(,)?],
+        pk_name = [$pk_name:ident],
+    ) => {
+        impl $crate::table::Table for $row {
             const NAME: &'static str = $table_name;
 
             type Pk = $pk_name<$($($pk_type)*,)*>;
         }
 
         $crate::__impl_pk! {
-            table = $table,
+            table = $row,
             pk_name = $pk_name,
             pks = [$(($pk_field, ($($pk_type)*), $pk_index)),*],
         }

@@ -1,18 +1,18 @@
-spanner_rs::table! {
+spanner_rs::row! {
     #[derive(Debug, Clone, PartialEq)]
-    #[spanner(table_name = "SharedSgts")]
+    #[spanner(table = "SharedSgts")]
     pub struct SharedSightings {
         #[spanner(pk = 1)]
-        sighting_time: timestamp::Timestamp,
+        pub sighting_time: timestamp::Timestamp,
         #[spanner(pk = 2)]
-        geo_hash: String,
+        pub geo_hash: String,
         #[spanner(pk = 3)]
-        sighting_id: uuid::Uuid,
+        pub sighting_id: uuid::Uuid,
 
-        name: Option<String>,
-        longitude: f64,
-        latitude: f64,
-        properties: Option<String>,
-        list: Vec<String>,
+        pub name: Option<String>,
+        pub longitude: f64,
+        pub latitude: f64,
+        pub properties: Option<String>,
+        pub list: Vec<String>,
     }
 }

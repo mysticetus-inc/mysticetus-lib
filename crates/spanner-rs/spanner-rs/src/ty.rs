@@ -1,388 +1,26 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::marker::PhantomData;
 
-use bytes::Bytes;
-use protos::protobuf::ListValue;
-use protos::protobuf::value::Kind;
 use protos::spanner::{self, StructType, TypeAnnotationCode, TypeCode, struct_type};
 // re-export for downstream consumers
 pub use shared::static_or_boxed::StaticOrBoxed;
-use timestamp::{Date, Timestamp};
 pub use typenum::{False, True};
 
-use crate::error::{ConvertError, FromError, MissingTypeInfo};
-use crate::value::EncodedArray;
+pub mod markers;
+mod spanner_type;
+pub use spanner_type::SpannerType;
+pub(crate) use spanner_type::{nullable, ty};
 
-/// Implemented by types that have a spanner encoded counterpart.
-pub trait SpannerType {
-    /// The underlying spanner type.
-    type Type: markers::SpannerTypeSealed;
+use crate::error::MissingTypeInfo;
 
-    /// Whether a type is nullable or not.
-    type Nullable: typenum::Bit;
-}
-
-pub(crate) const fn ty<T: SpannerType + ?Sized>() -> &'static Type {
-    <T::Type as markers::SpannerTypeSealed>::TYPE
-}
-
-pub(crate) const fn nullable<T: SpannerType + ?Sized>() -> bool {
-    <T::Nullable as typenum::Bit>::BOOL
-}
-
-impl<T: SpannerType + ?Sized> SpannerType for &T {
-    type Type = T::Type;
-    type Nullable = T::Nullable;
-}
-
-impl<T: SpannerType + ?Sized> SpannerType for &mut T {
-    type Type = T::Type;
-    type Nullable = T::Nullable;
-}
-
-pub mod markers {
-    use std::marker::PhantomData;
-
-    pub(super) use private::SpannerTypeSealed;
-
-    mod private {
-        pub trait SpannerTypeSealed {
-            const TYPE: &'static super::super::Type;
-        }
-
-        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for &T {
-            const TYPE: &'static super::super::Type = T::TYPE;
-        }
-
-        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for &mut T {
-            const TYPE: &'static super::super::Type = T::TYPE;
-        }
-
-        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for Box<T> {
-            const TYPE: &'static super::super::Type = T::TYPE;
-        }
-
-        impl<T: SpannerTypeSealed + ?Sized> SpannerTypeSealed for std::sync::Arc<T> {
-            const TYPE: &'static super::super::Type = T::TYPE;
-        }
-    }
-
-    macro_rules! impl_primitive_spanner_marker_types {
-        ($($name:ident = $t:expr),* $(,)?) => {
-            $(
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                pub enum $name {}
-
-                impl private::SpannerTypeSealed for $name {
-                    const TYPE: &'static super::Type = $t;
-                }
-            )*
-        };
-    }
-
-    impl_primitive_spanner_marker_types! {
-        Int64 = &super::Type::INT64,
-        String = &super::Type::STRING,
-        Float64 = &super::Type::FLOAT64,
-        Numeric = &super::Type::NUMERIC,
-        Bool = &super::Type::BOOL,
-        Timestamp = &super::Type::TIMESTAMP,
-        Date = &super::Type::DATE,
-        Interval = &super::Type::INTERVAL,
-        Bytes = &super::Type::BYTES,
-        Json = &super::Type::JSON,
-        Enum = &super::Type::ENUM,
-    }
-
-    // --- Array impl -----
-
-    #[non_exhaustive]
-    pub enum Array<T: private::SpannerTypeSealed + ?Sized> {
-        #[doc(hidden)]
-        __Type(PhantomData<for<'a> fn(&'a T)>),
-    }
-
-    impl<T: private::SpannerTypeSealed + ?Sized> private::SpannerTypeSealed for Array<T> {
-        const TYPE: &'static super::Type = &super::Type::Array {
-            element: shared::static_or_boxed::StaticOrBoxed::Static(T::TYPE),
-        };
-    }
-
-    // --- Struct impl -----
-
-    pub trait SpannerStruct {
-        const FIELDS: &'static [super::Field];
-    }
-
-    #[non_exhaustive]
-    pub enum Struct<T: SpannerStruct + ?Sized> {
-        #[doc(hidden)]
-        __Type(PhantomData<for<'a> fn(&'a T)>),
-    }
-
-    impl<T: SpannerStruct + ?Sized> private::SpannerTypeSealed for Struct<T> {
-        const TYPE: &'static self::super::Type = &super::Type::Struct {
-            fields: shared::static_or_boxed::StaticOrBoxed::Static(T::FIELDS),
-        };
-    }
-
-    // --- Proto impl -----
-    pub trait SpannerProto {
-        const PACKAGE: &'static str;
-        const NAME: &'static str;
-    }
-
-    #[non_exhaustive]
-    pub enum Proto<T: SpannerProto + ?Sized> {
-        #[doc(hidden)]
-        __Type(PhantomData<for<'a> fn(&'a T)>),
-    }
-
-    impl<T: SpannerProto + ?Sized> private::SpannerTypeSealed for Proto<T> {
-        const TYPE: &'static self::super::Type = &super::Type::Proto(super::ProtoName::Split {
-            package: T::PACKAGE,
-            name: T::NAME,
-        });
-    }
-}
-
-macro_rules! impl_scalar {
-    ($(
-        $(#[$cfg_attr:meta])?
-        $name:ty => $t:ident
-    ),* $(,)?) => {
-        $(
-            $(#[$cfg_attr])?
-            impl SpannerType for $name {
-                type Type = markers::$t;
-                type Nullable = typenum::B0;
-            }
-        )*
-    };
-}
-
-impl_scalar! {
-    isize => Int64,
-    i128 => Numeric,
-    i64 => Int64,
-    i32 => Int64,
-    i16 => Int64,
-    i8 => Int64,
-    usize => Int64,
-    u128 => Numeric,
-    u64 => Int64,
-    u32 => Int64,
-    u16 => Int64,
-    u8 => Int64,
-    f64 => Float64,
-    f32 => Float64,
-    bool => Bool,
-    Timestamp => Timestamp,
-    Date => Date,
-    str => String,
-    String => String,
-    Bytes => Bytes,
-    [u8] => Bytes,
-    Vec<u8> => Bytes,
-    #[cfg(feature = "serde_json")]
-    serde_json::Value => Json,
-}
-
-macro_rules! spanner_type_defer_to {
-    ($($parent:ty: $deferred:ty),* $(,)?) => {
-        $(
-            impl $crate::ty::SpannerType for $parent {
-                type Type = <$deferred as $crate::ty::SpannerType>::Type;
-
-                type Nullable = <$deferred as $crate::ty::SpannerType>::Nullable;
-            }
-        )*
-    };
-}
-
-spanner_type_defer_to! {
-    std::num::NonZeroU8: u8,
-    std::num::NonZeroU16: u16,
-    std::num::NonZeroU32: u32,
-    std::num::NonZeroU64: u64,
-    std::num::NonZeroU128: u128,
-    std::num::NonZeroUsize: usize,
-    std::num::NonZeroI8: i8,
-    std::num::NonZeroI16: i16,
-    std::num::NonZeroI32: i32,
-    std::num::NonZeroI64: i64,
-    std::num::NonZeroI128: i128,
-    std::num::NonZeroIsize: isize,
-}
-
-impl<T: SpannerType> SpannerType for Option<T> {
-    type Type = T::Type;
-    type Nullable = typenum::B1;
-}
-
-macro_rules! impl_for_wrapper_type {
-    ($($t:ty),* $(,)?) => {
-        $(
-            impl<T: SpannerType + ?Sized> SpannerType for $t {
-                type Type = T::Type;
-                type Nullable = T::Nullable;
-            }
-        )*
-    };
-}
-
-impl_for_wrapper_type! {
-    Box<T>,
-    std::sync::Arc<T>,
-    std::rc::Rc<T>,
-}
-
-impl<T> SpannerType for std::borrow::Cow<'_, T>
-where
-    T: ToOwned + ?Sized,
-    T::Owned: SpannerType,
-{
-    type Type = <T::Owned as SpannerType>::Type;
-    type Nullable = <T::Owned as SpannerType>::Nullable;
-}
-/*
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
-)]
-pub struct Struct<S>(pub S);
-
-// TODO flesh out struct conversion
-pub trait SpannerStruct: Sized {
-    const FIELDS: &'static [Field];
-
-    fn encode(self) -> Result<EncodedStruct<Self>, ConvertError>;
-
-    fn decode(encoded: EncodedStruct<Self>) -> Result<Self, ConvertError>;
-}
-
-impl<S: SpannerStruct> SpannerStruct for Struct<S> {
-    const FIELDS: &'static [Field] = S::FIELDS;
-
-    fn decode(encoded: EncodedStruct<Self>) -> Result<Self, ConvertError> {
-        S::decode(encoded.cast()).map(Self)
-    }
-
-    fn encode(self) -> Result<EncodedStruct<Self>, ConvertError> {
-        S::encode(self.0).map(EncodedStruct::cast)
-    }
-}
-
-impl<S: SpannerStruct + markers::SpannerStruct> crate::FromSpanner for Struct<S> {
-    fn from_value(value: crate::Value) -> Result<Self, ConvertError> {
-        let values = value.into_array::<Self>()?.values;
-
-        let expected = <S as markers::SpannerStruct>::FIELDS.len();
-        let count = values.len();
-
-        let fields = EncodedArray::new(values);
-
-        if expected != count {
-            let val = crate::Value(Kind::ListValue(ListValue {
-                values: fields.values,
-            }));
-
-            let err = anyhow::anyhow!("expected {expected} struct fields, recieved {count}");
-
-            return Err(FromError::from_value_and_anyhow::<Self>(val, err).into());
-        }
-
-        let encoded = EncodedStruct {
-            fields,
-            next_field: 0,
-            _marker: PhantomData,
-        };
-
-        SpannerStruct::decode(encoded).map(Struct)
-    }
-}
-
-impl<S> crate::convert::SpannerEncode for Struct<S>
-where
-    S: SpannerStruct + markers::SpannerStruct,
-{
-    type Error = ConvertError;
-    type SpannerType = EncodedStruct<S>;
-    type Encoded = EncodedStruct<S>;
-
-    #[inline]
-    fn encode(self) -> Result<Self::Encoded, Self::Error> {
-        SpannerStruct::encode(self.0)
-    }
-}
-
-pub struct EncodedStruct<S: ?Sized> {
-    fields: EncodedArray,
-    next_field: usize,
-    _marker: PhantomData<S>,
-}
-
-impl<S> EncodedStruct<S> {
-    #[inline]
-    fn cast<S2>(self) -> EncodedStruct<S2> {
-        EncodedStruct {
-            fields: self.fields,
-            next_field: self.next_field,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<S: SpannerStruct + ?Sized> EncodedStruct<S> {
-    pub fn pop_column(&mut self) -> Option<crate::Value> {
-        let value = self.fields.values.get_mut(self.next_field)?;
-
-        self.next_field += 1;
-
-        Some(crate::Value::from_kind_opt(value.kind.take()))
-    }
-
-    pub fn pop_column_with_field(&mut self) -> Option<(&'static Field, crate::Value)> {
-        let field = S::FIELDS.get(self.next_field)?;
-        self.pop_column().map(|value| (field, value))
-    }
-}
-
-impl<S: SpannerStruct + markers::SpannerStruct + ?Sized> SpannerType for EncodedStruct<S> {
-    type Type = markers::Struct<S>;
-    type Nullable = typenum::False;
-}
-
-impl<S: SpannerStruct + markers::SpannerStruct + ?Sized> crate::IntoSpanner for EncodedStruct<S> {
-    fn into_value(self) -> crate::Value {
-        crate::Value(Kind::ListValue(ListValue {
-            values: self.fields.values,
-        }))
-    }
-}
-
-impl<S: SpannerStruct + markers::SpannerStruct> SpannerType for Struct<S> {
-    type Nullable = typenum::False;
-    type Type = markers::Struct<S>;
-}
-*/
-pub struct EncodedProto<T: ?Sized> {
-    encoded: bytes::Bytes,
-    ty: PhantomData<T>,
-}
-
-impl<T: prost::Name + ?Sized + markers::SpannerProto> SpannerType for EncodedProto<T> {
-    type Nullable = typenum::False;
-    type Type = markers::Proto<T>;
-}
-
-impl<T: prost::Name + ?Sized + markers::SpannerProto> crate::convert::IntoSpanner
-    for EncodedProto<T>
-{
-    #[inline]
-    fn into_value(self) -> crate::Value {
-        self.encoded.into_value()
-    }
+/// Information about a Spanner type.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Type {
+    Scalar(Scalar),
+    Proto(ProtoName),
+    Enum(ProtoName),
+    Array { element: StaticOrBoxed<Type> },
+    Struct { fields: StaticOrBoxed<[Field]> },
 }
 
 /// Enum describing the Spanner scalar types.
@@ -398,7 +36,6 @@ pub enum Scalar {
     Numeric,
     Interval,
     Json,
-    Enum,
 }
 
 impl fmt::Display for Scalar {
@@ -412,14 +49,6 @@ impl From<Scalar> for Type {
     fn from(value: Scalar) -> Self {
         Type::Scalar(value)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Type {
-    Scalar(Scalar),
-    Proto(ProtoName),
-    Array { element: StaticOrBoxed<Type> },
-    Struct { fields: StaticOrBoxed<[Field]> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -463,7 +92,8 @@ impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Scalar(scalar) => f.write_str(scalar.as_spanner_type_str()),
-            Self::Proto(name) => fmt::Display::fmt(name, f),
+            Self::Proto(name) => write!(f, "PROTO({name})"),
+            Self::Enum(name) => write!(f, "ENUM({name})"),
             Self::Array { element } => {
                 f.write_str("ARRAY<")?;
                 element.fmt(f)?;
@@ -500,12 +130,42 @@ impl Type {
 
     pub const NUMERIC: Self = Self::Scalar(Scalar::Numeric);
     pub const JSON: Self = Self::Scalar(Scalar::Json);
-    pub const ENUM: Self = Self::Scalar(Scalar::Enum);
+
+    #[inline]
+    pub const fn array(element: &'static Self) -> Self {
+        Self::Array {
+            element: StaticOrBoxed::Static(element),
+        }
+    }
+
+    #[inline]
+    pub const fn struct_type(fields: &'static [Field]) -> Self {
+        Self::Struct {
+            fields: StaticOrBoxed::Static(fields),
+        }
+    }
+
+    #[inline]
+    pub const fn proto<T: markers::SpannerProto + ?Sized>() -> Self {
+        Self::Proto(ProtoName::Split {
+            package: T::PACKAGE,
+            name: T::NAME,
+        })
+    }
+
+    #[inline]
+    pub const fn proto_enum<T: markers::SpannerEnum + ?Sized>() -> Self {
+        Self::Enum(ProtoName::Split {
+            package: T::PACKAGE,
+            name: T::NAME,
+        })
+    }
 
     pub(crate) fn to_type_code(&self) -> TypeCode {
         match self {
             Self::Scalar(scalar) => scalar.to_type_code(),
-            Self::Proto { .. } => TypeCode::Proto,
+            Self::Proto(_) => TypeCode::Proto,
+            Self::Enum(_) => TypeCode::Enum,
             Self::Array { .. } => TypeCode::Array,
             Self::Struct { .. } => TypeCode::Struct,
         }
@@ -540,6 +200,9 @@ impl Type {
             TypeCode::Proto => Ok(Self::Proto(ProtoName::FullyQualified(Cow::Owned(
                 ty.proto_type_fqn,
             )))),
+            TypeCode::Enum => Ok(Self::Enum(ProtoName::FullyQualified(Cow::Owned(
+                ty.proto_type_fqn,
+            )))),
             TypeCode::Array => {
                 let raw_elem = ty
                     .array_element_type
@@ -569,8 +232,6 @@ impl Type {
                     fields: StaticOrBoxed::Boxed(fields.into_boxed_slice()),
                 })
             }
-            // TODO: figure out these new types
-            TypeCode::Enum => Ok(Self::Scalar(Scalar::Enum)),
         }
     }
 
@@ -580,6 +241,13 @@ impl Type {
             Self::Proto(proto_name) => spanner::Type {
                 code: TypeCode::Proto as i32,
                 proto_type_fqn: proto_name.to_fully_qualified(),
+                array_element_type: None,
+                struct_type: None,
+                type_annotation: TypeAnnotationCode::Unspecified as i32,
+            },
+            Self::Enum(enum_name) => spanner::Type {
+                code: TypeCode::Enum as i32,
+                proto_type_fqn: enum_name.to_fully_qualified(),
                 array_element_type: None,
                 struct_type: None,
                 type_annotation: TypeAnnotationCode::Unspecified as i32,
@@ -611,6 +279,14 @@ pub struct Field {
 }
 
 impl Field {
+    #[inline]
+    pub const fn new(ty: Type, name: &'static str) -> Self {
+        Self {
+            ty,
+            name: Cow::Borrowed(name),
+        }
+    }
+
     pub(crate) fn from_proto(field: spanner::struct_type::Field) -> Result<Self, MissingTypeInfo> {
         let ty = Type::from_proto(field.r#type.unwrap_or_default())?;
 
@@ -622,13 +298,16 @@ impl Field {
 
     fn into_struct_fields(fields: &[Self]) -> Vec<struct_type::Field> {
         let mut dst = Vec::with_capacity(fields.len());
-        dst.extend(fields.iter().map(|f| f.clone().into_proto()));
+        dst.extend(fields.iter().map(Self::into_proto));
         dst
     }
 
-    pub(crate) fn into_proto(self) -> struct_type::Field {
+    pub(crate) fn into_proto(&self) -> struct_type::Field {
         struct_type::Field {
-            name: self.name.into_owned(),
+            name: match self.name {
+                Cow::Owned(ref owned) => owned.clone(),
+                Cow::Borrowed(s) => s.to_owned(),
+            },
             r#type: Some(self.ty.into_proto()),
         }
     }
@@ -659,7 +338,6 @@ impl Scalar {
             Self::Bytes => TypeCode::Bytes,
             Self::Numeric => TypeCode::Numeric,
             Self::Json => TypeCode::Json,
-            Self::Enum => TypeCode::Enum,
         }
     }
 
@@ -675,7 +353,6 @@ impl Scalar {
             Self::Bytes => "BYTES",
             Self::Numeric => "NUMERIC",
             Self::Json => "JSON",
-            Self::Enum => "ENUM",
         }
     }
 }

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use protos::spanner::commit_response::CommitStats;
 use timestamp::Timestamp;
+use tokio::task::JoinHandle;
 
 use super::ClientParts;
 use super::connection::ConnectionParts;
@@ -10,12 +11,40 @@ use crate::error::ConvertError;
 use crate::key_set::{IntoKeySet, KeySet, OwnedRangeBounds, WriteBuilder};
 use crate::pk::IntoPartialPkParts;
 use crate::private::SealedConnection;
+use crate::queryable::Queryable;
 use crate::tx::{ShouldCommit, SingleUse, Transaction};
 use crate::{ResultIter, StreamingRead, Table};
 
 pub struct SessionClient {
     pub(super) parts: Arc<ClientParts>,
     pub(super) session: Arc<Session>,
+}
+
+impl Drop for SessionClient {
+    fn drop(&mut self) {
+        use tonic::Code;
+
+        use crate::Error;
+
+        if let Some(handle) = self.return_session() {
+            tokio::spawn(async move {
+                match handle.await {
+                    Ok(Ok(())) => (),
+                    // if a session was deleted by spanner itself, we'll get a not found when we try
+                    // to delete it again. Ignore, since the end result is what we wanted anyways
+                    Ok(Err(Error::Status(status))) if status.code() == Code::NotFound => (),
+                    Ok(Err(error)) => {
+                        tracing::error!(message = "failed to delete expired session", ?error);
+                    }
+                    // ignore cancelled errors
+                    Err(error) if error.is_cancelled() => (),
+                    Err(error) => {
+                        tracing::error!(message = "panic trying to delete expired session", ?error);
+                    }
+                }
+            });
+        }
+    }
 }
 
 impl SealedConnection for SessionClient {
@@ -28,6 +57,10 @@ impl SealedConnection for SessionClient {
 }
 impl SessionClient {
     crate::client::connection::impl_deferred_read_functions!();
+
+    fn return_session(&self) -> Option<JoinHandle<crate::Result<()>>> {
+        super::SESSION_POOL.return_session(&self.parts, &self.session)
+    }
 
     pub fn session_role(&self) -> Option<&str> {
         self.parts.role.as_deref()
@@ -120,7 +153,7 @@ impl SessionClient {
         Ok(resp)
     }
 
-    pub async fn execute_streaming_sql<T: crate::Table>(
+    pub async fn execute_streaming_sql<T: Queryable>(
         &self,
         sql: String,
         params: Option<crate::sql::Params>,
@@ -133,7 +166,7 @@ impl SessionClient {
         Ok(StreamingRead::from_streaming(streaming))
     }
 
-    pub async fn execute_sql<T: crate::Table>(
+    pub async fn execute_sql<T: Queryable>(
         &self,
         sql: String,
         params: Option<crate::sql::Params>,

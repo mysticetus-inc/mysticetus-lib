@@ -25,7 +25,7 @@ const SESSION_DELETED: u8 = 2;
 
 #[derive(Debug)]
 pub struct Session {
-    raw: Box<spanner::Session>,
+    raw: spanner::Session,
     state: AtomicU8,
     created: Instant,
     last_used: AtomicU64,
@@ -86,17 +86,22 @@ impl Session {
         if self.alive() { Some(&self.raw) } else { None }
     }
 
+    pub(crate) fn raw_session_name(&self) -> Option<String> {
+        self.raw_session()
+            .map(|raw_session| raw_session.name.clone())
+    }
+
     pub(super) fn key(&self) -> SessionKey {
         self.key
     }
 
-    pub(super) fn new(created: Instant, key: SessionKey, raw_session: spanner::Session) -> Self {
+    pub(super) fn new(created: Instant, key: SessionKey, raw: spanner::Session) -> Self {
         Self {
             created,
             key,
             last_used: AtomicU64::new(0),
             state: AtomicU8::new(SESSION_ALIVE),
-            raw: Box::new(raw_session),
+            raw,
         }
     }
 }

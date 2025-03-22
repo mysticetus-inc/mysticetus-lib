@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -6,22 +7,31 @@ use protos::protobuf::{self, NullValue};
 use protos::spanner::TypeCode;
 
 mod encoded_array;
+mod encoded_proto;
 mod encoded_struct;
 mod encoded_value;
 
 pub use encoded_array::EncodedArray;
+pub use encoded_proto::EncodedProto;
 pub use encoded_struct::EncodedStruct;
 pub use encoded_value::EncodedValue;
 
 use crate::convert::SpannerEncode;
 use crate::error::{ConvertError, FromError};
 use crate::ty::SpannerType;
+use crate::ty::markers::SpannerStruct;
 use crate::{IntoSpanner, Table, Type};
 
 /// A Spanner value.
 #[derive(Clone, PartialEq)]
 #[repr(transparent)]
 pub struct Value(pub(crate) Kind);
+
+#[derive(Clone, PartialEq)]
+pub struct TypedValue {
+    kind: Kind,
+    ty: Cow<'static, Type>,
+}
 
 impl fmt::Debug for Value {
     #[inline]
@@ -85,9 +95,9 @@ impl From<f64> for Value {
 
         match value.classify() {
             Zero | Subnormal | Normal => Value(Kind::NumberValue(value)),
-            Nan => String::from("NaN").into(),
-            Infinite if value.is_sign_positive() => String::from("Infinity").into(),
-            Infinite => String::from("-Infinity").into(),
+            Nan => "NaN".into_value(),
+            Infinite if value.is_sign_positive() => "Infinity".into_value(),
+            Infinite => "-Infinity".into_value(),
         }
     }
 }
@@ -162,24 +172,45 @@ fn matches_type_inner(kind: &Kind, ty: &crate::Type, nullable: bool) -> Option<b
         (Kind::NullValue(_), _) if nullable => None,
         (Kind::NullValue(_), _) => Some(false),
         (Kind::BoolValue(_), &Type::BOOL) => Some(true),
-        (Kind::NumberValue(_), &Type::FLOAT64 | &Type::INT64) => Some(true),
-        // TODO: check for string encoded NaN/Inf
         (Kind::StringValue(_), &Type::STRING | &Type::BYTES) => Some(true),
-        (Kind::StructValue(struct_value), Type::Struct { fields }) => {
-            if struct_value.fields.len() != fields.len() {
+        // TODO: these are all encoded as strings, but we should maybe check to make sure
+        // they're encoded properly
+        (
+            Kind::StringValue(_),
+            &Type::DATE
+            | &Type::TIMESTAMP
+            | &Type::NUMERIC
+            | &Type::JSON
+            | &Type::Enum(_)
+            | &Type::Proto(_),
+        ) => Some(true),
+        (Kind::NumberValue(_), &Type::FLOAT64) => Some(true),
+        // non-finite floats are encoded as strings with the following allowed values:
+        (Kind::StringValue(s), &Type::FLOAT64)
+            if matches!(s.as_str(), "NaN" | "Infinity" | "-Infinity") =>
+        {
+            Some(true)
+        }
+        (Kind::StringValue(s), &Type::INT64) => {
+            if s.is_empty() {
+                Some(false)
+            } else {
+                Some(s.chars().all(|ch| ch.is_ascii_digit()))
+            }
+        }
+        // structs are encoded as a list of values, with the i'th field corresponding to the i'th
+        // field type.
+        (Kind::ListValue(field_values), Type::Struct { fields }) => {
+            if field_values.values.len() != fields.len() {
                 return Some(false);
             }
 
-            for (field, value) in struct_value.fields.iter() {
-                let Some(field_def) = fields.iter().find(|f| &f.name == field) else {
-                    return Some(false);
-                };
-
-                let Some(ref elem_kind) = value.kind else {
+            for (value, field_def) in field_values.values.iter().zip(fields.iter()) {
+                let Some(ref kind) = value.kind else {
                     return None;
                 };
 
-                if !matches_type_inner(elem_kind, &field_def.ty, true)? {
+                if !matches_type_inner(kind, &field_def.ty, true)? {
                     return Some(false);
                 }
             }
@@ -241,15 +272,10 @@ impl Value {
         }))
     }
 
-    pub fn from_struct_fields<K, V>(
-        fields: impl IntoIterator<Item = (impl Into<String>, impl IntoSpanner)>,
+    pub fn from_struct_fields<T: SpannerStruct>(
+        fields: impl IntoIterator<Item = (impl AsRef<str>, impl IntoSpanner)>,
     ) -> Self {
-        Self(Kind::StructValue(protobuf::Struct {
-            fields: fields
-                .into_iter()
-                .map(|(k, v)| (k.into(), v.into_value().into_protobuf()))
-                .collect(),
-        }))
+        EncodedStruct::<T>::from_fields(fields).into_value()
     }
 
     #[inline]
@@ -289,7 +315,6 @@ impl Value {
 
 pub struct RowBuilder<T> {
     _marker: PhantomData<T>,
-    filled: usize,
     dst: Vec<protobuf::Value>,
 }
 
@@ -308,14 +333,21 @@ impl<T: Table> RowBuilder<T> {
 
     #[inline]
     pub fn add_column_value(&mut self, column: Value) {
-        assert_ne!(self.filled, T::COLUMNS.len(), "row already fully populated");
+        assert_ne!(
+            self.dst.len(),
+            T::COLUMNS.len(),
+            "row already fully populated"
+        );
         self.dst.push(column.into_protobuf());
-        self.filled += 1;
     }
 
     #[inline]
     pub fn build(self) -> Row {
-        assert_eq!(self.filled, T::COLUMNS.len(), "row already fully populated");
+        assert_eq!(
+            self.dst.len(),
+            T::COLUMNS.len(),
+            "row already fully populated"
+        );
         Row(self.dst)
     }
 }
@@ -325,7 +357,6 @@ impl<T: Table> Default for RowBuilder<T> {
         Self {
             _marker: PhantomData,
             dst: Vec::with_capacity(T::COLUMNS.len()),
-            filled: 0,
         }
     }
 }

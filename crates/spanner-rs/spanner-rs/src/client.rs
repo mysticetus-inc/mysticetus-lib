@@ -41,6 +41,7 @@ impl fmt::Debug for Client {
         f.debug_struct("Client")
             .field("info", &self.parts.info)
             .field("channel", &self.parts.channel)
+            .field("role", &self.parts.role)
             .finish()
     }
 }
@@ -48,7 +49,7 @@ impl fmt::Debug for Client {
 pub(crate) struct ClientParts {
     pub(crate) info: Database,
     pub(crate) channel: AuthChannel,
-    pub(crate) role: Option<Box<str>>,
+    pub(crate) role: Option<Arc<str>>,
 }
 
 async fn build_channel() -> crate::Result<tonic::transport::Channel> {
@@ -70,7 +71,7 @@ impl Client {
         Database::builder(project_id)
     }
 
-    pub(crate) fn from_parts(info: Database, channel: AuthChannel, role: Option<Box<str>>) -> Self {
+    pub(crate) fn from_parts(info: Database, channel: AuthChannel, role: Option<Arc<str>>) -> Self {
         Self {
             parts: Arc::new(ClientParts {
                 info,
@@ -118,7 +119,7 @@ impl Client {
 
     pub(crate) async fn new_load_auth<F, E>(
         info: Database,
-        role: Option<Box<str>>,
+        role: Option<Arc<str>>,
         load_auth: F,
     ) -> crate::Result<Self>
     where
@@ -142,7 +143,7 @@ impl Client {
     pub(crate) async fn new_loaded(
         info: Database,
         auth: Auth,
-        role: Option<Box<str>>,
+        role: Option<Arc<str>>,
     ) -> crate::Result<Self> {
         let channel = build_channel().await?;
 
@@ -157,7 +158,7 @@ impl Client {
     pub(crate) async fn new_inner(
         info: Database,
         scope: Scope,
-        role: Option<Box<str>>,
+        role: Option<Arc<str>>,
     ) -> crate::Result<Self> {
         let project_id = info.project_id();
         let load_auth_fut = async move {
@@ -174,7 +175,7 @@ impl Client {
         instance_name: &str,
         database_name: &str,
         scope: Scope,
-        role: Option<Box<str>>,
+        role: Option<Arc<str>>,
     ) -> crate::Result<Self> {
         let info = Database::new(project_id, instance_name, database_name);
 
@@ -235,7 +236,7 @@ impl Client {
     */
 
     pub fn shutdown_task(&self) -> impl FnOnce() -> ShutdownFuture + 'static {
-        let parts = Arc::clone(&self.parts);
+        let parts = self.parts.clone();
 
         move || ShutdownFuture {
             tasks: SESSION_POOL.delete_sessions(&parts),
