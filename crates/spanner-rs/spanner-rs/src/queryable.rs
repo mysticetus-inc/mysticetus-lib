@@ -65,15 +65,16 @@ macro_rules! impl_queryable_for_tuples {
 impl_queryable_for_tuples!(A: 0);
 impl_queryable_for_tuples!(A: 0, B: 1);
 impl_queryable_for_tuples!(A: 0, B: 1, C: 2);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5, F: 6);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5, F: 6, G: 7);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5, F: 6, G: 7, H: 8);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9, J: 10);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9, J: 10, K: 11);
-impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 4, E: 5, F: 6, G: 7, H: 8, I: 9, J: 10, K: 11, L: 12);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8, J: 9);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8, J: 9, K: 10);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8, J: 9, K: 10, L: 11);
+impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8, J: 9, K: 10, L: 11, M: 12);
 
 pub mod new {
     use typenum::{IsLess, True, U, Unsigned};
