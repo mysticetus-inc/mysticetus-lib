@@ -71,6 +71,14 @@ impl Client {
         Database::builder(project_id)
     }
 
+    pub fn auth(&self) -> &Auth {
+        self.parts.channel.auth()
+    }
+
+    pub fn project_id(&self) -> &'static str {
+        self.parts.channel.auth().project_id()
+    }
+
     pub(crate) fn from_parts(info: Database, channel: AuthChannel, role: Option<Arc<str>>) -> Self {
         Self {
             parts: Arc::new(ClientParts {
