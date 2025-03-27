@@ -19,6 +19,7 @@ macro_rules! row {
             row_ident = unknown,
             row_vis = unknown,
             table_name = [],
+            generics = [],
             pk_name = [PrimaryKey],
             pks = [],
         }
@@ -27,12 +28,23 @@ macro_rules! row {
 
 crate::row! {
     #[derive(Debug, Clone, PartialEq)]
-    #[spanner(table)]
-    pub struct TestRow {
-        #[spanner(pk = 1)]
-        pub sighting_time: timestamp::Timestamp,
+    pub struct TestRow<T> {
+        pub a_field: T,
     }
 }
+
+crate::row! {
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct TestRowSimple {
+        pub sighting_time: bool,
+    }
+}
+
+const _: () = {
+    #[allow(unused)]
+    const fn assert_insertable<T: crate::insertable::Insertable>(_: &T) {}
+    assert_insertable::<TestRow<&str>>(&TestRow { a_field: "" });
+};
 
 #[macro_export]
 #[doc(hidden)]
@@ -47,11 +59,11 @@ macro_rules! __invalid_row_syntax {
         // }
         // #[cfg(feature = "debug-table-macro")]
         compile_error!(concat!(
-           "Invalid `row!` syntax inside",
-           $inside,
-           " '",
-           $(stringify!($tokens),)+
-           "'"
+            "Invalid `row!` syntax inside",
+            $inside,
+            " '",
+            $(stringify!($tokens),)+
+            "'"
         ));
         // #[cfg(not(feature = "debug-table-macro"))]
         // $crate::__invalid_row_syntax!($inside)
@@ -144,6 +156,7 @@ macro_rules! __parse_row {
         row_ident = $row_ident:tt,
         row_vis = $row_vis:tt,
         table_name = $table_name:tt,
+        generics = [],
         pk_name = $ignore:tt,
         $($args:tt)*
     ) => {
@@ -155,6 +168,7 @@ macro_rules! __parse_row {
             row_ident = $row_ident,
             row_vis = $row_vis,
             table_name = $table_name,
+            generics = [],
             pk_name = [$pk_name],
             $($args)*
         }
@@ -229,30 +243,32 @@ macro_rules! __parse_row {
             $($args)*
         }
     };
-    /*
-    // Reached columns with no table_name, set a default
+
+    // parse generics
     (
-        tokens = [{$($columns:tt)*}],
+        tokens = [< $($generics:tt),+ > $($rest:tt)* ],
         imports = $imports:tt,
         meta = $meta:tt,
-        unprocessed_spanner_meta = [],
-        table = $table:tt,
-        table_vis = $table_vis:tt,
-        table_name = unknown,
+        unprocessed_spanner_meta = [$(,)?],
+        row_ident = $row_ident:tt,
+        row_vis = $row_vis:tt,
+        table_name = $table_name:tt,
+        generics = $ignore3:tt,
         $($args:tt)*
     ) => {
+
         $crate::__parse_row! {
-            tokens = [{$($columns)*}],
+            tokens = [$($rest)*],
             imports = $imports,
             meta = $meta,
             unprocessed_spanner_meta = [],
             row_ident = $row_ident,
             row_vis = $row_vis,
-            table_name = [],
+            table_name = $table_name,
+            generics = [$($generics)*],
             $($args)*
         }
     };
-    */
 
     // Parse the columns
     (
@@ -263,6 +279,7 @@ macro_rules! __parse_row {
         row_ident = $row_ident:tt,
         row_vis = $row_vis:tt,
         table_name = $table_name:tt,
+        generics = $generics:tt,
         pk_name = [$pk_name:ident],
         pks = [],
     ) => {
@@ -277,6 +294,7 @@ macro_rules! __parse_row {
                 table_name = $table_name,
             },
             columns = [],
+            generics = $generics,
             pks = [],
             pk_name = [$pk_name],
         }
@@ -687,6 +705,7 @@ macro_rules! __parse_columns {
         next_column_index = $next_col_idx:tt,
         row = $row:tt,
         columns = [$($columns:tt,)*],
+        generics = $generics:tt,
         pks = [$($existing_pks:tt)*],
         pk_name = $pk_name:tt,
     ) => {
@@ -704,6 +723,7 @@ macro_rules! __parse_columns {
                 decode_with = $decode_with,
                 column_index = $col_idx,
             },],
+            generics = $generics,
             pks = [$($existing_pks)* ($field, $ty, $pk_index),],
             pk_name = $pk_name,
         }
@@ -755,7 +775,6 @@ macro_rules! __row_impls {
             table_name = [$($table_name:expr)?],
         },
         columns = [
-
             $(
                 {
                     field = $field:ident,
@@ -770,28 +789,36 @@ macro_rules! __row_impls {
             ),+
             $(,)?
         ],
+        generics = [$($generics:tt)*],
         pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal)),* $(,)?],
         pk_name = [$pk_name:ident],
     ) => {
         $($meta)*
-        $row_vis struct $row {
+        $row_vis struct $row <$($generics)*> {
             $(
                 $($column_metas)*
                 $field_vis $field: $($column_ty)*,
             )+
         }
 
-
-        impl $crate::queryable::Queryable for $row {
+        impl<$($generics)*> $crate::queryable::Row for $row <$($generics)*>
+        where
+            $($generics: $crate::SpannerEncode,)*
+        {
             type NumColumns = $crate::__macro_internals::typenum::U<{ <[()]>::len(&[$($crate::__replace_with_unit!($field),)*]) }>;
             type ColumnName = &'static str;
 
             const COLUMNS: $crate::__macro_internals::generic_array::GenericArray<$crate::column::Column<'static>, Self::NumColumns> = $crate::__macro_internals::generic_array::GenericArray::from_array([
                 $(
-                    $crate::column::Column::new::<$($column_ty)*>($col_idx, $field_name),
+                    $crate::column::Column::new::<<$($column_ty)* as $crate::SpannerEncode>::SpannerType>($col_idx, $field_name),
                 )*
             ]);
+        }
 
+        impl<$($generics)*> $crate::queryable::Queryable for $row <$($generics)*>
+        where
+            $($generics: $crate::FromSpanner,)*
+        {
             fn from_row(mut row: $crate::results::RawRow<'_, Self::NumColumns>) -> $crate::Result<Self> {
                 Ok(Self {
                     $(
@@ -801,7 +828,10 @@ macro_rules! __row_impls {
             }
         }
 
-        impl $crate::insertable::Insertable for $row {
+        impl<$($generics)*> $crate::insertable::Insertable for $row <$($generics)*>
+        where
+            $($generics: $crate::SpannerEncode,)*
+        {
             fn into_row(self) -> ::core::result::Result<$crate::Row, $crate::error::ConvertError> {
                 Ok($crate::Row::from(vec![
                     $(

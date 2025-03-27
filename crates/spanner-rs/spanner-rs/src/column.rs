@@ -1,5 +1,5 @@
-use crate::convert::SpannerEncode;
 use crate::queryable::Queryable;
+use crate::ty::SpannerType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Column<'a, Name = &'a str> {
@@ -15,18 +15,18 @@ pub struct Column<'a, Name = &'a str> {
 pub struct Unnamed;
 
 impl<Name> Column<'static, Name> {
-    pub const fn new<T: SpannerEncode>(index: usize, name: Name) -> Self {
+    pub const fn new<T: SpannerType>(index: usize, name: Name) -> Self {
         Self {
             index,
             name,
-            ty: crate::ty::ty::<T::SpannerType>(),
-            nullable: crate::ty::nullable::<T::SpannerType>(),
+            ty: crate::ty::ty::<T>(),
+            nullable: crate::ty::nullable::<T>(),
         }
     }
 }
 
 impl Column<'static, Unnamed> {
-    pub const fn unnamed<T: SpannerEncode>(index: usize) -> Self {
+    pub const fn unnamed<T: SpannerType>(index: usize) -> Self {
         Self::new::<T>(index, Unnamed)
     }
 }

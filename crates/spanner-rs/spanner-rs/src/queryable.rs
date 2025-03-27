@@ -1,26 +1,33 @@
 use generic_array::{ArrayLength, GenericArray};
 
-use crate::FromSpanner;
 use crate::column::{Column, Unnamed};
 use crate::results::RawRow;
+use crate::{FromSpanner, SpannerEncode};
 
-pub trait Queryable: Sized {
+/// Base trait defining the columns of a row of spanner data.
+pub trait Row {
     type NumColumns: ArrayLength;
+    /// Should either be [&'static str] for a named column, or
+    /// [Unnamed] for an unnamed one.
     type ColumnName;
 
     const COLUMNS: GenericArray<Column<'static, Self::ColumnName>, Self::NumColumns>;
+}
 
+/// Defines a row type that can be parsed from a raw protobuf row
+pub trait Queryable: Row + Sized {
     fn from_row(row: RawRow<'_, Self::NumColumns>) -> crate::Result<Self>;
 }
 
-// helper impl for decoding a row made up of a single column
-impl<T: FromSpanner> Queryable for T {
+// helper impls for decoding a row made up of a single column
+impl<T: SpannerEncode> Row for T {
     type ColumnName = Unnamed;
     type NumColumns = typenum::U1;
 
     const COLUMNS: GenericArray<Column<'static, Self::ColumnName>, Self::NumColumns> =
-        GenericArray::from_array([Column::unnamed::<T>(0)]);
-
+        GenericArray::from_array([Column::unnamed::<T::SpannerType>(0)]);
+}
+impl<T: FromSpanner> Queryable for T {
     #[inline]
     fn from_row(mut row: RawRow<'_, Self::NumColumns>) -> crate::Result<Self> {
         row.decode_at_index(0, T::from_field_and_value)
@@ -38,19 +45,25 @@ macro_rules! impl_queryable_for_tuples {
     (
         $($t:ident: $index:literal),* $(,)?
     ) => {
-        impl<$($t,)*> Queryable for ($($t,)*)
+        impl<$($t,)*> Row for ($($t,)*)
         where
-            $($t: FromSpanner,)*
+            $($t: SpannerEncode,)*
         {
             type NumColumns = typenum::U<{ count_idents!($($t,)*) }>;
             type ColumnName = Unnamed;
 
             const COLUMNS: GenericArray<Column<'static, Unnamed>, Self::NumColumns> = GenericArray::from_array([
                 $(
-                    Column::unnamed::<$t>($index),
+                    Column::unnamed::<<$t>::SpannerType>($index),
                 )*
             ]);
+        }
 
+
+        impl<$($t,)*> Queryable for ($($t,)*)
+        where
+            $($t: FromSpanner,)*
+        {
             fn from_row(mut row: RawRow<'_, Self::NumColumns>) -> crate::Result<Self> {
                 Ok((
                     $(
