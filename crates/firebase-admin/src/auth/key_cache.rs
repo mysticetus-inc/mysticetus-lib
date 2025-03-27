@@ -7,7 +7,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, TokenData, Validation};
 use reqwest::header;
 use serde::de;
 use timestamp::{Duration, Timestamp};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, RwLockMappedWriteGuard};
 use tokio::task::JoinHandle;
 
 use super::{Claims, ValidateTokenError};
@@ -15,12 +15,11 @@ use super::{Claims, ValidateTokenError};
 const PUBLIC_KEY_URI: &str =
     "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 
+pub static KEY_CACHE: KeyCache = KeyCache {
+    state: RwLock::const_new(CacheState::Empty),
+};
+
 pub struct KeyCache {
-    // TODO: replace with a short lived http client
-    // that only lives long enough to get the keys,
-    // then disconnects (since we'll be caching for
-    // several hours)
-    client: reqwest::Client,
     state: RwLock<CacheState>,
 }
 
@@ -29,12 +28,11 @@ impl fmt::Debug for KeyCache {
         let guard_result = self.state.try_read();
 
         f.debug_struct("KeyCache")
-            .field("client", &self.client)
             .field(
                 "state",
                 match guard_result.as_deref() {
                     Ok(CacheState::Empty) => &"Empty" as &dyn fmt::Debug,
-                    Ok(CacheState::Requesting(_)) => &"Requesting" as &dyn fmt::Debug,
+                    Ok(CacheState::Requesting(_)) => &"Requesting(...)" as &dyn fmt::Debug,
                     Ok(CacheState::Cached(cached)) => cached as &dyn fmt::Debug,
                     Err(_) => &"..." as &dyn fmt::Debug,
                 },
@@ -47,6 +45,19 @@ impl fmt::Debug for KeyCache {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct KeyId(Box<str>);
+
+impl KeyId {
+    pub fn decode(token: &str) -> crate::Result<Self> {
+        let mut header = jsonwebtoken::decode_header(token)?;
+
+        if header.alg != Algorithm::RS256 {
+            return Err(ValidateTokenError::UnsupportedAlgo(header.alg).into());
+        }
+
+        let kid = header.kid.take().ok_or(ValidateTokenError::MissingKeyId)?;
+        Ok(KeyId(kid.into_boxed_str()))
+    }
+}
 
 #[derive(Clone)]
 pub struct Decoder {
@@ -63,17 +74,56 @@ impl fmt::Debug for Decoder {
     }
 }
 
+fn get_or_start_requesting_inner<'a>(
+    mut guard: tokio::sync::RwLockWriteGuard<'a, CacheState>,
+    client: &reqwest::Client,
+    force_refresh: bool,
+) -> Result<
+    RwLockMappedWriteGuard<'a, JoinHandle<crate::Result<CachedKeys>>>,
+    RwLockMappedWriteGuard<'a, CachedKeys>,
+> {
+    macro_rules! map_guard {
+        ($guard:expr => $variant:ident) => {{
+            tokio::sync::RwLockWriteGuard::map($guard, |state| match state {
+                CacheState::$variant(kind) => kind,
+                _ => unreachable!(concat!(
+                    "wrong kind of CacheState variant encountered, expected ",
+                    stringify!($variant)
+                )),
+            })
+        }};
+    }
+
+    match &mut *guard {
+        CacheState::Empty => (),
+        // only start requesting if we either force refresh,
+        // or if the current cached key is expired.
+        CacheState::Cached(cached) if force_refresh || cached.expires_at < Timestamp::now() => (),
+        CacheState::Cached(_) => return Err(map_guard!(guard => Cached)),
+        CacheState::Requesting(_) => return Ok(map_guard!(guard => Requesting)),
+    }
+
+    // if we made it here, we need to start requesting the keys
+    *guard = CacheState::Requesting(tokio::spawn(CachedKeys::get(client)));
+
+    Ok(map_guard!(guard => Requesting))
+}
+
 impl KeyCache {
-    pub fn new(client: reqwest::Client, start_requesting: bool) -> Self {
-        Self {
-            state: RwLock::new(if start_requesting {
-                let client = client.clone();
-                CacheState::Requesting(tokio::spawn(CachedKeys::get(&client)))
-            } else {
-                CacheState::Empty
-            }),
-            client,
-        }
+    pub fn try_get_or_start_requesting<'a>(
+        &'a self,
+        client: &reqwest::Client,
+        force_refresh: bool,
+    ) -> Option<
+        Result<
+            RwLockMappedWriteGuard<'a, JoinHandle<crate::Result<CachedKeys>>>,
+            RwLockMappedWriteGuard<'a, CachedKeys>,
+        >,
+    > {
+        self.state
+            .try_write()
+            .ok()
+            .map(|guard| get_or_start_requesting_inner(guard, client, force_refresh))
     }
 
     pub fn get_cached_decoder(&self, key_id: KeyId) -> crate::Result<Result<Decoder, KeyId>> {
@@ -98,7 +148,11 @@ impl KeyCache {
         }
     }
 
-    pub async fn get_decoder(&self, key_id: KeyId) -> crate::Result<Decoder> {
+    pub async fn get_decoder(
+        &self,
+        key_id: KeyId,
+        client: &reqwest::Client,
+    ) -> crate::Result<Decoder> {
         let now = Timestamp::now();
 
         let read_guard = self.state.read().await;
@@ -141,26 +195,15 @@ impl KeyCache {
             let cached = match std::mem::replace(&mut *write_guard, CacheState::Empty) {
                 CacheState::Requesting(handle) => handle.await.unwrap()?,
                 CacheState::Cached(mut expired) => {
-                    expired.refresh(&self.client).await?;
+                    expired.refresh(client).await?;
                     expired
                 }
-                CacheState::Empty => CachedKeys::get(&self.client).await?,
+                CacheState::Empty => CachedKeys::get(client).await?,
             };
 
             // loop back around, just in case google gave us expired keys
             *write_guard = CacheState::Cached(cached);
         }
-    }
-
-    pub fn decode_key_id(&self, token: &str) -> crate::Result<KeyId> {
-        let mut header = jsonwebtoken::decode_header(token)?;
-
-        if header.alg != Algorithm::RS256 {
-            return Err(ValidateTokenError::UnsupportedAlgo(header.alg).into());
-        }
-
-        let kid = header.kid.take().ok_or(ValidateTokenError::MissingKeyId)?;
-        Ok(KeyId(kid.into_boxed_str()))
     }
 }
 

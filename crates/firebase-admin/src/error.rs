@@ -12,6 +12,8 @@ pub enum Error {
     ValidateToken(#[from] crate::auth::ValidateTokenError),
     #[error(transparent)]
     Auth(#[from] gcp_auth_channel::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl From<jsonwebtoken::errors::Error> for Error {
@@ -24,6 +26,10 @@ impl Error {
     pub fn to_response_parts(&self) -> (StatusCode, Cow<'static, str>) {
         match self {
             Self::ValidateToken(auth) => auth.to_response_parts(),
+            Self::Io(error) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Cow::Owned(error.to_string()),
+            ),
             Self::Auth(error) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Cow::Owned(error.to_string()),

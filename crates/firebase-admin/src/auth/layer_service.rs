@@ -8,7 +8,7 @@ use http::{HeaderValue, Request, Response, header};
 use jsonwebtoken::TokenData;
 use tower::{Layer, Service};
 
-use super::key_cache::KeyId;
+use super::key_cache::{KEY_CACHE, KeyId};
 use super::{Claims, ValidateIdTokenShared, ValidateTokenError};
 
 #[derive(Debug, Clone)]
@@ -44,57 +44,6 @@ pub struct ValidateIdTokenService<S> {
     service: S,
     shared: Arc<ValidateIdTokenShared>,
 }
-/*
-impl<S, ReqBody> tower::Service<http::Request<ReqBody>> for ValidateIdTokenService<S>
-where
-    S: tower::Service<http::Request<ReqBody>> + Send + Clone + 'static,
-    ReqBody: Send + 'static,
-    S::Response: axum::response::IntoResponse,
-    S::Error: From<std::convert::Infallible> + Send + 'static,
-    S::Future: Send,
-{
-    type Response = axum::response::Response;
-    type Error = S::Error;
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.service.poll_ready(cx)
-    }
-
-    fn call(&mut self, mut req: http::Request<ReqBody>) -> Self::Future {
-        let token_header = match extract_header(&mut req) {
-            Ok(token) => token,
-            Err(error) => return Box::pin(std::future::ready(Ok(error.into_response()))),
-        };
-
-        let mut this = self.clone();
-        // we need to replace the service in 'self' with the cloned service.
-        // this is because the cloned service might not be ready
-        // (via poll_ready), even if the original instance was.
-        // see the issue in tower describing in more detail:
-        // https://github.com/tower-rs/tower/issues/547#issuecomment-767629149
-        std::mem::swap(&mut this.service, &mut self.service);
-
-        Box::pin(async move {
-            let res = validate_token(&token_header, &this.shared).await;
-            req.headers_mut()
-                .insert(header::AUTHORIZATION, token_header);
-
-            let token = match res {
-                Ok(token) => token,
-                Err(error) => return Ok(error.into_response()),
-            };
-
-            req.extensions_mut().insert(token);
-
-            let resp = this.service.call(req).await?;
-            Ok(resp.into_response())
-        })
-    }
-}
-*/
 
 impl<S, ReqBody, RespBody> Service<Request<ReqBody>> for ValidateIdTokenService<S>
 where
@@ -115,20 +64,6 @@ where
             Ok(fut) => fut,
             Err(error) => ValidateIdTokenFuture::error(error),
         }
-    }
-}
-
-fn extract_header<Body>(req: &mut http::Request<Body>) -> Result<HeaderValue, ValidateTokenError> {
-    let header = req
-        .headers_mut()
-        .remove(header::AUTHORIZATION)
-        .ok_or(ValidateTokenError::NoBearerToken)?;
-
-    if header.as_bytes().starts_with(b"Bearer ") {
-        Ok(header)
-    } else {
-        req.headers_mut().insert(header::AUTHORIZATION, header);
-        Err(ValidateTokenError::NotABearerToken)
     }
 }
 
@@ -166,26 +101,16 @@ where
     {
         let ValidateIdTokenService { service, shared } = service;
 
-        let token_header = extract_header(&mut request)?;
+        let token_header = super::validate::extract_header(request.headers_mut())?;
 
-        let token = token_header
-            .to_str()
-            .map_err(ValidateTokenError::InvalidToken)?
-            .trim_start_matches("Bearer ");
-
-        let key_id = shared.key_cache.decode_key_id(token)?;
-
-        match shared.key_cache.get_cached_decoder(key_id)? {
-            Ok(decoder) => {
-                let decoded_token = decoder.decode_token(token, &shared.validation)?;
-
-                reassemble_request(token_header, decoded_token, &mut request);
-
+        match super::validate::try_authorize_from_header(&token_header, &shared.validation)? {
+            Ok(decoded) => {
+                reassemble_request(token_header, decoded, &mut request);
                 Ok(Self::Calling {
                     fut: service.call(request),
                 })
             }
-            Err(key_id) => {
+            Err((_token_str, key_id)) => {
                 // we need to replace the original service with the cloned service.
                 // this is because the cloned service might not be ready
                 // (via poll_ready), even if the original one was.
@@ -221,12 +146,12 @@ async fn decode_token(
     token_header: &HeaderValue,
     shared: &ValidateIdTokenShared,
 ) -> crate::Result<TokenData<Claims>> {
-    let decoder = shared.key_cache.get_decoder(key_id).await?;
-
     let token = token_header
         .to_str()
         .map_err(ValidateTokenError::InvalidToken)?
         .trim_start_matches("Bearer ");
+
+    let decoder = KEY_CACHE.get_decoder(key_id, &shared.client).await?;
 
     decoder.decode_token(token, &shared.validation)
 }
