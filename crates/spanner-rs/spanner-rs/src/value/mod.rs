@@ -118,7 +118,7 @@ macro_rules! impl_into_type_fns {
             $visib fn $fn_name<Expecting: crate::convert::FromSpanner>(self) -> Result<$out, FromError> {
                 match self.0 {
                     Kind::$variant(val) => Ok(val),
-                    other => Err(FromError::from_value::<Expecting>(Value(other))),
+                    other => Err(FromError::from_value::<Expecting::SpannerType>(Value(other))),
                 }
             }
         )*

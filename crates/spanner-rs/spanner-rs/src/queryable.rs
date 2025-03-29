@@ -2,6 +2,7 @@ use generic_array::{ArrayLength, GenericArray};
 
 use crate::column::{Column, Unnamed};
 use crate::results::RawRow;
+use crate::ty::SpannerType;
 use crate::{FromSpanner, SpannerEncode};
 
 /// Base trait defining the columns of a row of spanner data.
@@ -20,14 +21,16 @@ pub trait Queryable: Row + Sized {
 }
 
 // helper impls for decoding a row made up of a single column
-impl<T: SpannerEncode> Row for T {
+impl<T: SpannerEncode + FromSpanner<SpannerType = <T as SpannerEncode>::SpannerType>> Row for T {
     type ColumnName = Unnamed;
     type NumColumns = typenum::U1;
 
     const COLUMNS: GenericArray<Column<'static, Self::ColumnName>, Self::NumColumns> =
-        GenericArray::from_array([Column::unnamed::<T::SpannerType>(0)]);
+        GenericArray::from_array([Column::unnamed::<<T as SpannerEncode>::SpannerType>(0)]);
 }
-impl<T: FromSpanner> Queryable for T {
+impl<T: SpannerEncode + FromSpanner<SpannerType = <T as SpannerEncode>::SpannerType>> Queryable
+    for T
+{
     #[inline]
     fn from_row(mut row: RawRow<'_, Self::NumColumns>) -> crate::Result<Self> {
         row.decode_at_index(0, T::from_field_and_value)
@@ -62,7 +65,7 @@ macro_rules! impl_queryable_for_tuples {
 
         impl<$($t,)*> Queryable for ($($t,)*)
         where
-            $($t: FromSpanner,)*
+            $($t: FromSpanner + SpannerEncode,)*
         {
             fn from_row(mut row: RawRow<'_, Self::NumColumns>) -> crate::Result<Self> {
                 Ok((
@@ -98,8 +101,8 @@ pub mod new {
     // `type Columns: Columns;` instead
     use typenum::{IsLess, True, U, Unsigned};
 
+    use crate::SpannerEncode;
     use crate::ty::SpannerType;
-    use crate::{IntoSpanner, SpannerEncode};
 
     pub trait Columns {
         type Number: Unsigned;

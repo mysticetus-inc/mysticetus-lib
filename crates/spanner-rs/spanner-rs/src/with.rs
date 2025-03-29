@@ -1,4 +1,5 @@
 //! <code>#[spanner(with = ...)]</code> adapter types.
+
 use bytes::Bytes;
 use protos::protobuf::value::Kind;
 
@@ -15,7 +16,20 @@ use crate::{FromSpanner, IntoSpanner, Value};
 pub struct Json<T>(pub T);
 
 #[cfg(feature = "serde_json")]
-impl<T: serde::Serialize> SpannerType for Json<T> {
+pub struct JsonString<T>(String, std::marker::PhantomData<T>);
+
+#[cfg(feature = "serde_json")]
+impl<T> IntoSpanner for JsonString<T> {
+    type SpannerType = Json<T>;
+
+    #[inline]
+    fn into_value(self) -> Value {
+        self.0.into_value()
+    }
+}
+
+#[cfg(feature = "serde_json")]
+impl<T> SpannerType for Json<T> {
     type Type = crate::ty::markers::Json;
     type Nullable = typenum::True;
 }
@@ -27,13 +41,13 @@ where
 {
     type SpannerType = Self;
 
-    type Encoded = String;
+    type Encoded = JsonString<T>;
 
     type Error = crate::error::IntoError;
 
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
         match serde_json::to_string(&self.0) {
-            Ok(encoded) => Ok(encoded),
+            Ok(encoded) => Ok(JsonString(encoded, std::marker::PhantomData)),
             Err(err) => Err(crate::error::IntoError::from_error(err)),
         }
     }
@@ -46,18 +60,22 @@ where
 {
     type SpannerType = Json<T>;
 
-    type Encoded = String;
+    type Encoded = JsonString<T>;
 
     type Error = crate::error::IntoError;
 
     #[inline]
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
-        Json(&self.0).encode()
+        Json(&self.0)
+            .encode()
+            .map(|JsonString(s, _)| JsonString(s, std::marker::PhantomData))
     }
 }
 
 #[cfg(feature = "serde_json")]
 impl<T: serde::Serialize + serde::de::DeserializeOwned> FromSpanner for Json<T> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let s = match value.0 {
             Kind::StringValue(s) => s,
@@ -119,7 +137,7 @@ fn decode(s: &str) -> Result<Vec<u8>, base64::DecodeError> {
 }
 
 impl<T: AsRef<[u8]>> IntoSpanner for AsBytes<T> {
-    // type SpannerType = Self;
+    type SpannerType = Self;
 
     fn into_value(self) -> Value {
         encode(self.0.as_ref()).into_value()
@@ -127,6 +145,8 @@ impl<T: AsRef<[u8]>> IntoSpanner for AsBytes<T> {
 }
 
 impl<T: AsRef<[u8]> + From<Vec<u8>>> FromSpanner for AsBytes<T> {
+    type SpannerType = Bytes;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let s = value.into_string::<Self>()?;
 
@@ -147,12 +167,15 @@ impl<T: prost::Name + crate::ty::markers::SpannerProto> SpannerType for Proto<T>
 }
 
 impl<T: prost::Name + crate::ty::markers::SpannerProto> IntoSpanner for Proto<T> {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         encode(&self.0.encode_to_vec()).into_value()
     }
 }
 
 impl<T: prost::Name + crate::ty::markers::SpannerProto + Default> FromSpanner for Proto<T> {
+    type SpannerType = Self;
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let string = value.into_string::<Self>()?;
 
@@ -182,6 +205,8 @@ impl<T: Into<i32> + TryFrom<i32> + crate::ty::markers::SpannerProto> SpannerType
 impl<T: Into<i32> + TryFrom<i32> + crate::ty::markers::SpannerProto> IntoSpanner
     for AsProtoEnum<T>
 {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         let int_repr: i32 = self.0.into();
 
@@ -221,6 +246,7 @@ where
     <T as TryFrom<i32>>::Error: std::error::Error + Send + Sync + 'static,
     T: crate::ty::markers::SpannerEnum,
 {
+    type SpannerType = Self;
     fn into_value(self) -> Value {
         <i32 as IntoSpanner>::into_value(self.0.into())
     }
@@ -233,6 +259,8 @@ where
     <T as TryFrom<i32>>::Error: std::error::Error + Send + Sync + 'static,
     T: crate::ty::markers::SpannerEnum,
 {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         pub use Kind::*;
 

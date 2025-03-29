@@ -14,6 +14,12 @@ pub struct EncodedValue<T> {
     _marker: PhantomData<fn(T)>,
 }
 
+impl<T> EncodedValue<Option<T>> {
+    pub fn encode_option(value: impl IntoSpanner<SpannerType = T>) -> Self {
+        Self::new(value.into_value())
+    }
+}
+
 impl<T> EncodedValue<T> {
     pub const NULL: Self = Self {
         value: Value::NULL,
@@ -28,10 +34,7 @@ impl<T> EncodedValue<T> {
         }
     }
 
-    pub fn encode(value: T) -> Self
-    where
-        T: IntoSpanner,
-    {
+    pub fn encode(value: impl IntoSpanner<SpannerType = T>) -> Self {
         Self::new(value.into_value())
     }
 
@@ -50,9 +53,9 @@ impl<T> EncodedValue<T> {
         &mut self.value
     }
 
-    pub fn decode(self) -> Result<T, ConvertError>
+    pub fn decode<Decoded>(self) -> Result<Decoded, ConvertError>
     where
-        T: FromSpanner,
+        Decoded: FromSpanner<SpannerType = T>,
     {
         FromSpanner::from_value(self.value)
     }
@@ -64,19 +67,22 @@ impl<T> From<Value> for EncodedValue<T> {
     }
 }
 
-impl<T: SpannerEncode> SpannerType for EncodedValue<T> {
-    type Type = <T::SpannerType as SpannerType>::Type;
-    type Nullable = <T::SpannerType as SpannerType>::Nullable;
+impl<T: SpannerType> SpannerType for EncodedValue<T> {
+    type Type = T::Type;
+    type Nullable = T::Nullable;
 }
 
-impl<T: SpannerEncode> IntoSpanner for EncodedValue<T> {
+impl<T: SpannerType> IntoSpanner for EncodedValue<T> {
+    type SpannerType = T;
     #[inline]
     fn into_value(self) -> crate::Value {
         self.value
     }
 }
 
-impl<T: FromSpanner> FromSpanner for EncodedValue<T> {
+impl<T: SpannerType> FromSpanner for EncodedValue<T> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         Ok(Self::new(value))
     }

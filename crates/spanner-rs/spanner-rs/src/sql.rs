@@ -34,7 +34,11 @@ impl Params {
         N: Into<String>,
         T: IntoSpanner,
     {
-        self.insert_inner(name.into(), crate::ty::ty::<T>(), value.into_value());
+        self.insert_inner(
+            name.into(),
+            crate::ty::ty::<T::SpannerType>(),
+            value.into_value(),
+        );
         self
     }
 

@@ -35,6 +35,8 @@ impl<T: prost::Name + ?Sized + SpannerProto> SpannerType for EncodedProto<T> {
 }
 
 impl<T: prost::Name + ?Sized + SpannerProto> IntoSpanner for EncodedProto<T> {
+    type SpannerType = Self;
+
     #[inline]
     fn into_value(self) -> Value {
         self.encoded.into_value()
@@ -42,6 +44,8 @@ impl<T: prost::Name + ?Sized + SpannerProto> IntoSpanner for EncodedProto<T> {
 }
 
 impl<T: prost::Name + ?Sized + SpannerProto> FromSpanner for EncodedProto<T> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let encoded_string = value
             .into_string::<Self>()

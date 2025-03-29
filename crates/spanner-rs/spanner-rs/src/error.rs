@@ -5,6 +5,7 @@ use crate::Value;
 use crate::client::PoolError;
 use crate::column::InvalidColumnIndex;
 use crate::convert::SpannerEncode;
+use crate::ty::SpannerType;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -326,13 +327,13 @@ impl<V> TypeErrorInfo<V> {
 // Using 'impl XXX' instead of generics here, since we only want 1 generic param to make the
 // requirement to include the destination type via `from_XXXXX::<Self>` easier.
 impl FromError {
-    pub fn from_value<T: SpannerEncode>(value: impl Into<Value>) -> Self {
+    pub fn from_value<T: SpannerType>(value: impl Into<Value>) -> Self {
         Self {
             info: TypeErrorInfo::Value {
                 value: value.into(),
                 error: None,
             },
-            expected: Some(Cow::Borrowed(crate::ty::ty::<T::SpannerType>())),
+            expected: Some(Cow::Borrowed(crate::ty::ty::<T>())),
             column: None,
         }
     }

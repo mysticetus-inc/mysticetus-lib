@@ -85,6 +85,8 @@ impl<T: SpannerStruct> SpannerType for EncodedStruct<T> {
 }
 
 impl<T: SpannerStruct> IntoSpanner for EncodedStruct<T> {
+    type SpannerType = Self;
+
     fn into_value(self) -> super::Value {
         super::Value(Kind::ListValue(protobuf::ListValue {
             values: self.fields,

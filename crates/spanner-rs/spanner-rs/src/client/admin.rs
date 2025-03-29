@@ -55,7 +55,7 @@ impl SpannerAdmin {
     }
 
     pub fn from_client(client: &Client) -> Self {
-        Self::from_channel(client.channel().clone())
+        Self::from_channel(client.parts.channel.clone())
     }
 
     fn db_client(&self) -> DatabaseAdminClient<AuthChannel> {

@@ -5,7 +5,7 @@ use protos::protobuf::{self, ListValue};
 
 use crate::convert::SpannerEncode;
 use crate::ty::SpannerType;
-use crate::{IntoSpanner, Value};
+use crate::{FromSpanner, IntoSpanner, Value};
 
 #[derive(Clone, PartialEq)]
 #[repr(transparent)]
@@ -14,15 +14,14 @@ pub struct EncodedArray<T = Value> {
     _marker: PhantomData<T>,
 }
 
-impl<T> SpannerType for EncodedArray<T>
-where
-    T: SpannerType,
-{
+impl<T: SpannerType> SpannerType for EncodedArray<T> {
     type Nullable = typenum::False;
     type Type = crate::ty::markers::Array<T::Type>;
 }
 
 impl<T: SpannerType> IntoSpanner for EncodedArray<T> {
+    type SpannerType = Self;
+
     #[inline]
     fn into_value(self) -> crate::Value {
         Value(protobuf::value::Kind::ListValue(protobuf::ListValue {
@@ -31,7 +30,9 @@ impl<T: SpannerType> IntoSpanner for EncodedArray<T> {
     }
 }
 
-impl<T: SpannerType> crate::FromSpanner for EncodedArray<T> {
+impl<T: FromSpanner> FromSpanner for EncodedArray<T> {
+    type SpannerType = EncodedArray<T::SpannerType>;
+
     fn from_value(value: Value) -> Result<Self, crate::error::ConvertError> {
         Ok(Self {
             values: value.into_array::<Self>()?.values,
@@ -47,11 +48,11 @@ where
     value.encode().map(to_proto_value)
 }
 
-impl<T: SpannerType> EncodedArray<T> {
+impl<T> EncodedArray<T> {
     pub fn encode_from<I>(src: I) -> Result<Self, <I::Item as SpannerEncode>::Error>
     where
         I: IntoIterator,
-        I::Item: SpannerEncode,
+        I::Item: SpannerEncode<SpannerType = T>,
     {
         let values = src
             .into_iter()

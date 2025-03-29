@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 use bytes::Bytes;
@@ -6,7 +7,7 @@ use protos::protobuf::value::Kind;
 use timestamp::{Date, Timestamp};
 
 use crate::error::{ConvertError, FromError};
-use crate::ty::{Scalar, SpannerType, Type};
+use crate::ty::SpannerType;
 use crate::value::{EncodedArray, EncodedValue};
 use crate::{Field, Value};
 
@@ -16,13 +17,17 @@ use crate::{Field, Value};
 ///
 /// If a type has a fallible conversion to a [`Value`], [`SpannerEncode`] should be implemented
 /// instead.
-pub trait IntoSpanner: SpannerType {
+pub trait IntoSpanner {
+    type SpannerType: SpannerType;
+
     /// Converts 'self' into a [`Value`]
     fn into_value(self) -> Value;
 }
 
 /// Trait to parse a value from an encoded Spanner [`Value`].
-pub trait FromSpanner: SpannerEncode + Sized {
+pub trait FromSpanner: Sized {
+    type SpannerType: SpannerType;
+
     fn from_value(value: Value) -> Result<Self, ConvertError>;
 
     fn from_field_and_value(field: &Field, value: Value) -> Result<Self, ConvertError> {
@@ -60,7 +65,7 @@ pub trait SpannerEncode: Sized {
     type SpannerType: SpannerType;
 
     /// The resulting encoded type, which need's be convertable into a Spanner [`Value`].
-    type Encoded: IntoSpanner;
+    type Encoded: IntoSpanner<SpannerType = Self::SpannerType>;
 
     /// The error type for fallible encodings. Generic to allow for non-[`TypeError`]'s,
     /// including [`Infallible`]/[`!`] if the encoding is infallible.
@@ -86,7 +91,7 @@ impl<T> SpannerEncode for T
 where
     T: IntoSpanner,
 {
-    type SpannerType = T;
+    type SpannerType = <T as IntoSpanner>::SpannerType;
 
     type Encoded = Self;
 
@@ -98,16 +103,28 @@ where
     }
 }
 
+// -------------------- IgnoredAny --------------------- //
+
+pub struct IgnoredAny<T>(PhantomData<T>);
+
+impl<T: SpannerType> FromSpanner for IgnoredAny<T> {
+    type SpannerType = T;
+
+    fn from_value(_value: Value) -> Result<Self, ConvertError> {
+        Ok(Self(PhantomData))
+    }
+}
+
 // -------------------- serde_json::Value ------------------ //
 
 #[cfg(feature = "serde_json")]
 impl SpannerEncode for serde_json::Value {
     type SpannerType = crate::with::Json<Self>;
     type Error = crate::error::IntoError;
-    type Encoded = String;
+    type Encoded = crate::with::JsonString<Self>;
 
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
-        crate::with::Json(&self).encode()
+        crate::with::Json(self).encode()
     }
 }
 
@@ -115,7 +132,7 @@ impl SpannerEncode for serde_json::Value {
 impl SpannerEncode for &serde_json::Value {
     type SpannerType = crate::with::Json<Self>;
     type Error = crate::error::IntoError;
-    type Encoded = String;
+    type Encoded = crate::with::JsonString<Self>;
 
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
         crate::with::Json(self).encode()
@@ -124,6 +141,8 @@ impl SpannerEncode for &serde_json::Value {
 
 #[cfg(feature = "serde_json")]
 impl FromSpanner for serde_json::Value {
+    type SpannerType = crate::with::Json<Self>;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         crate::with::Json::from_value(value).map(|j| j.0)
     }
@@ -136,7 +155,7 @@ where
     V: serde::Serialize,
 {
     type Error = crate::error::IntoError;
-    type Encoded = String;
+    type Encoded = crate::with::JsonString<Self>;
     type SpannerType = crate::with::Json<Self>;
 
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
@@ -150,7 +169,7 @@ macro_rules! impl_str_into {
     ($($s:ty $(: $conv_fn:ident)? ),* $(,)?) => {
         $(
             impl IntoSpanner for $s {
-                // type SpannerType = String;
+                type SpannerType = String;
 
                 #[inline]
                 fn into_value(self) -> Value {
@@ -173,12 +192,16 @@ impl_str_into! {
 }
 
 impl FromSpanner for String {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         value.into_string::<Self>().map_err(ConvertError::from)
     }
 }
 
 impl<'a> FromSpanner for Cow<'a, str> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         value
             .into_string::<Self>()
@@ -188,6 +211,8 @@ impl<'a> FromSpanner for Cow<'a, str> {
 }
 
 impl FromSpanner for std::sync::Arc<str> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         value
             .into_string::<Self>()
@@ -197,6 +222,8 @@ impl FromSpanner for std::sync::Arc<str> {
 }
 
 impl FromSpanner for std::rc::Rc<str> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         value
             .into_string::<Self>()
@@ -206,6 +233,8 @@ impl FromSpanner for std::rc::Rc<str> {
 }
 
 impl FromSpanner for Box<str> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         value
             .into_string::<Self>()
@@ -217,6 +246,8 @@ impl FromSpanner for Box<str> {
 // -------------- boolean ------------------ //
 
 impl IntoSpanner for bool {
+    type SpannerType = Self;
+
     #[inline]
     fn into_value(self) -> Value {
         Value(Kind::BoolValue(self))
@@ -224,6 +255,8 @@ impl IntoSpanner for bool {
 }
 
 impl FromSpanner for bool {
+    type SpannerType = Self;
+
     #[inline]
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         value.into_bool::<Self>().map_err(ConvertError::from)
@@ -238,6 +271,8 @@ macro_rules! impl_ints {
 
             // ------------ regular impls ----------------- //
             impl IntoSpanner for $int {
+                type SpannerType = Self;
+
                 fn into_value(self) -> Value {
                     itoa::Buffer::new()
                         .format(self)
@@ -246,6 +281,8 @@ macro_rules! impl_ints {
             }
 
             impl FromSpanner for $int {
+                type SpannerType = Self;
+
                 fn from_value(value: Value) -> Result<Self, ConvertError> {
                     match value.0 {
                         Kind::StringValue(s) => match s.parse::<Self>() {
@@ -260,6 +297,8 @@ macro_rules! impl_ints {
 
             // ------------ nonzero impl ----------------- //
             impl IntoSpanner for $non_zero_int {
+                type SpannerType = Self;
+
                 #[inline]
                 fn into_value(self) -> Value {
                     self.get().into_value()
@@ -267,6 +306,8 @@ macro_rules! impl_ints {
             }
 
             impl FromSpanner for $non_zero_int {
+                type SpannerType = Self;
+
                 #[inline]
                 fn from_value(value: Value) -> Result<Self, ConvertError> {
                     let int = <$int>::from_value(value)?;
@@ -299,6 +340,8 @@ impl_ints! {
 // -------------- f32/f64 ------------------ //
 
 impl IntoSpanner for f64 {
+    type SpannerType = Self;
+
     #[inline]
     fn into_value(self) -> Value {
         Value::from(self)
@@ -306,6 +349,8 @@ impl IntoSpanner for f64 {
 }
 
 impl IntoSpanner for f32 {
+    type SpannerType = Self;
+
     #[inline]
     fn into_value(self) -> Value {
         Value::from(self as f64)
@@ -313,6 +358,8 @@ impl IntoSpanner for f32 {
 }
 
 impl FromSpanner for f64 {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         match value.0 {
             Kind::StringValue(s) => match s.as_str() {
@@ -328,6 +375,8 @@ impl FromSpanner for f64 {
 }
 
 impl FromSpanner for f32 {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         f64::from_value(value).map(|double| double as f32)
     }
@@ -341,6 +390,8 @@ impl SpannerType for char {
 }
 
 impl IntoSpanner for char {
+    type SpannerType = Self;
+
     #[inline]
     fn into_value(self) -> Value {
         let mut buf = [0; 4];
@@ -349,6 +400,8 @@ impl IntoSpanner for char {
 }
 
 impl FromSpanner for char {
+    type SpannerType = Self;
+
     #[inline]
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let s = value.into_string::<Self>()?;
@@ -384,9 +437,8 @@ impl<T> SpannerEncode for Vec<T>
 where
     T: SpannerEncode,
 {
-    type SpannerType = EncodedArray<T::Encoded>;
-
-    type Encoded = EncodedArray<T::Encoded>;
+    type SpannerType = EncodedArray<T::SpannerType>;
+    type Encoded = EncodedArray<T::SpannerType>;
 
     type Error = T::Error;
 
@@ -399,6 +451,8 @@ impl<T> FromSpanner for Vec<T>
 where
     T: FromSpanner,
 {
+    type SpannerType = EncodedArray<T::SpannerType>;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         value
             .into_array::<Self>()?
@@ -415,9 +469,8 @@ macro_rules! impl_box_arc_slice_encode {
         where
             T: SpannerEncode + Clone,
         {
-            type SpannerType = EncodedArray<T::Encoded>;
-
-            type Encoded = EncodedArray<T::Encoded>;
+            type SpannerType = EncodedArray<T::SpannerType>;
+            type Encoded = EncodedArray<T::SpannerType>;
 
             type Error = T::Error;
 
@@ -430,6 +483,8 @@ macro_rules! impl_box_arc_slice_encode {
         where
             T: FromSpanner + Clone,
         {
+            type SpannerType = EncodedArray<T::SpannerType>;
+
             fn from_value(value: Value) -> Result<Self, ConvertError> {
                 let boxed_slice = value
                     .into_array::<Self>()?
@@ -454,13 +509,14 @@ impl<T> SpannerEncode for Option<T>
 where
     T: SpannerEncode,
 {
-    type SpannerType = T::SpannerType;
+    type SpannerType = Option<T::SpannerType>;
     type Error = T::Error;
-    type Encoded = EncodedValue<T::Encoded>;
+    type Encoded = EncodedValue<Option<T::SpannerType>>;
 
+    #[inline]
     fn encode(self) -> Result<Self::Encoded, Self::Error> {
         match self.map(T::encode) {
-            Some(result) => result.map(EncodedValue::encode),
+            Some(result) => result.map(EncodedValue::encode_option),
             None => Ok(EncodedValue::NULL),
         }
     }
@@ -479,6 +535,8 @@ impl<T> FromSpanner for Option<T>
 where
     T: FromSpanner,
 {
+    type SpannerType = Option<T::SpannerType>;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         match &value.0 {
             Kind::NullValue(_) => Ok(None),
@@ -490,18 +548,23 @@ where
 // ---------------- &[u8]-like types ------------------- //
 
 impl IntoSpanner for &[u8] {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         crate::with::AsBytes(self).into_value()
     }
 }
 
 impl IntoSpanner for Bytes {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         crate::with::AsBytes(self.as_ref()).into_value()
     }
 }
 
 impl FromSpanner for Bytes {
+    type SpannerType = Self;
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         crate::with::AsBytes::from_value(value).map(|b| b.0)
     }
@@ -510,6 +573,8 @@ impl FromSpanner for Bytes {
 // -------------- Date ------------------ //
 
 impl IntoSpanner for Date {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         let mut dst = String::new();
         self.append_to_string(&mut dst);
@@ -518,6 +583,8 @@ impl IntoSpanner for Date {
 }
 
 impl FromSpanner for Date {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let s = value.into_string::<Self>()?;
 
@@ -530,12 +597,16 @@ impl FromSpanner for Date {
 
 // -------------- Timestamp ------------------ //
 impl IntoSpanner for Timestamp {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         self.as_iso8601().into_value()
     }
 }
 
 impl FromSpanner for Timestamp {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let s = value.into_string::<Self>()?;
 
@@ -566,6 +637,8 @@ impl<T> CommitTimestamp<T> {
 }
 
 impl IntoSpanner for CommitTimestamp<Option<Timestamp>> {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         match self.0 {
             None => Self::COMMIT_STR.into_value(),
@@ -575,18 +648,24 @@ impl IntoSpanner for CommitTimestamp<Option<Timestamp>> {
 }
 
 impl IntoSpanner for CommitTimestamp<()> {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         Self::COMMIT_STR.into_value()
     }
 }
 
 impl FromSpanner for CommitTimestamp<Option<Timestamp>> {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         Option::from_value(value).map(CommitTimestamp)
     }
 }
 
 impl FromSpanner for CommitTimestamp<()> {
+    type SpannerType = Self;
+
     fn from_value(_value: Value) -> Result<Self, ConvertError> {
         Ok(Self(()))
     }
@@ -599,6 +678,8 @@ impl SpannerType for uuid::Uuid {
 }
 
 impl IntoSpanner for uuid::Uuid {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         let mut buf = [0; 36];
 
@@ -607,6 +688,8 @@ impl IntoSpanner for uuid::Uuid {
 }
 
 impl FromSpanner for uuid::Uuid {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         let s = value.into_string::<Self>()?;
 
@@ -628,12 +711,16 @@ impl SpannerType for NullableString {
 }
 
 impl IntoSpanner for NullableString {
+    type SpannerType = Self;
+
     fn into_value(self) -> Value {
         self.0.map(IntoSpanner::into_value).unwrap_or(Value::NULL)
     }
 }
 
 impl FromSpanner for NullableString {
+    type SpannerType = Self;
+
     fn from_value(value: Value) -> Result<Self, ConvertError> {
         Option::<String>::from_value(value).map(Self)
     }

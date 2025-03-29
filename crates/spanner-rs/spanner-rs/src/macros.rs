@@ -857,6 +857,7 @@ macro_rules! __row_impls {
 
         impl<$($generics)*> $crate::queryable::Queryable for $row <$($generics)*>
         where
+            Self: $crate::queryable::Row,
             $($generics: $crate::FromSpanner,)*
         {
             fn from_row(mut row: $crate::results::RawRow<'_, Self::NumColumns>) -> $crate::Result<Self> {
@@ -902,6 +903,21 @@ macro_rules! __row_impls {
                 row_vis = $row_vis,
                 table_name = [$($table_name)?],
             },
+            columns = [
+                $(
+                    {
+                        field = $field,
+                        field_vis = $field_vis,
+                        field_name = [$field_name],
+                        ty = ($($column_ty)*),
+                        meta = [$($column_metas)*],
+                        encode_with = [$($encode_with)*],
+                        decode_with = [$($decode_with)*],
+                        column_index = $col_idx,
+                        generic = $generic,
+                    }
+                ),+
+            ],
             pks = [$(($pk_field, ($($pk_type)*), $pk_index, $pk_generic)),*],
             pk_name = [$pk_name],
             generics = [$($generics)*],
@@ -924,6 +940,22 @@ macro_rules! __impl_table {
             row_vis = $ignore_row_vis:vis,
             table_name = [],
         },
+        columns = [
+            $(
+                {
+                    field = $field:ident,
+                    field_vis = $field_vis:vis,
+                    field_name = [$field_name:expr],
+                    ty = ($($column_ty:tt)*),
+                    meta = [$($column_metas:tt)*],
+                    encode_with = [$($encode_with:tt)*],
+                    decode_with = [$($decode_with:tt)*],
+                    column_index = $col_idx:expr,
+                    generic = $generic:tt,
+                }
+            ),+
+            $(,)?
+        ],
         pks = $ignore_pks:tt,
         pk_name = $ignore_pk_name:tt,
         generics = $ignore_generics:tt,
@@ -937,6 +969,22 @@ macro_rules! __impl_table {
             row_vis = $row_vis:vis,
             table_name = [$table_name:expr],
         },
+        columns = [
+            $(
+                {
+                    field = $field:ident,
+                    field_vis = $field_vis:vis,
+                    field_name = [$field_name:expr],
+                    ty = ($($column_ty:tt)*),
+                    meta = [$($column_metas:tt)*],
+                    encode_with = [$($encode_with:tt)*],
+                    decode_with = [$($decode_with:tt)*],
+                    column_index = $col_idx:expr,
+                    generic = $generic:tt,
+                }
+            ),+
+            $(,)?
+        ],
         pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],
         pk_name = [$pk_name:ident],
         generics = [$($generics:tt)*],
