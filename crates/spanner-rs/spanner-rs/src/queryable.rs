@@ -90,12 +90,16 @@ impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8,
 impl_queryable_for_tuples!(A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6, H: 7, I: 8, J: 9, K: 10, L: 11, M: 12);
 
 pub mod new {
+    use std::fmt;
+    use std::marker::PhantomData;
+
     // TODO: figure out how to make tuple indexing at a type level work
     // so we can replace Queryable::COLUMNS with a type parameter
     // `type Columns: Columns;` instead
     use typenum::{IsLess, True, U, Unsigned};
 
     use crate::ty::SpannerType;
+    use crate::{IntoSpanner, SpannerEncode};
 
     pub trait Columns {
         type Number: Unsigned;
@@ -107,6 +111,65 @@ pub mod new {
         const NAME: &'static str;
         type Type: SpannerType;
         type Index: Unsigned;
+    }
+
+    pub struct DebugColumn<C>(PhantomData<C>);
+
+    impl<C: Column> fmt::Debug for DebugColumn<C> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.debug_struct("Column")
+                .field("name", &C::NAME)
+                .field("index", &<C::Index as Unsigned>::USIZE)
+                .field("type", &crate::ty::ty::<C::Type>())
+                .finish()
+        }
+    }
+
+    #[repr(transparent)]
+    pub struct ColumnValue<C: Column, V = <C as Column>::Type> {
+        value: V,
+        col: PhantomData<fn(C)>,
+    }
+
+    impl<C: Column, V> ColumnValue<C, V> {
+        pub fn new(value: V) -> Self {
+            Self {
+                value,
+                col: PhantomData,
+            }
+        }
+    }
+
+    impl<C, V> SpannerType for ColumnValue<C, V>
+    where
+        C: Column,
+    {
+        type Type = <C::Type as SpannerType>::Type;
+        type Nullable = <C::Type as SpannerType>::Nullable;
+    }
+
+    impl<C, V> SpannerEncode for ColumnValue<C, V>
+    where
+        C: Column,
+        V: SpannerEncode,
+        V::SpannerType: SpannerType<
+                Type = <C::Type as SpannerType>::Type,
+                Nullable = <C::Type as SpannerType>::Nullable,
+            >,
+    {
+        type Error = V::Error;
+        type SpannerType = V::SpannerType;
+        type Encoded = V::Encoded;
+
+        #[inline]
+        fn encode(self) -> Result<Self::Encoded, Self::Error> {
+            self.value.encode()
+        }
+
+        #[inline]
+        fn encode_to_value(self) -> Result<crate::Value, Self::Error> {
+            self.value.encode_to_value()
+        }
     }
 
     pub trait ColumnAt<Index: Unsigned + IsLess<Self::Number, Output = True>>: Columns {

@@ -28,15 +28,10 @@ macro_rules! row {
 
 crate::row! {
     #[derive(Debug, Clone, PartialEq)]
+    #[spanner(table = "Test")]
     pub struct TestRow<T> {
+        #[spanner(generic, pk = 1)]
         pub a_field: T,
-    }
-}
-
-crate::row! {
-    #[derive(Debug, Clone, PartialEq)]
-    pub struct TestRowSimple {
-        pub sighting_time: bool,
     }
 }
 
@@ -59,7 +54,7 @@ macro_rules! __invalid_row_syntax {
         // }
         // #[cfg(feature = "debug-table-macro")]
         compile_error!(concat!(
-            "Invalid `row!` syntax inside",
+            "Invalid `row!` syntax inside ",
             $inside,
             " '",
             $(stringify!($tokens),)+
@@ -333,6 +328,7 @@ macro_rules! __parse_columns {
                 decode_with = unknown,
                 column_index = $next_col_idx,
                 pk_index = unknown,
+                generic = no,
             },
             tokens = [$($rest)*],
             next_column_index = [$next_col_idx + 1],
@@ -363,6 +359,7 @@ macro_rules! __parse_columns {
                 decode_with = unknown,
                 column_index = $next_col_idx,
                 pk_index = unknown,
+                generic = no,
             },
             tokens = [$($rest)*],
             next_column_index = [$next_col_idx + 1],
@@ -423,7 +420,42 @@ macro_rules! __parse_columns {
             $($args)*
         }
     };
-
+    // parsing spanner(generic)
+    (
+        current_column = {
+            unchecked_meta = [],
+            spanner_args = [$(,)? generic $($rest_spanner_args:tt)*],
+            field = $field:tt,
+            field_vis = $field_vis:tt,
+            field_name = $field_name:tt,
+            ty = $ty:tt,
+            meta = $meta:tt,
+            encode_with = $encode_with:tt,
+            decode_with = $decode_with:tt,
+            column_index = $col_idx:tt,
+            pk_index = $pk_index:tt,
+            generic = $ignore2:tt,
+        },
+        $($args:tt)*
+    ) => {
+        $crate::__parse_columns! {
+            current_column = {
+                unchecked_meta = [],
+                spanner_args = [$($rest_spanner_args)*],
+                field = $field,
+                field_vis = $field_vis,
+                field_name = $field_name,
+                ty = $ty,
+                meta = $meta,
+                encode_with = $encode_with,
+                decode_with = $decode_with,
+                column_index = $col_idx,
+                pk_index = $pk_index,
+                generic = yes,
+            },
+            $($args)*
+        }
+    };
     // parsing spanner field rename
     (
         current_column = {
@@ -466,6 +498,7 @@ macro_rules! __parse_columns {
             decode_with = $decode_with:tt,
             column_index = $col_idx:tt,
             pk_index = $ignore:tt,
+            generic = $generic:tt,
         },
         $($args:tt)*
     ) => {
@@ -482,10 +515,12 @@ macro_rules! __parse_columns {
                 decode_with = $decode_with,
                 column_index = $col_idx,
                 pk_index = $pk,
+                generic = $generic,
             },
             $($args)*
         }
     };
+
     // parsing spanner with, similar to how serdes 'with' combines deserialize_with and serialize_with
     (
         current_column = {
@@ -661,6 +696,7 @@ macro_rules! __parse_columns {
             decode_with = $decode_with:tt,
             column_index = $col_idx:tt,
             pk_index = unknown,
+            generic = $generic:tt,
         },
         tokens = $tokens:tt,
         next_column_index = $next_col_idx:tt,
@@ -681,6 +717,7 @@ macro_rules! __parse_columns {
                 encode_with = $encode_with,
                 decode_with = $decode_with,
                 column_index = $col_idx,
+                generic = $generic,
             },],
             $($args)*
         }
@@ -700,6 +737,7 @@ macro_rules! __parse_columns {
             decode_with = $decode_with:tt,
             column_index = $col_idx:tt,
             pk_index = $pk_index:literal,
+            generic = $generic:tt,
         },
         tokens = $tokens:tt,
         next_column_index = $next_col_idx:tt,
@@ -722,9 +760,10 @@ macro_rules! __parse_columns {
                 encode_with = $encode_with,
                 decode_with = $decode_with,
                 column_index = $col_idx,
+                generic = $generic,
             },],
             generics = $generics,
-            pks = [$($existing_pks)* ($field, $ty, $pk_index),],
+            pks = [$($existing_pks)* ($field, $ty, $pk_index, $generic),],
             pk_name = $pk_name,
         }
     };
@@ -785,12 +824,13 @@ macro_rules! __row_impls {
                     encode_with = [$($encode_with:tt)*],
                     decode_with = [$($decode_with:tt)*],
                     column_index = $col_idx:expr,
+                    generic = $generic:tt,
                 }
             ),+
             $(,)?
         ],
         generics = [$($generics:tt)*],
-        pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal)),* $(,)?],
+        pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],
         pk_name = [$pk_name:ident],
     ) => {
         $($meta)*
@@ -862,8 +902,9 @@ macro_rules! __row_impls {
                 row_vis = $row_vis,
                 table_name = [$($table_name)?],
             },
-            pks = [$(($pk_field, ($($pk_type)*), $pk_index)),*],
+            pks = [$(($pk_field, ($($pk_type)*), $pk_index, $pk_generic)),*],
             pk_name = [$pk_name],
+            generics = [$($generics)*],
         }
     };
     ($($t:tt)*) => {
@@ -885,6 +926,7 @@ macro_rules! __impl_table {
         },
         pks = $ignore_pks:tt,
         pk_name = $ignore_pk_name:tt,
+        generics = $ignore_generics:tt,
     ) => {};
     // if there is, impl Table
     (
@@ -895,10 +937,16 @@ macro_rules! __impl_table {
             row_vis = $row_vis:vis,
             table_name = [$table_name:expr],
         },
-        pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal)),* $(,)?],
+        pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],
         pk_name = [$pk_name:ident],
+        generics = [$($generics:tt)*],
+
     ) => {
-        impl $crate::table::Table for $row {
+        impl <$($generics)*> $crate::table::Table for $row <$($generics)*>
+        where
+            Self: $crate::queryable::Queryable<ColumnName = &'static str>,
+            $($generics: $crate::IntoSpanner + Clone,)*
+        {
             const NAME: &'static str = $table_name;
 
             type Pk = $pk_name<$($($pk_type)*,)*>;
@@ -907,7 +955,8 @@ macro_rules! __impl_table {
         $crate::__impl_pk! {
             table = $row,
             pk_name = $pk_name,
-            pks = [$(($pk_field, ($($pk_type)*), $pk_index)),*],
+            pks = [$(($pk_field, ($($pk_type)*), $pk_index, $pk_generic)),*],
+            generics = [$($generics)*],
         }
 
         const _: () = {
@@ -935,9 +984,7 @@ macro_rules! __impl_table {
         };
     };
     ($($t:tt)*) => {
-        compile_error!(concat!(
-            $(stringify!($t)),*
-        ));
+        $crate::__invalid_row_syntax!("row_impls" $($t)*);
     }
 }
 
@@ -947,7 +994,8 @@ macro_rules! __impl_pk {
     (
         table = $table:ident,
         pk_name = $pk_name:ident,
-        pks = [$(($pk_field:ident, ($($pk_type:ty)*), $pk_index:literal)),* $(,)?],
+        pks = [$(($pk_field:ident, ($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],
+        generics = [$($generics:tt)*],
     ) => {
         #[derive(Debug, Clone, PartialEq)]
         #[allow(non_camel_case_types)]
@@ -957,9 +1005,13 @@ macro_rules! __impl_pk {
             )*
         }
 
-        impl $crate::pk::PrimaryKey for $pk_name<$($($pk_type)*,)*> {
+        impl<$($generics)*> $crate::pk::PrimaryKey for $pk_name<$($($pk_type)*,)*>
+        where
+            $table<$($generics)*>: $crate::Table<Pk = Self>,
+            $($generics: $crate::IntoSpanner + Clone,)*
+        {
             type Parts =  ($($($pk_type)*,)*);
-            type Table = $table;
+            type Table = $table<$($generics)*>;
 
             #[inline]
             fn from_parts(parts: Self::Parts) -> Self {
@@ -979,24 +1031,26 @@ macro_rules! __impl_pk {
             table = $table,
             pk = $pk_name,
             first = yes,
+            generics = [$($generics)*],
             prev_fields = [],
             curr_field = [],
-            rest_fields = [$(($pk_field, ($($pk_type)*)),)*],
+            rest_fields = [$(($pk_field, ($($pk_type)*), $pk_generic),)*],
         }
-
     };
 }
 
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __impl_pk_builder_fns {
+    // current field is not the first pk field, and isnt generic
     (
         table = $table:ident,
         pk = $pk:ident,
         first = no,
-        prev_fields = [$(($prev_pk_field:ident, ($($prev_pk_type:tt)*)),)*],
-        curr_field = [$curr_pk_field:ident, ($($curr_pk_type:tt)*)],
-        rest_fields = [$(($rest_pk_field:ident, ($($rest_pk_type:tt)*)),)*],
+        generics = [$($generics:tt)*],
+        prev_fields = [$(($prev_pk_field:ident, ($($prev_pk_type:tt)*), $prev_pk_generic:tt),)*],
+        curr_field = [$curr_pk_field:ident, ($($curr_pk_type:tt)*), no],
+        rest_fields = [$(($rest_pk_field:ident, ($($rest_pk_type:tt)*), $rest_pk_generic:tt),)*],
     ) => {
         impl $pk<$($($prev_pk_type)*,)* ()> {
             #[inline]
@@ -1013,9 +1067,9 @@ macro_rules! __impl_pk_builder_fns {
 
         }
 
-        impl $crate::pk::PartialPkParts<$table> for ($($($prev_pk_type)*,)* $($curr_pk_type)*,) { }
+        impl<$($generics)*> $crate::pk::PartialPkParts<$table<$($generics)*>> for ($($($prev_pk_type)*,)* $($curr_pk_type)*,) { }
 
-        impl $crate::pk::IntoPartialPkParts<$table> for $pk<$($($prev_pk_type)*,)* $($curr_pk_type)*> {
+        impl<$($generics)*> $crate::pk::IntoPartialPkParts<$table<$($generics)*>> for $pk<$($($prev_pk_type)*,)* $($curr_pk_type)*> {
             type PartialParts = ($($($prev_pk_type)*,)* $($curr_pk_type)*,);
 
             fn into_partial_parts(self) -> Self::PartialParts {
@@ -1032,9 +1086,63 @@ macro_rules! __impl_pk_builder_fns {
             table = $table,
             pk = $pk,
             first = no,
-            prev_fields = [$(($prev_pk_field, ($($prev_pk_type)*)),)* ($curr_pk_field, ($($curr_pk_type)*)),],
+            generics = [$($generics)*],
+            prev_fields = [
+                $(($prev_pk_field, ($($prev_pk_type)*), $prev_pk_generic),)*
+                ($curr_pk_field, ($($curr_pk_type)*), no),
+            ],
             curr_field = [],
-            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*)),)*],
+            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*), $rest_pk_generic),)*],
+        }
+    };
+    (
+        table = $table:ident,
+        pk = $pk:ident,
+        first = no,
+        generics = [$($generics:tt)*],
+        prev_fields = [$(($prev_pk_field:ident, ($($prev_pk_type:tt)*), $prev_pk_generic:tt),)*],
+        curr_field = [$curr_pk_field:ident, ($($curr_pk_type:tt)*), yes],
+        rest_fields = [$(($rest_pk_field:ident, ($($rest_pk_type:tt)*), $rest_pk_generic:tt))*],
+    ) => {
+        impl $pk<$($($prev_pk_type)*,)* ()> {
+            #[inline]
+            pub fn $curr_pk_field<$($curr_pk_type)*>(self, $curr_pk_field: $($curr_pk_type)*) -> $pk<$($($prev_pk_type)*,)* $($curr_pk_type)*>
+            {
+                $pk {
+                    $($prev_pk_field: self.$prev_pk_field,)*
+                    $curr_pk_field,
+                    $($rest_pk_field: (),)*
+                }
+            }
+
+        }
+
+        impl<$($generics)*> $crate::pk::PartialPkParts<$table<$($generics)*>> for ($($($prev_pk_type)*,)* $($curr_pk_type)*,) { }
+
+        impl<$($generics)*> $crate::pk::IntoPartialPkParts<$table<$($generics)*>> for $pk<$($($prev_pk_type)*,)* $($curr_pk_type)*> {
+            type PartialParts = ($($($prev_pk_type)*,)* $($curr_pk_type)*,);
+
+            fn into_partial_parts(self) -> Self::PartialParts {
+                (
+                    $(self.$prev_pk_field,)*
+                    self.$curr_pk_field,
+                )
+            }
+
+        }
+
+
+        $crate::__impl_pk_builder_fns! {
+            table = $table,
+            pk = $pk,
+            first = no,
+            generics = [$($generics)*],
+            prev_fields = [
+                $(($prev_pk_field, ($($prev_pk_type)*), $prev_pk_generic),)*
+                ($curr_pk_field, ($($curr_pk_type)*), yes),
+            ],
+            curr_field = [],
+            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*), $rest_pk_generic),)*],
         }
     };
     // handle the first field, only difference from the above block is we make the first pk builder function
@@ -1043,9 +1151,10 @@ macro_rules! __impl_pk_builder_fns {
         table = $table:ident,
         pk = $pk:ident,
         first = yes,
+        generics = [$($generics:tt)*],
         prev_fields = [],
-        curr_field = [$curr_pk_field:ident, ($($curr_pk_type:tt)*)],
-        rest_fields = [$(($rest_pk_field:ident, ($($rest_pk_type:ty)*)),)*],
+        curr_field = [$curr_pk_field:ident, ($($curr_pk_type:tt)*), no],
+        rest_fields = [$(($rest_pk_field:ident, ($($rest_pk_type:ty)*), $rest_pk_generic:tt),)*],
     ) => {
         impl $pk<()> {
             #[inline]
@@ -1061,9 +1170,9 @@ macro_rules! __impl_pk_builder_fns {
 
         }
 
-        impl $crate::pk::PartialPkParts<$table> for ($($curr_pk_type)*,) { }
+        impl<$($generics)*> $crate::pk::PartialPkParts<$table<$($generics)*>> for ($($curr_pk_type)*,) { }
 
-        impl $crate::pk::IntoPartialPkParts<$table> for $pk<$($curr_pk_type)*> {
+        impl<$($generics)*> $crate::pk::IntoPartialPkParts<$table<$($generics)*>> for $pk<$($curr_pk_type)*> {
             type PartialParts = ($($curr_pk_type)*,);
 
             fn into_partial_parts(self) -> Self::PartialParts {
@@ -1079,9 +1188,63 @@ macro_rules! __impl_pk_builder_fns {
             table = $table,
             pk = $pk,
             first = no,
-            prev_fields = [($curr_pk_field, ($($curr_pk_type)*)),],
+            generics = [$($generics)*],
+            prev_fields = [($curr_pk_field, ($($curr_pk_type)*), no),],
             curr_field = [],
-            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*)),)*],
+            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*), $rest_pk_generic),)*],
+        }
+    };
+    // same as above, but with a generic type.
+    (
+        table = $table:ident,
+        pk = $pk:ident,
+        first = yes,
+        generics = [$($generics:tt)*],
+        prev_fields = [],
+        curr_field = [$curr_pk_field:ident, ($($curr_pk_type:tt)*), yes],
+        rest_fields = [$(($rest_pk_field:ident, ($($rest_pk_type:ty)*), $rest_pk_generic:tt),)*],
+    ) => {
+        impl $pk<()> {
+            #[inline]
+            pub fn $curr_pk_field<$($curr_pk_type)*>($curr_pk_field: $($curr_pk_type)*) -> $pk<$($curr_pk_type)*> {
+                $pk {
+                    $curr_pk_field,
+                    $($rest_pk_field: (),)*
+                }
+            }
+        }
+
+        impl<$($generics)*> $crate::pk::PartialPkParts<$table<$($generics)*>> for ($($curr_pk_type)*,)
+        where
+            $table<$($generics)*>: $crate::Table,
+            $($generics: $crate::IntoSpanner,)*
+        { }
+
+
+
+        impl<$($generics)*> $crate::pk::IntoPartialPkParts<$table<$($generics)*>> for $pk<$($curr_pk_type)*>
+        where
+            $table<$($generics)*>: $crate::Table,
+            $($generics: $crate::IntoSpanner,)*
+        {
+            type PartialParts = ($($curr_pk_type)*,);
+
+            fn into_partial_parts(self) -> Self::PartialParts {
+                (
+                    self.$curr_pk_field,
+                )
+            }
+        }
+
+
+        $crate::__impl_pk_builder_fns! {
+            table = $table,
+            pk = $pk,
+            first = no,
+            generics = [$($generics)*],
+            prev_fields = [($curr_pk_field, ($($curr_pk_type)*), yes),],
+            curr_field = [],
+            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*), $rest_pk_generic:tt),)*],
         }
     };
     // grab a new 'current'
@@ -1089,17 +1252,22 @@ macro_rules! __impl_pk_builder_fns {
         table = $table:ident,
         pk = $pk:ident,
         first = $first:tt,
+        generics = [$($generics:tt)*],
         prev_fields = $prev_fields:tt,
         curr_field = [],
-        rest_fields = [($next_field:ident, ($($next_type:tt)*)), $(($rest_pk_field:ident, ($($rest_pk_type:ty)*)),)*],
+        rest_fields = [
+            ($next_field:ident, ($($next_type:tt)*), $next_pk_generic:tt),
+            $(($rest_pk_field:ident, ($($rest_pk_type:ty)*), $rest_pk_generic:tt),)*
+        ],
     ) => {
         $crate::__impl_pk_builder_fns! {
             table = $table,
             pk = $pk,
             first = $first,
+            generics = [$($generics)*],
             prev_fields = $prev_fields,
-            curr_field = [$next_field, ($($next_type)*)],
-            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*)),)*],
+            curr_field = [$next_field, ($($next_type)*), $next_pk_generic],
+            rest_fields = [$(($rest_pk_field, ($($rest_pk_type)*), $rest_pk_generic),)*],
         }
     };
 
@@ -1108,15 +1276,14 @@ macro_rules! __impl_pk_builder_fns {
         table = $table:ident,
         pk = $pk:ident,
         first = $ignore:tt,
+        generics = [$($generics:tt)*],
         prev_fields = [$($prev:tt)*],
         curr_field = [],
         rest_fields = [],
     ) => {
     };
     ($($t:tt)*) => {
-        compile_error!(concat!(
-            $(stringify!($t),)*
-        ))
+        $crate::__invalid_row_syntax!("__impl_pk_builder_fs" $($t)*);
     }
 }
 

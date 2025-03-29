@@ -8,7 +8,6 @@ spanner_rs::row! {
         pub geo_hash: String,
         #[spanner(pk = 3)]
         pub sighting_id: uuid::Uuid,
-
         pub name: Option<String>,
         pub longitude: f64,
         pub latitude: f64,

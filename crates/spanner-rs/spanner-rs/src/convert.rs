@@ -38,7 +38,7 @@ pub trait FromSpanner: SpannerEncode + Sized {
 ///
 /// Simple types with infallible conversions should implement [`IntoSpanner`], since there's
 /// a blanket implementation of [`SpannerEncode`] for all [`IntoSpanner`] types.
-pub trait SpannerEncode {
+pub trait SpannerEncode: Sized {
     /// A marker type to indicate the data type of this type in Spanner.
     ///
     /// This is an associated type rather than a trait bound, to let specific types
@@ -73,11 +73,7 @@ pub trait SpannerEncode {
     fn encode(self) -> Result<Self::Encoded, Self::Error>;
 
     #[inline]
-    fn encode_to_value(self) -> Result<Value, Self::Error>
-    where
-        Self: Sized,
-        Self::Encoded: IntoSpanner,
-    {
+    fn encode_to_value(self) -> Result<Value, Self::Error> {
         match self.encode() {
             Ok(encoded) => Ok(encoded.into_value()),
             Err(err) => Err(err),
