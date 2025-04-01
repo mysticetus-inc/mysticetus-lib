@@ -75,11 +75,9 @@ impl From<String> for Value {
 
 impl From<Vec<Value>> for Value {
     fn from(values: Vec<Value>) -> Self {
-        // TODO: see it the fast path of a transmute is safe
-        // let values = unsafe { std::mem::transmute(values) };
-        let values = values.into_iter().map(Value::into_protobuf).collect();
-
-        Self(Kind::ListValue(protobuf::ListValue { values }))
+        Self(Kind::ListValue(protobuf::ListValue {
+            values: values.into_iter().map(Value::into_protobuf).collect(),
+        }))
     }
 }
 impl From<bool> for Value {

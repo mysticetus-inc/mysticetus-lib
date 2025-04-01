@@ -6,6 +6,7 @@
     int_roundings,
     mapped_lock_guards,
     const_type_id,
+    range_into_bounds,
     // non_lifetime_binders
 )]
 #[macro_use]
@@ -17,7 +18,7 @@ pub mod column;
 pub mod convert;
 pub mod error;
 pub mod info;
-pub mod insertable;
+// pub mod insertable;
 pub mod key_set;
 #[doc(hidden)]
 pub mod macros;
@@ -66,7 +67,8 @@ impl<T> ReadableConnection for T where for<'a> T: private::SealedConnection<Tx<'
 #[doc(hidden)]
 pub mod __macro_internals {
     // re-export for macro usage
-    pub use {generic_array, static_casing, typenum};
+    pub use paste::paste;
+    pub use {generic_array, typenum};
 
     use crate::Field;
     use crate::convert::{FromSpanner, SpannerEncode};
@@ -94,14 +96,16 @@ mod private {
 
     use crate::client::connection::ConnectionParts;
 
-    // pub trait Sealed {}
-
     /// Sealed trait for primary keys (or partial primary keys). Implemented only for tuples,
     /// with special impls for tuples last N types being () as a marker for an unpopulated key
     /// component.
     pub trait SealedToKey {
         /// Convert to the protobuf list that the spanner interface is expecting.
         fn to_key(self) -> ListValue;
+
+        /// Convert to a protobuf list, with an additional final component. Used to avoid
+        /// re-allocating by using to_key and pushing to the end.
+        fn to_key_with(self, final_component: crate::Value) -> ListValue;
     }
 
     // Spanner itself limits primary keys to 16 columns

@@ -23,7 +23,6 @@ tracing.workspace = true
 uuid.workspace = true
 itoa.workspace = true
 longrunning = { path = "../../longrunning" }
-static-casing.workspace = true
 http-body.workspace = true
 serde_json = { workspace = true, optional = true }
 shared.workspace = true
@@ -36,10 +35,12 @@ path-aware-serde = { path = "../../path-aware-serde", features = [
     "json",
     "serde_json",
 ] }
+paste.workspace = true
 typenum.workspace = true
 tokio-util.workspace = true
 fxhash = "0.2.1"
 generic-array = "1.2.0"
+bytemuck = { version = "1.22.0", features = ["derive", "extern_crate_alloc"] }
 
 # debug-macro = { path = "../../../../debug-macro" }
 

@@ -2,7 +2,6 @@ use generic_array::{ArrayLength, GenericArray};
 
 use crate::column::{Column, Unnamed};
 use crate::results::RawRow;
-use crate::ty::SpannerType;
 use crate::{FromSpanner, SpannerEncode};
 
 /// Base trait defining the columns of a row of spanner data.

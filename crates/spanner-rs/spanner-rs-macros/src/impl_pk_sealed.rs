@@ -81,7 +81,8 @@ impl PerArityTokens<'_> {
             None => panic!("{} - {} ???", self.generic_idents.len(), units.len()),
         };
 
-        let indexes = full_indexes[..n_generics].iter();
+        let to_key_indexes = full_indexes[..n_generics].iter();
+        let to_key_with_indexes = full_indexes[..n_generics].iter();
         let trait_ident = self.trait_ident;
 
         let generics = &self.generic_idents[..n_generics];
@@ -100,8 +101,20 @@ impl PerArityTokens<'_> {
                     crate::__private::protobuf::ListValue {
                         values: vec![
                             #(
-                                crate::IntoSpanner::into_value(self.#indexes).into_protobuf(),
+                                crate::IntoSpanner::into_value(self.#to_key_indexes).into_protobuf(),
                             )*
+                        ]
+                    }
+                }
+
+                #[inline]
+                fn to_key_with(self, final_value: crate::Value) -> crate::__private::protobuf::ListValue {
+                    crate::__private::protobuf::ListValue {
+                        values: vec![
+                            #(
+                                crate::IntoSpanner::into_value(self.#to_key_with_indexes).into_protobuf(),
+                            )*
+                            final_value.into_protobuf(),
                         ]
                     }
                 }

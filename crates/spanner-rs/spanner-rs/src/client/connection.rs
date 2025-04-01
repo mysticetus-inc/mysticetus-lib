@@ -23,6 +23,7 @@ use protos::spanner::{
 };
 
 use crate::key_set::KeySet;
+use crate::queryable::Queryable;
 use crate::results::{ResultIter, StreamingRead};
 use crate::sql::Params;
 use crate::tx::ReadWriteTx;
@@ -264,7 +265,7 @@ where
 
     // ------------ Read + Streaming Read Table -------------- //
 
-    pub(crate) async fn read_table<T: Table>(
+    pub(crate) async fn read_table<T: Table + Queryable>(
         &mut self,
         key_set: spanner::KeySet,
         lim: Option<u32>,
@@ -279,7 +280,7 @@ where
         ResultIter::from_result_set(rs)
     }
 
-    pub(crate) async fn streaming_read_table<T: Table>(
+    pub(crate) async fn streaming_read_table<T: Table + Queryable>(
         &mut self,
         key_set: spanner::KeySet,
         lim: Option<u32>,
@@ -296,7 +297,7 @@ where
 
     // --------- Read + Streaming Read from KeySet ------------ //
 
-    pub(crate) async fn read_key_set<T: Table>(
+    pub(crate) async fn read_key_set<T: Table + Queryable>(
         &mut self,
         key_set: KeySet<T>,
     ) -> crate::Result<ResultIter<T>> {
@@ -305,7 +306,7 @@ where
         self.read_table(key_set, lim).await
     }
 
-    pub(crate) async fn streaming_read_key_set<T: Table>(
+    pub(crate) async fn streaming_read_key_set<T: Table + Queryable>(
         &mut self,
         key_set: KeySet<T>,
     ) -> crate::Result<StreamingRead<T>> {
@@ -317,19 +318,24 @@ where
     // ------------- Read Entire Table ----------- //
 
     #[inline]
-    pub(crate) async fn streaming_read_all<T: Table>(&mut self) -> crate::Result<StreamingRead<T>> {
+    pub(crate) async fn streaming_read_all<T: Table + Queryable>(
+        &mut self,
+    ) -> crate::Result<StreamingRead<T>> {
         self.streaming_read_table::<T>(ALL_KEY_SET, None).await
     }
 
     #[inline]
-    pub(crate) async fn read_all<T: Table>(&mut self) -> crate::Result<ResultIter<T>> {
+    pub(crate) async fn read_all<T: Table + Queryable>(&mut self) -> crate::Result<ResultIter<T>> {
         self.read_table::<T>(ALL_KEY_SET, None).await
     }
 
     // -------------- Read from 1 or more PK --------------- //
 
     #[inline]
-    pub(crate) async fn read_one<T: Table>(&mut self, pk: T::Pk) -> crate::Result<Option<T>> {
+    pub(crate) async fn read_one<T: Table + Queryable>(
+        &mut self,
+        pk: T::Pk,
+    ) -> crate::Result<Option<T>> {
         let mut key_set = KeySet::<T>::with_capacity(1, 0);
         key_set.add_key(pk);
 
@@ -346,7 +352,10 @@ where
     }
 
     #[inline]
-    pub(crate) async fn read_rows<T: Table, I>(&mut self, pks: I) -> crate::Result<ResultIter<T>>
+    pub(crate) async fn read_rows<T: Table + Queryable, I>(
+        &mut self,
+        pks: I,
+    ) -> crate::Result<ResultIter<T>>
     where
         I: IntoIterator<Item = T::Pk>,
     {
@@ -356,7 +365,7 @@ where
     }
 
     #[inline]
-    pub(crate) async fn streaming_read_rows<T: Table, I>(
+    pub(crate) async fn streaming_read_rows<T: Table + Queryable, I>(
         &mut self,
         pks: I,
     ) -> crate::Result<StreamingRead<T>>
@@ -538,7 +547,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, tx::Begin<Tx>> {
         Ok((tx, first_chunk, streaming))
     }
 
-    pub(crate) async fn begin_tx_read_table<T: Table>(
+    pub(crate) async fn begin_tx_read_table<T: Table + Queryable>(
         &mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
@@ -557,7 +566,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, tx::Begin<Tx>> {
         Ok((tx, iter))
     }
 
-    pub(crate) async fn begin_tx_streaming_read_table<T: Table>(
+    pub(crate) async fn begin_tx_streaming_read_table<T: Table + Queryable>(
         &mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
@@ -579,7 +588,7 @@ impl<'a, Tx: tx::TxOptions + Copy> ConnectionParts<'a, tx::Begin<Tx>> {
 
 // ------------ Specific begin read-write tx functions ------------- //
 impl<'a> ConnectionParts<'a, tx::Begin<tx::ReadWrite>> {
-    pub(crate) async fn begin_tx_read<T: Table>(
+    pub(crate) async fn begin_tx_read<T: Table + Queryable>(
         mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
@@ -592,7 +601,7 @@ impl<'a> ConnectionParts<'a, tx::Begin<tx::ReadWrite>> {
         Ok((crate::tx::Transaction::new(self, tx), iter))
     }
 
-    pub(crate) async fn begin_tx_streaming_read<T: Table>(
+    pub(crate) async fn begin_tx_streaming_read<T: Table + Queryable>(
         mut self,
         key_set: KeySet<T>,
         order_by: Option<read_request::OrderBy>,
@@ -611,7 +620,7 @@ macro_rules! impl_deferred_read_functions {
         #[inline]
         pub async fn read<T, K>(&self, key_set: K) -> $crate::Result<$crate::results::ResultIter<T>>
         where
-            T: $crate::Table,
+            T: $crate::Table + $crate::queryable::Queryable,
             K: $crate::key_set::IntoKeySet<T>,
         {
             <Self as $crate::private::SealedConnection>::connection_parts(&self)
@@ -625,7 +634,7 @@ macro_rules! impl_deferred_read_functions {
             key_set: K,
         ) -> $crate::Result<$crate::results::StreamingRead<T>>
         where
-            T: $crate::Table,
+            T: $crate::Table + $crate::queryable::Queryable,
             K: $crate::key_set::IntoKeySet<T>,
         {
             <Self as $crate::private::SealedConnection>::connection_parts(&self)
@@ -636,7 +645,7 @@ macro_rules! impl_deferred_read_functions {
         #[inline]
         pub async fn read_all<T>(&self) -> $crate::Result<$crate::results::ResultIter<T>>
         where
-            T: $crate::Table,
+            T: $crate::Table + $crate::queryable::Queryable,
         {
             <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .read_all()
@@ -648,7 +657,7 @@ macro_rules! impl_deferred_read_functions {
             &self,
         ) -> $crate::Result<$crate::results::StreamingRead<T>>
         where
-            T: $crate::Table,
+            T: $crate::Table + $crate::queryable::Queryable,
         {
             <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .streaming_read_all()
@@ -658,7 +667,7 @@ macro_rules! impl_deferred_read_functions {
         #[inline]
         pub async fn read_one<T>(&self, pk: T::Pk) -> $crate::Result<Option<T>>
         where
-            T: $crate::Table,
+            T: $crate::Table + $crate::queryable::Queryable,
         {
             <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .read_one(pk)
@@ -673,6 +682,7 @@ macro_rules! impl_deferred_read_functions {
         ) -> $crate::Result<$crate::results::ResultIter<T>>
         where
             I: IntoIterator<Item = T::Pk>,
+            T: $crate::Table + $crate::queryable::Queryable,
         {
             <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .read_rows(pks)
@@ -687,6 +697,7 @@ macro_rules! impl_deferred_read_functions {
         ) -> $crate::Result<$crate::results::StreamingRead<T>>
         where
             I: IntoIterator<Item = T::Pk>,
+            T: $crate::Table + $crate::queryable::Queryable,
         {
             <Self as $crate::private::SealedConnection>::connection_parts(&self)
                 .streaming_read_rows(pks)

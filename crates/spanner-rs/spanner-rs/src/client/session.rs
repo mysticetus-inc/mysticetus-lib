@@ -8,8 +8,7 @@ use super::ClientParts;
 use super::connection::ConnectionParts;
 use super::pool::Session;
 use crate::error::ConvertError;
-use crate::key_set::{IntoKeySet, KeySet, OwnedRangeBounds, WriteBuilder};
-use crate::pk::IntoPartialPkParts;
+use crate::key_set::{IntoKeyRange, IntoKeySet, KeySet, WriteBuilder};
 use crate::private::SealedConnection;
 use crate::queryable::Queryable;
 use crate::tx::{ShouldCommit, SingleUse, Transaction};
@@ -258,11 +257,7 @@ impl<'a> MutationBuilder<'a> {
         self.delete::<T>(ks)
     }
 
-    pub fn delete_range<T: Table, R, B>(&mut self, range: R) -> &mut Self
-    where
-        R: OwnedRangeBounds<B>,
-        B: IntoPartialPkParts<T>,
-    {
+    pub fn delete_range<T: Table>(&mut self, range: impl IntoKeyRange<T>) -> &mut Self {
         let mut ks = KeySet::<T>::with_capacity(0, 1);
         ks.add_range(range);
         self.delete(ks)

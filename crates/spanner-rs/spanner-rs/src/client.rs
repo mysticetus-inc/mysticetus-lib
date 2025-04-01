@@ -10,6 +10,7 @@ use tonic::transport::ClientTlsConfig;
 
 use crate::info::Database;
 use crate::key_set::WriteBuilder;
+use crate::queryable::Queryable;
 use crate::tx::{ShouldCommit, Transaction};
 use crate::{ResultIter, StreamingRead, Table};
 
@@ -301,7 +302,7 @@ impl Client {
             .await
     }
 
-    pub async fn execute_streaming_sql<T: Table>(
+    pub async fn execute_streaming_sql<T: Queryable>(
         &mut self,
         sql: String,
         params: Option<crate::sql::Params>,
@@ -312,7 +313,7 @@ impl Client {
             .await
     }
 
-    pub async fn execute_sql<T: Table>(
+    pub async fn execute_sql<T: Queryable>(
         &mut self,
         sql: String,
         params: Option<crate::sql::Params>,

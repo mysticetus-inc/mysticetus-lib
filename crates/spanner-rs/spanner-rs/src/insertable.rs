@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::error::ConvertError;
 use crate::queryable::Row;
 

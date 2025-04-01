@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 use std::num::NonZeroU32;
-use std::ops::Bound;
+use std::ops::{Bound, IntoBounds};
 
 use protos::protobuf::ListValue;
 use protos::spanner::key_range::{EndKeyType, StartKeyType};
@@ -9,8 +9,9 @@ use protos::spanner::{self, KeyRange};
 use crate::error::ConvertError;
 use crate::pk::IntoPartialPkParts;
 use crate::private::SealedToKey;
+use crate::queryable::Queryable;
 use crate::results::{ResultIter, StreamingRead};
-use crate::{PrimaryKey, Table};
+use crate::{IntoSpanner, PrimaryKey, Table};
 
 #[derive(Debug, Default, Clone, PartialEq, serde::Serialize)]
 pub struct WriteBuilder<T: Table> {
@@ -206,18 +207,112 @@ impl<T> KeySet<T> {
     }
 }
 
-enum KeyRangeResult {
-    All,
-    Range(KeyRange),
+pub trait IntoKeyRange<T: Table> {
+    fn into_key_range(self) -> KeyRangeResult;
 }
 
-fn convert_to_range<R, S, T: Table>(range: R) -> KeyRangeResult
-where
-    R: OwnedRangeBounds<S>,
-    S: IntoPartialPkParts<T>,
-{
-    let (start, end) = range.into_bounds();
+impl<T: Table> IntoKeyRange<T> for (StartKeyType, EndKeyType) {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        KeyRangeResult::Range {
+            start: self.0,
+            end: self.1,
+        }
+    }
+}
 
+impl<T: Table> IntoKeyRange<T> for KeyRangeResult {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        self
+    }
+}
+
+pub enum KeyRangeResult {
+    All,
+    Range {
+        start: StartKeyType,
+        end: EndKeyType,
+    },
+}
+
+#[doc(hidden)]
+pub fn make_range_for_final_component<T, S, PkParts>(
+    base_pk_parts: PkParts,
+    range: impl IntoBounds<S>,
+) -> KeyRangeResult
+where
+    T: Table,
+    PkParts: IntoPartialPkParts<T>,
+    PkParts::PartialParts: Clone,
+    S: IntoSpanner,
+{
+    use Bound::{Excluded, Included, Unbounded};
+    use EndKeyType::{EndClosed, EndOpen};
+    use StartKeyType::{StartClosed, StartOpen};
+
+    let parts = base_pk_parts.into_partial_parts();
+    match range.into_bounds() {
+        // special case for a fully unbounded range
+        (Unbounded, Unbounded) => {
+            let keys = parts.to_key();
+            if keys.values.is_empty() {
+                return KeyRangeResult::All;
+            } else {
+                KeyRangeResult::Range {
+                    start: StartClosed(keys.clone()),
+                    end: EndClosed(keys),
+                }
+            }
+        }
+        // `..=end` and `..end`
+        (Unbounded, Included(incl)) => KeyRangeResult::Range {
+            start: StartClosed(parts.clone().to_key()),
+            end: EndClosed(parts.to_key_with(incl.into_value())),
+        },
+        (Unbounded, Excluded(excl)) => KeyRangeResult::Range {
+            start: StartClosed(parts.clone().to_key()),
+            end: EndOpen(parts.to_key_with(excl.into_value())),
+        },
+        // `start..` and equiv
+        (Included(incl), Unbounded) => KeyRangeResult::Range {
+            start: StartClosed(parts.clone().to_key_with(incl.into_value())),
+            end: EndClosed(parts.to_key()),
+        },
+        (Excluded(excl), Unbounded) => KeyRangeResult::Range {
+            start: StartOpen(parts.clone().to_key_with(excl.into_value())),
+            end: EndClosed(parts.to_key()),
+        },
+        // start..=end
+        (Included(start), Included(end)) => KeyRangeResult::Range {
+            start: StartClosed(parts.clone().to_key_with(start.into_value())),
+            end: EndClosed(parts.to_key_with(end.into_value())),
+        },
+        // start..end
+        (Included(start), Excluded(end)) => KeyRangeResult::Range {
+            start: StartClosed(parts.clone().to_key_with(start.into_value())),
+            end: EndOpen(parts.to_key_with(end.into_value())),
+        },
+        // last cases for user-defined range types
+        // (none of the std:ops::RangeXXX types can have an excluded start)
+        (Excluded(start), Excluded(end)) => KeyRangeResult::Range {
+            start: StartOpen(parts.clone().to_key_with(start.into_value())),
+            end: EndOpen(parts.to_key_with(end.into_value())),
+        },
+        (Excluded(start), Included(end)) => KeyRangeResult::Range {
+            start: StartOpen(parts.clone().to_key_with(start.into_value())),
+            end: EndClosed(parts.to_key_with(end.into_value())),
+        },
+    }
+}
+
+#[doc(hidden)]
+pub fn convert_to_range<T, Start, End>(start: Bound<Start>, end: Bound<End>) -> KeyRangeResult
+where
+    T: Table,
+    Start: IntoPartialPkParts<T>,
+    End: IntoPartialPkParts<T>,
+{
     match (&start, &end) {
         (Bound::Unbounded, Bound::Unbounded) => return KeyRangeResult::All,
         _ => (),
@@ -235,10 +330,7 @@ where
         Bound::Unbounded => EndKeyType::EndClosed(ListValue { values: vec![] }),
     };
 
-    KeyRangeResult::Range(KeyRange {
-        start_key_type: Some(start),
-        end_key_type: Some(end),
-    })
+    KeyRangeResult::Range { start, end }
 }
 
 impl<T: Table> KeySet<T> {
@@ -251,6 +343,7 @@ impl<T: Table> KeySet<T> {
     pub async fn read<C>(&mut self, conn: &C) -> crate::Result<ResultIter<T>>
     where
         C: crate::ReadableConnection,
+        T: Queryable,
     {
         conn.connection_parts().read_key_set(self.take()).await
     }
@@ -258,6 +351,7 @@ impl<T: Table> KeySet<T> {
     pub async fn streaming_read<C>(&mut self, conn: &C) -> crate::Result<StreamingRead<T>>
     where
         C: crate::ReadableConnection,
+        T: Queryable,
     {
         conn.connection_parts()
             .streaming_read_key_set(self.take())
@@ -273,14 +367,13 @@ impl<T: Table> KeySet<T> {
         self
     }
 
-    pub fn add_range<R, S>(&mut self, range: R) -> &mut Self
-    where
-        R: OwnedRangeBounds<S>,
-        S: IntoPartialPkParts<T>,
-    {
-        match convert_to_range(range) {
+    pub fn add_range(&mut self, range: impl IntoKeyRange<T>) -> &mut Self {
+        match range.into_key_range() {
             KeyRangeResult::All => self.all = true,
-            KeyRangeResult::Range(range) => self.ranges.push(range),
+            KeyRangeResult::Range { start, end } => self.ranges.push(KeyRange {
+                start_key_type: Some(start),
+                end_key_type: Some(end),
+            }),
         }
 
         self
@@ -353,46 +446,49 @@ impl<'a, T: Table> KeyRangeBuilder<'a, T> {
     }
 }
 
-/// Essentially the same as [`std::ops::RangeBounds`], but consumes 'self' to return owned bounds.
-///
-/// Implemented for every `RangeXXXXXX` type in [`std::ops`].
-pub trait OwnedRangeBounds<T> {
-    fn into_bounds(self) -> (Bound<T>, Bound<T>);
-}
-
-impl<T> OwnedRangeBounds<T> for std::ops::RangeFull {
-    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (Bound::Unbounded, Bound::Unbounded)
+impl<T: Table> IntoKeyRange<T> for std::ops::RangeFull {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        KeyRangeResult::All
     }
 }
 
-impl<T> OwnedRangeBounds<T> for std::ops::Range<T> {
-    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (Bound::Included(self.start), Bound::Excluded(self.end))
+impl<T: Table, S: IntoPartialPkParts<T>> IntoKeyRange<T> for std::ops::Range<S> {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        let (start, end) = self.into_bounds();
+        convert_to_range(start, end)
     }
 }
 
-impl<T> OwnedRangeBounds<T> for std::ops::RangeTo<T> {
-    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (Bound::Unbounded, Bound::Excluded(self.end))
+impl<T: Table, S: IntoPartialPkParts<T>> IntoKeyRange<T> for std::ops::RangeTo<S> {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        let (start, end) = self.into_bounds();
+        convert_to_range(start, end)
     }
 }
 
-impl<T> OwnedRangeBounds<T> for std::ops::RangeInclusive<T> {
-    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        let (start, end) = self.into_inner();
-        (Bound::Included(start), Bound::Included(end))
+impl<T: Table, S: IntoPartialPkParts<T>> IntoKeyRange<T> for std::ops::RangeInclusive<S> {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        let (start, end) = self.into_bounds();
+        convert_to_range(start, end)
     }
 }
 
-impl<T> OwnedRangeBounds<T> for std::ops::RangeToInclusive<T> {
-    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (Bound::Unbounded, Bound::Included(self.end))
+impl<T: Table, S: IntoPartialPkParts<T>> IntoKeyRange<T> for std::ops::RangeToInclusive<S> {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        let (start, end) = self.into_bounds();
+        convert_to_range(start, end)
     }
 }
 
-impl<T> OwnedRangeBounds<T> for std::ops::RangeFrom<T> {
-    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (Bound::Included(self.start), Bound::Unbounded)
+impl<T: Table, S: IntoPartialPkParts<T>> IntoKeyRange<T> for std::ops::RangeFrom<S> {
+    #[inline]
+    fn into_key_range(self) -> KeyRangeResult {
+        let (start, end) = self.into_bounds();
+        convert_to_range(start, end)
     }
 }

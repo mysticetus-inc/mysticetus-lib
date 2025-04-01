@@ -11,6 +11,29 @@ static POOL_DEBUG: LazyLock<bool> = LazyLock::new(|| {
     std::env::var("SPANNER_POOL_DEBUG").is_ok_and(|value| !value.is_empty() && value != "0")
 });
 
+fn spawn_debug_task() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    static SPAWNED: AtomicBool = AtomicBool::new(false);
+
+    if *POOL_DEBUG
+        && SPAWNED
+            .compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Relaxed)
+            .is_ok()
+    {
+        tokio::spawn(async move {
+            let interval = timestamp::Duration::from_millis(500);
+
+            let mut interval = std::pin::pin!(tokio::time::interval(interval.into()));
+
+            loop {
+                tracing::debug!(spanner_stats = ?SessionPool::stats());
+                interval.tick().await;
+            }
+        });
+    }
+}
+
 mod session;
 mod shutdown;
 mod tracker;
