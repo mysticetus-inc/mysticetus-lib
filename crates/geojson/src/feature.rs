@@ -4,7 +4,7 @@ use std::fmt;
 use path_aware_serde::{Deserializer as PathDeserializer, Error};
 use serde::ser::{self, SerializeMap};
 use serde::{Deserialize, Deserializer, Serialize, de};
-use serde_helpers::from_str_visitor::FromStrVisitor;
+use serde_helpers::from_str::FromStrVisitor;
 
 use crate::builder::FeatureBuilder;
 use crate::geometry::any::{AnyCoordinate, GenericCoordinate};

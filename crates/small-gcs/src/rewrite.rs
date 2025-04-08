@@ -257,9 +257,9 @@ pub struct Progress {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RewriteResponse {
-    #[serde(deserialize_with = "serde_helpers::from_str_visitor::FromStrVisitor::deserialize")]
+    #[serde(deserialize_with = "serde_helpers::from_str::FromStrVisitor::deserialize")]
     total_bytes_rewritten: u64,
-    #[serde(deserialize_with = "serde_helpers::from_str_visitor::FromStrVisitor::deserialize")]
+    #[serde(deserialize_with = "serde_helpers::from_str::FromStrVisitor::deserialize")]
     object_size: u64,
     done: bool,
     rewrite_token: Option<String>,

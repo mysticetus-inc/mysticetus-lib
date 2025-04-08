@@ -36,6 +36,7 @@ pub enum Scalar {
     Numeric,
     Interval,
     Json,
+    Uuid,
 }
 
 impl fmt::Display for Scalar {
@@ -127,6 +128,7 @@ impl Type {
     pub const DATE: Self = Self::Scalar(Scalar::Date);
     pub const BYTES: Self = Self::Scalar(Scalar::Bytes);
     pub const INTERVAL: Self = Self::Scalar(Scalar::Interval);
+    pub const UUID: Self = Self::Scalar(Scalar::Uuid);
 
     pub const NUMERIC: Self = Self::Scalar(Scalar::Numeric);
     pub const JSON: Self = Self::Scalar(Scalar::Json);
@@ -188,15 +190,17 @@ impl Type {
     pub(crate) fn from_proto(mut ty: spanner::Type) -> Result<Self, MissingTypeInfo> {
         match TypeCode::try_from(ty.code).unwrap_or(TypeCode::Unspecified) {
             TypeCode::Unspecified => Err(MissingTypeInfo::invalid(ty)),
-            TypeCode::Bool => Ok(Self::Scalar(Scalar::Bool)),
-            TypeCode::Int64 => Ok(Self::Scalar(Scalar::Int64)),
-            TypeCode::Float64 | TypeCode::Float32 => Ok(Self::Scalar(Scalar::Float64)),
-            TypeCode::Json => Ok(Self::Scalar(Scalar::Json)),
-            TypeCode::Date => Ok(Self::Scalar(Scalar::Date)),
-            TypeCode::Timestamp => Ok(Self::Scalar(Scalar::Timestamp)),
-            TypeCode::String => Ok(Self::Scalar(Scalar::String)),
-            TypeCode::Bytes => Ok(Self::Scalar(Scalar::Bytes)),
-            TypeCode::Numeric => Ok(Self::Scalar(Scalar::Numeric)),
+            TypeCode::Uuid => Ok(Self::UUID),
+            TypeCode::Bool => Ok(Self::BOOL),
+            TypeCode::Int64 => Ok(Self::INT64),
+            TypeCode::Float64 | TypeCode::Float32 => Ok(Self::FLOAT64),
+            TypeCode::Json => Ok(Self::JSON),
+            TypeCode::Date => Ok(Self::DATE),
+            TypeCode::Timestamp => Ok(Self::TIMESTAMP),
+            TypeCode::String => Ok(Self::STRING),
+            TypeCode::Bytes => Ok(Self::BYTES),
+            TypeCode::Numeric => Ok(Self::NUMERIC),
+            TypeCode::Interval => Ok(Self::INTERVAL),
             TypeCode::Proto => Ok(Self::Proto(ProtoName::FullyQualified(Cow::Owned(
                 ty.proto_type_fqn,
             )))),
@@ -215,7 +219,6 @@ impl Type {
                     element: StaticOrBoxed::Boxed(Box::new(element)),
                 })
             }
-            TypeCode::Interval => Ok(Self::Scalar(Scalar::Interval)),
             TypeCode::Struct => {
                 let raw_struct = ty
                     .struct_type
@@ -338,6 +341,7 @@ impl Scalar {
             Self::Bytes => TypeCode::Bytes,
             Self::Numeric => TypeCode::Numeric,
             Self::Json => TypeCode::Json,
+            Self::Uuid => TypeCode::Uuid,
         }
     }
 
@@ -353,6 +357,7 @@ impl Scalar {
             Self::Bytes => "BYTES",
             Self::Numeric => "NUMERIC",
             Self::Json => "JSON",
+            Self::Uuid => "UUID",
         }
     }
 }

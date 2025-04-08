@@ -24,7 +24,7 @@ impl<T: private::SealedStreamType> StreamType for T {}
 mod private {
     use std::borrow::Cow;
 
-    use protos::bigquery_storage::{write_stream, AppendRowsResponse};
+    use protos::bigquery_storage::{AppendRowsResponse, write_stream};
 
     use super::Boolean;
 

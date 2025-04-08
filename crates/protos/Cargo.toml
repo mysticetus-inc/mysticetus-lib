@@ -74,4 +74,10 @@ full = [
     "monitoring",
     "logging",
     "pubsub",
+    "storage",
+    "cloud-run",
+    "artifact-registry",
+    "spanner",
+    "spanner-admin-database",
+    "spanner-admin-instance",
 ]

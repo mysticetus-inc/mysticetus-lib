@@ -50,9 +50,15 @@ pub struct FileDescriptorProto {
     /// The supported values are "proto2", "proto3", and "editions".
     ///
     /// If `edition` is present, this value must be "editions".
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(string, optional, tag = "12")]
     pub syntax: ::core::option::Option<::prost::alloc::string::String>,
     /// The edition of the proto file.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(enumeration = "Edition", optional, tag = "14")]
     pub edition: ::core::option::Option<i32>,
 }
@@ -171,17 +177,7 @@ pub mod extension_range_options {
     /// The verification state of the extension range.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum VerificationState {
         /// All the extensions of the range must be declared.
@@ -281,17 +277,7 @@ pub struct FieldDescriptorProto {
 pub mod field_descriptor_proto {
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
         /// 0 is reserved for errors.
@@ -382,17 +368,7 @@ pub mod field_descriptor_proto {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Label {
         /// 0 is reserved for errors
@@ -451,9 +427,7 @@ pub struct EnumDescriptorProto {
     /// by enum values in the same enum declaration. Reserved ranges may not
     /// overlap.
     #[prost(message, repeated, tag = "4")]
-    pub reserved_range: ::prost::alloc::vec::Vec<
-        enum_descriptor_proto::EnumReservedRange,
-    >,
+    pub reserved_range: ::prost::alloc::vec::Vec<enum_descriptor_proto::EnumReservedRange>,
     /// Reserved enum value names, which may not be reused. A given name may only
     /// be reserved once.
     #[prost(string, repeated, tag = "5")]
@@ -639,6 +613,9 @@ pub struct FileOptions {
     #[prost(string, optional, tag = "45")]
     pub ruby_package: ::core::option::Option<::prost::alloc::string::String>,
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "50")]
     pub features: ::core::option::Option<FeatureSet>,
     /// The parser stores options it doesn't recognize here.
@@ -651,17 +628,7 @@ pub mod file_options {
     /// Generated classes can be optimized for speed or code size.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum OptimizeMode {
         /// Generate complete code for parsing, serialization,
@@ -768,6 +735,9 @@ pub struct MessageOptions {
     #[prost(bool, optional, tag = "11")]
     pub deprecated_legacy_json_field_conflicts: ::core::option::Option<bool>,
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "12")]
     pub features: ::core::option::Option<FeatureSet>,
     /// The parser stores options it doesn't recognize here. See above.
@@ -873,6 +843,9 @@ pub struct FieldOptions {
     #[prost(message, repeated, tag = "20")]
     pub edition_defaults: ::prost::alloc::vec::Vec<field_options::EditionDefault>,
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "21")]
     pub features: ::core::option::Option<FeatureSet>,
     #[prost(message, optional, tag = "22")]
@@ -919,17 +892,7 @@ pub mod field_options {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum CType {
         /// Default mode.
@@ -967,17 +930,7 @@ pub mod field_options {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum JsType {
         /// Use the default type.
@@ -1012,17 +965,7 @@ pub mod field_options {
     /// If set to RETENTION_SOURCE, the option will be omitted from the binary.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum OptionRetention {
         RetentionUnknown = 0,
@@ -1056,17 +999,7 @@ pub mod field_options {
     /// option on any kind of entity.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum OptionTargetType {
         TargetTypeUnknown = 0,
@@ -1122,6 +1055,9 @@ pub mod field_options {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct OneofOptions {
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "1")]
     pub features: ::core::option::Option<FeatureSet>,
     /// The parser stores options it doesn't recognize here. See above.
@@ -1152,6 +1088,9 @@ pub struct EnumOptions {
     #[prost(bool, optional, tag = "6")]
     pub deprecated_legacy_json_field_conflicts: ::core::option::Option<bool>,
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "7")]
     pub features: ::core::option::Option<FeatureSet>,
     /// The parser stores options it doesn't recognize here. See above.
@@ -1169,6 +1108,9 @@ pub struct EnumValueOptions {
     #[prost(bool, optional, tag = "1", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "2")]
     pub features: ::core::option::Option<FeatureSet>,
     /// Indicate that fields annotated with this enum value should not be printed
@@ -1188,6 +1130,9 @@ pub struct EnumValueOptions {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ServiceOptions {
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "34")]
     pub features: ::core::option::Option<FeatureSet>,
     /// Is this service deprecated?
@@ -1218,6 +1163,9 @@ pub struct MethodOptions {
     )]
     pub idempotency_level: ::core::option::Option<i32>,
     /// Any features defined in the specific edition.
+    /// WARNING: This field should only be used by protobuf plugins or special
+    /// cases like the proto compiler. Other uses are discouraged and
+    /// developers should rely on the protoreflect APIs for their client language.
     #[prost(message, optional, tag = "35")]
     pub features: ::core::option::Option<FeatureSet>,
     /// The parser stores options it doesn't recognize here. See above.
@@ -1231,17 +1179,7 @@ pub mod method_options {
     /// methods, and PUT verb for idempotent methods instead of the default POST.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum IdempotencyLevel {
         IdempotencyUnknown = 0,
@@ -1331,7 +1269,11 @@ pub struct FeatureSet {
     pub field_presence: ::core::option::Option<i32>,
     #[prost(enumeration = "feature_set::EnumType", optional, tag = "2")]
     pub enum_type: ::core::option::Option<i32>,
-    #[prost(enumeration = "feature_set::RepeatedFieldEncoding", optional, tag = "3")]
+    #[prost(
+        enumeration = "feature_set::RepeatedFieldEncoding",
+        optional,
+        tag = "3"
+    )]
     pub repeated_field_encoding: ::core::option::Option<i32>,
     #[prost(enumeration = "feature_set::Utf8Validation", optional, tag = "4")]
     pub utf8_validation: ::core::option::Option<i32>,
@@ -1339,22 +1281,14 @@ pub struct FeatureSet {
     pub message_encoding: ::core::option::Option<i32>,
     #[prost(enumeration = "feature_set::JsonFormat", optional, tag = "6")]
     pub json_format: ::core::option::Option<i32>,
+    #[prost(enumeration = "feature_set::EnforceNamingStyle", optional, tag = "7")]
+    pub enforce_naming_style: ::core::option::Option<i32>,
 }
 /// Nested message and enum types in `FeatureSet`.
 pub mod feature_set {
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum FieldPresence {
         Unknown = 0,
@@ -1388,17 +1322,7 @@ pub mod feature_set {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum EnumType {
         Unknown = 0,
@@ -1429,17 +1353,7 @@ pub mod feature_set {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RepeatedFieldEncoding {
         Unknown = 0,
@@ -1470,17 +1384,7 @@ pub mod feature_set {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Utf8Validation {
         Unknown = 0,
@@ -1511,17 +1415,7 @@ pub mod feature_set {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum MessageEncoding {
         Unknown = 0,
@@ -1552,17 +1446,7 @@ pub mod feature_set {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum JsonFormat {
         Unknown = 0,
@@ -1591,6 +1475,37 @@ pub mod feature_set {
             }
         }
     }
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum EnforceNamingStyle {
+        Unknown = 0,
+        Style2024 = 1,
+        StyleLegacy = 2,
+    }
+    impl EnforceNamingStyle {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unknown => "ENFORCE_NAMING_STYLE_UNKNOWN",
+                Self::Style2024 => "STYLE2024",
+                Self::StyleLegacy => "STYLE_LEGACY",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "ENFORCE_NAMING_STYLE_UNKNOWN" => Some(Self::Unknown),
+                "STYLE2024" => Some(Self::Style2024),
+                "STYLE_LEGACY" => Some(Self::StyleLegacy),
+                _ => None,
+            }
+        }
+    }
 }
 /// A compiled specification for the defaults of a set of features.  These
 /// messages are generated from FeatureSet extensions and can be used to seed
@@ -1601,9 +1516,7 @@ pub mod feature_set {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FeatureSetDefaults {
     #[prost(message, repeated, tag = "1")]
-    pub defaults: ::prost::alloc::vec::Vec<
-        feature_set_defaults::FeatureSetEditionDefault,
-    >,
+    pub defaults: ::prost::alloc::vec::Vec<feature_set_defaults::FeatureSetEditionDefault>,
     /// The minimum supported edition (inclusive) when this was constructed.
     /// Editions before this will not have defaults.
     #[prost(enumeration = "Edition", optional, tag = "4")]
@@ -1661,27 +1574,24 @@ pub struct SourceCodeInfo {
     ///    \[g,h)  [ 4, 0, 2, 0, 3 \]  The number (1).
     ///
     /// Notes:
-    /// - A location may refer to a repeated field itself (i.e. not to any
-    ///    particular index within it).  This is used whenever a set of elements are
-    ///    logically enclosed in a single code segment.  For example, an entire
-    ///    extend block (possibly containing multiple extension definitions) will
-    ///    have an outer location whose path refers to the "extensions" repeated
-    ///    field without an index.
-    /// - Multiple locations may have the same path.  This happens when a single
-    ///    logical declaration is spread out across multiple places.  The most
-    ///    obvious example is the "extend" block again -- there may be multiple
-    ///    extend blocks in the same scope, each of which will have the same path.
-    /// - A location's span is not always a subset of its parent's span.  For
-    ///    example, the "extendee" of an extension declaration appears at the
-    ///    beginning of the "extend" block and is shared by all extensions within
-    ///    the block.
-    /// - Just because a location's span is a subset of some other location's span
-    ///    does not mean that it is a descendant.  For example, a "group" defines
-    ///    both a type and a field in a single declaration.  Thus, the locations
-    ///    corresponding to the type and field and their components will overlap.
-    /// - Code which tries to interpret locations should probably be designed to
-    ///    ignore those that it doesn't understand, as more types of locations could
-    ///    be recorded in the future.
+    /// - A location may refer to a repeated field itself (i.e. not to any particular index within
+    ///   it).  This is used whenever a set of elements are logically enclosed in a single code
+    ///   segment.  For example, an entire extend block (possibly containing multiple extension
+    ///   definitions) will have an outer location whose path refers to the "extensions" repeated
+    ///   field without an index.
+    /// - Multiple locations may have the same path.  This happens when a single logical
+    ///   declaration is spread out across multiple places.  The most obvious example is the
+    ///   "extend" block again -- there may be multiple extend blocks in the same scope, each of
+    ///   which will have the same path.
+    /// - A location's span is not always a subset of its parent's span.  For example, the
+    ///   "extendee" of an extension declaration appears at the beginning of the "extend" block and
+    ///   is shared by all extensions within the block.
+    /// - Just because a location's span is a subset of some other location's span does not mean
+    ///   that it is a descendant.  For example, a "group" defines both a type and a field in a
+    ///   single declaration.  Thus, the locations corresponding to the type and field and their
+    ///   components will overlap.
+    /// - Code which tries to interpret locations should probably be designed to ignore those that
+    ///   it doesn't understand, as more types of locations could be recorded in the future.
     #[prost(message, repeated, tag = "1")]
     pub location: ::prost::alloc::vec::Vec<source_code_info::Location>,
 }
@@ -1775,9 +1685,7 @@ pub mod source_code_info {
         #[prost(string, optional, tag = "4")]
         pub trailing_comments: ::core::option::Option<::prost::alloc::string::String>,
         #[prost(string, repeated, tag = "6")]
-        pub leading_detached_comments: ::prost::alloc::vec::Vec<
-            ::prost::alloc::string::String,
-        >,
+        pub leading_detached_comments: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
 }
 /// Describes the relationship between generated code and its original source
@@ -1824,15 +1732,7 @@ pub mod generated_code_info {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum Semantic {
@@ -1999,11 +1899,9 @@ impl Edition {
 /// encoded in JSON format as "3s", while 3 seconds and 1 nanosecond should
 /// be expressed in JSON format as "3.000000001s", and 3 seconds and 1
 /// microsecond should be expressed in JSON format as "3.000001s".
-///
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Eq, PartialOrd, Ord, Hash)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Eq, PartialOrd, Ord, Hash, Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Duration {
     /// Signed seconds of the span of time. Must be from -315,576,000,000
     /// to +315,576,000,000 inclusive. Note: these bounds are computed from:
@@ -2019,6 +1917,143 @@ pub struct Duration {
     #[prost(int32, tag = "2")]
     pub nanos: i32,
 }
+/// Wrapper message for `double`.
+///
+/// The JSON representation for `DoubleValue` is JSON number.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(PartialOrd, Clone, Copy, PartialEq, ::prost::Message)]
+pub struct DoubleValue {
+    /// The double value.
+    #[prost(double, tag = "1")]
+    pub value: f64,
+}
+/// Wrapper message for `float`.
+///
+/// The JSON representation for `FloatValue` is JSON number.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(PartialOrd, Clone, Copy, PartialEq, ::prost::Message)]
+pub struct FloatValue {
+    /// The float value.
+    #[prost(float, tag = "1")]
+    pub value: f32,
+}
+/// Wrapper message for `int64`.
+///
+/// The JSON representation for `Int64Value` is JSON string.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Eq, PartialOrd, Ord, Hash, Clone, Copy, PartialEq, ::prost::Message)]
+pub struct Int64Value {
+    /// The int64 value.
+    #[prost(int64, tag = "1")]
+    pub value: i64,
+}
+/// Wrapper message for `uint64`.
+///
+/// The JSON representation for `UInt64Value` is JSON string.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Eq, PartialOrd, Ord, Hash, Clone, Copy, PartialEq, ::prost::Message)]
+pub struct UInt64Value {
+    /// The uint64 value.
+    #[prost(uint64, tag = "1")]
+    pub value: u64,
+}
+/// Wrapper message for `int32`.
+///
+/// The JSON representation for `Int32Value` is JSON number.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Eq, PartialOrd, Ord, Hash, Clone, Copy, PartialEq, ::prost::Message)]
+pub struct Int32Value {
+    /// The int32 value.
+    #[prost(int32, tag = "1")]
+    pub value: i32,
+}
+/// Wrapper message for `uint32`.
+///
+/// The JSON representation for `UInt32Value` is JSON number.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Eq, PartialOrd, Ord, Hash, Clone, Copy, PartialEq, ::prost::Message)]
+pub struct UInt32Value {
+    /// The uint32 value.
+    #[prost(uint32, tag = "1")]
+    pub value: u32,
+}
+/// Wrapper message for `bool`.
+///
+/// The JSON representation for `BoolValue` is JSON `true` and `false`.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Eq, PartialOrd, Ord, Hash, Clone, Copy, PartialEq, ::prost::Message)]
+pub struct BoolValue {
+    /// The bool value.
+    #[prost(bool, tag = "1")]
+    pub value: bool,
+}
+/// Wrapper message for `string`.
+///
+/// The JSON representation for `StringValue` is JSON string.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct StringValue {
+    /// The string value.
+    #[prost(string, tag = "1")]
+    pub value: ::prost::alloc::string::String,
+}
+/// Wrapper message for `bytes`.
+///
+/// The JSON representation for `BytesValue` is JSON string.
+///
+/// Not recommended for use in new APIs, but still useful for legacy APIs and
+/// has no plan to be removed.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BytesValue {
+    /// The bytes value.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub value: ::prost::bytes::Bytes,
+}
+/// A generic empty message that you can re-use to avoid defining duplicated
+/// empty messages in your APIs. A typical example is to use it as the request
+/// or the response type of an API method. For instance:
+///
+///      service Foo {
+///        rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty);
+///      }
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct Empty {}
 /// A Timestamp represents a point in time independent of any time zone or local
 /// calendar, encoded as a count of seconds and fractions of seconds at
 /// nanosecond resolution. The count is relative to an epoch at UTC midnight on
@@ -2108,11 +2143,9 @@ pub struct Duration {
 /// the Joda Time's [`ISODateTimeFormat.dateTime()`](
 /// <http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime(>)
 /// ) to obtain a formatter capable of generating timestamps in this format.
-///
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Eq, PartialOrd, Ord, Hash)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Eq, PartialOrd, Ord, Hash, Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch
     /// 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to
@@ -2125,112 +2158,6 @@ pub struct Timestamp {
     /// inclusive.
     #[prost(int32, tag = "2")]
     pub nanos: i32,
-}
-/// Wrapper message for `double`.
-///
-/// The JSON representation for `DoubleValue` is JSON number.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(PartialOrd)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct DoubleValue {
-    /// The double value.
-    #[prost(double, tag = "1")]
-    pub value: f64,
-}
-/// Wrapper message for `float`.
-///
-/// The JSON representation for `FloatValue` is JSON number.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(PartialOrd)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct FloatValue {
-    /// The float value.
-    #[prost(float, tag = "1")]
-    pub value: f32,
-}
-/// Wrapper message for `int64`.
-///
-/// The JSON representation for `Int64Value` is JSON string.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Eq, PartialOrd, Ord, Hash)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct Int64Value {
-    /// The int64 value.
-    #[prost(int64, tag = "1")]
-    pub value: i64,
-}
-/// Wrapper message for `uint64`.
-///
-/// The JSON representation for `UInt64Value` is JSON string.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Eq, PartialOrd, Ord, Hash)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct UInt64Value {
-    /// The uint64 value.
-    #[prost(uint64, tag = "1")]
-    pub value: u64,
-}
-/// Wrapper message for `int32`.
-///
-/// The JSON representation for `Int32Value` is JSON number.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Eq, PartialOrd, Ord, Hash)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct Int32Value {
-    /// The int32 value.
-    #[prost(int32, tag = "1")]
-    pub value: i32,
-}
-/// Wrapper message for `uint32`.
-///
-/// The JSON representation for `UInt32Value` is JSON number.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Eq, PartialOrd, Ord, Hash)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct UInt32Value {
-    /// The uint32 value.
-    #[prost(uint32, tag = "1")]
-    pub value: u32,
-}
-/// Wrapper message for `bool`.
-///
-/// The JSON representation for `BoolValue` is JSON `true` and `false`.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Eq, PartialOrd, Ord, Hash)]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct BoolValue {
-    /// The bool value.
-    #[prost(bool, tag = "1")]
-    pub value: bool,
-}
-/// Wrapper message for `string`.
-///
-/// The JSON representation for `StringValue` is JSON string.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct StringValue {
-    /// The string value.
-    #[prost(string, tag = "1")]
-    pub value: ::prost::alloc::string::String,
-}
-/// Wrapper message for `bytes`.
-///
-/// The JSON representation for `BytesValue` is JSON string.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BytesValue {
-    /// The bytes value.
-    #[prost(bytes = "bytes", tag = "1")]
-    pub value: ::prost::bytes::Bytes,
 }
 /// `Any` contains an arbitrary serialized protocol buffer message along with a
 /// URL that describes the type of the serialized message.
@@ -2317,7 +2244,6 @@ pub struct BytesValue {
 ///        "@type": "type.googleapis.com/google.protobuf.Duration",
 ///        "value": "1.212s"
 ///      }
-///
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -2335,13 +2261,11 @@ pub struct Any {
     /// server that maps type URLs to message definitions as follows:
     ///
     /// * If no scheme is provided, `https` is assumed.
-    /// * An HTTP GET on the URL must yield a [google.protobuf.Type][]
-    ///    value in binary format, or produce an error.
-    /// * Applications are allowed to cache lookup results based on the
-    ///    URL, or have them precompiled into a binary to avoid any
-    ///    lookup. Therefore, binary compatibility needs to be preserved
-    ///    on changes to types. (Use versioned type names to manage
-    ///    breaking changes.)
+    /// * An HTTP GET on the URL must yield a [google.protobuf.Type][] value in binary format, or
+    ///   produce an error.
+    /// * Applications are allowed to cache lookup results based on the URL, or have them
+    ///   precompiled into a binary to avoid any lookup. Therefore, binary compatibility needs to
+    ///   be preserved on changes to types. (Use versioned type names to manage breaking changes.)
     ///
     /// Note: this functionality is not currently available in the official
     /// protobuf release, and it is not used for type URLs beginning with
@@ -2350,7 +2274,6 @@ pub struct Any {
     ///
     /// Schemes other than `http`, `https` (or the empty scheme) might be
     /// used with implementation specific semantics.
-    ///
     #[prost(string, tag = "1")]
     pub type_url: ::prost::alloc::string::String,
     /// Must be a valid serialized protocol buffer of the above specified type.
@@ -2457,18 +2380,6 @@ impl NullValue {
         }
     }
 }
-/// A generic empty message that you can re-use to avoid defining duplicated
-/// empty messages in your APIs. A typical example is to use it as the request
-/// or the response type of an API method. For instance:
-///
-///      service Foo {
-///        rpc Bar(google.protobuf.Empty) returns (google.protobuf.Empty);
-///      }
-///
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct Empty {}
 /// `FieldMask` represents a set of symbolic field paths, for example:
 ///
 ///      paths: "f.a"

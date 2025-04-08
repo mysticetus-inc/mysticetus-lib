@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::fmt;
 
-use serde::{de, ser, Serialize};
+use serde::{Serialize, de, ser};
 
 use crate::string_dst::StringDst;
 

@@ -20,6 +20,8 @@ pub enum Error {
         crate::doc::MAX_DOCUMENT_SIZE
     )]
     OverSizeLimit { document_id: String, size: usize },
+    #[error("listener already closed")]
+    ListenerClosed,
     #[error("internal error: {0}")]
     Internal(&'static str),
     #[error("{code}: {message}")]
@@ -30,6 +32,39 @@ pub enum Error {
     },
     #[error("{0}")]
     Many(Errors),
+}
+/// Determines if an RPC error code is transient (i.e should be retried)
+///
+/// values pulled from:
+/// https://github.com/googleapis/google-cloud-dotnet/blob/1df60d5374faf7c2c8e7c52c6b62767739b28701/apis/Google.Cloud.Firestore/Google.Cloud.Firestore/WatchStream.cs#L29
+pub(crate) fn is_transient_error(code: tonic::Code) -> bool {
+    match code {
+        tonic::Code::Aborted => true,
+        tonic::Code::Cancelled => true,
+        tonic::Code::Unknown => true,
+        tonic::Code::DeadlineExceeded => true,
+        tonic::Code::ResourceExhausted => true,
+        tonic::Code::Internal => true,
+        tonic::Code::Unavailable => true,
+        tonic::Code::Unauthenticated => true,
+        _ => false,
+    }
+}
+
+impl From<protos::rpc::Status> for Error {
+    fn from(value: protos::rpc::Status) -> Self {
+        Self::RpcError {
+            code: tonic::Code::from(value.code),
+            message: value.message,
+            details: crate::util::none_if_empty(value.details),
+        }
+    }
+}
+
+impl From<std::convert::Infallible> for Error {
+    fn from(value: std::convert::Infallible) -> Self {
+        match value {}
+    }
 }
 
 // manual From Error/Errors impls to avoid nesting if we already have an instance of many errors
@@ -104,6 +139,17 @@ impl IntoIterator for Errors {
 }
 
 impl Error {
+    pub fn rpc_code(&self) -> Option<tonic::Code> {
+        match self {
+            Self::RpcError { code, .. } => Some(*code),
+            Self::Status(status) => Some(status.code()),
+            _ => None,
+        }
+    }
+    pub fn is_transient_error(&self) -> bool {
+        self.rpc_code().map(is_transient_error).unwrap_or(false)
+    }
+
     pub(crate) fn check_rpc_status(status: protos::rpc::Status) -> Result<(), Self> {
         let code = tonic::Code::from_i32(status.code);
 

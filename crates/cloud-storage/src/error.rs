@@ -12,11 +12,19 @@ pub enum Error {
     InvalidReadBounds(#[from] InvalidReadBounds),
     #[error(transparent)]
     DataError(#[from] DataError),
+    #[error("internal error: {0}")]
+    Internal(Box<str>),
+}
+
+impl From<tokio::task::JoinError> for Error {
+    fn from(value: tokio::task::JoinError) -> Self {
+        Self::internal(format!("internal task panic: {value}"))
+    }
 }
 
 impl Error {
     pub(crate) fn internal(msg: impl Into<String>) -> Self {
-        Self::Status(tonic::Status::internal(msg.into()))
+        Self::Internal(String::into_boxed_str(msg.into()))
     }
 }
 

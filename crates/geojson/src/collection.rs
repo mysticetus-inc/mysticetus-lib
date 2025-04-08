@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 use path_aware_serde::{Deserializer as PathDeserializer, Error};
 use serde::ser::{self, SerializeMap, SerializeSeq};
 use serde::{Deserializer, de};
-use serde_helpers::from_str_visitor::FromStrVisitor;
+use serde_helpers::from_str::FromStrVisitor;
 
 use crate::Feature;
 use crate::builder::FeatureCollectionBuilder;

@@ -1,8 +1,6 @@
-use std::{
-    borrow::Cow,
-    cell::{Cell, RefCell},
-    str::FromStr,
-};
+use std::borrow::Cow;
+use std::cell::{Cell, RefCell};
+use std::str::FromStr;
 
 /// A trait to abstract over multiple ways to insert string references/owned strings.
 pub trait StringDst {

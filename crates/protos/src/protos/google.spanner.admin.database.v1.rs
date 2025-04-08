@@ -11,15 +11,11 @@ pub struct OperationProgress {
     pub progress_percent: i32,
     /// Time the request was received.
     #[prost(message, optional, tag = "2")]
-    pub start_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub start_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// If set, the time at which this operation failed or was completed
     /// successfully.
     #[prost(message, optional, tag = "3")]
-    pub end_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub end_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// Encryption configuration for a Cloud Spanner database.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -61,9 +57,7 @@ pub struct EncryptionInfo {
     /// underlying data for this database or backup. Regardless of status, data is
     /// always encrypted at rest.
     #[prost(message, optional, tag = "4")]
-    pub encryption_status: ::core::option::Option<
-        super::super::super::super::rpc::Status,
-    >,
+    pub encryption_status: ::core::option::Option<super::super::super::super::rpc::Status>,
     /// Output only. A Cloud KMS key version that is being used to protect the
     /// database or backup.
     #[prost(string, tag = "2")]
@@ -74,17 +68,7 @@ pub mod encryption_info {
     /// Possible encryption types.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
         /// Encryption type was not specified, though data at rest remains encrypted.
@@ -174,9 +158,7 @@ pub struct Backup {
     /// specified, the system will set `version_time` to the `create_time` of the
     /// backup.
     #[prost(message, optional, tag = "9")]
-    pub version_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub version_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Required for the
     /// [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup]
     /// operation. The expiration time of the backup, with microseconds
@@ -185,9 +167,7 @@ pub struct Backup {
     /// has passed, the backup is eligible to be automatically deleted by Cloud
     /// Spanner to free the resources used by the backup.
     #[prost(message, optional, tag = "3")]
-    pub expire_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub expire_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Output only for the
     /// [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup]
     /// operation. Required for the
@@ -211,9 +191,7 @@ pub struct Backup {
     /// request is received. If the request does not specify `version_time`, the
     /// `version_time` of the backup will be equivalent to the `create_time`.
     #[prost(message, optional, tag = "4")]
-    pub create_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub create_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Output only. Size of the backup in bytes.
     #[prost(int64, tag = "5")]
     pub size_bytes: i64,
@@ -276,9 +254,7 @@ pub struct Backup {
     /// copying an existing backup, the expiration time specified must be
     /// less than `Backup.max_expire_time`.
     #[prost(message, optional, tag = "12")]
-    pub max_expire_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub max_expire_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Output only. List of backup schedule URIs that are associated with
     /// creating this backup. This is only applicable for scheduled backups, and
     /// is empty for on-demand backups.
@@ -304,26 +280,21 @@ pub struct Backup {
     /// of the backup. This field can be used to understand what data is being
     /// retained by the backup system.
     #[prost(message, optional, tag = "18")]
-    pub oldest_version_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub oldest_version_time:
+        ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
+    /// Output only. The instance partition(s) storing the backup.
+    ///
+    /// This is the same as the list of the instance partition(s) that the database
+    /// had footprint in at the backup's `version_time`.
+    #[prost(message, repeated, tag = "19")]
+    pub instance_partitions: ::prost::alloc::vec::Vec<BackupInstancePartition>,
 }
 /// Nested message and enum types in `Backup`.
 pub mod backup {
     /// Indicates the current state of the backup.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// Not specified.
@@ -382,8 +353,8 @@ pub struct CreateBackupRequest {
     /// Optional. The encryption configuration used to encrypt the backup. If this
     /// field is not specified, the backup will use the same encryption
     /// configuration as the database by default, namely
-    /// [encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.encryption_type]
-    /// = `USE_DATABASE_ENCRYPTION`.
+    /// [encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.
+    /// encryption_type] = `USE_DATABASE_ENCRYPTION`.
     #[prost(message, optional, tag = "4")]
     pub encryption_config: ::core::option::Option<CreateBackupEncryptionConfig>,
 }
@@ -417,9 +388,7 @@ pub struct CreateBackupMetadata {
     /// [google.rpc.Status.code][google.rpc.Status.code] of 1,
     /// corresponding to `Code.CANCELLED`.
     #[prost(message, optional, tag = "4")]
-    pub cancel_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub cancel_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// The request for
 /// [CopyBackup][google.spanner.admin.database.v1.DatabaseAdmin.CopyBackup].
@@ -450,14 +419,12 @@ pub struct CopyBackupRequest {
     /// passed, the backup is eligible to be automatically deleted by Cloud Spanner
     /// to free the resources used by the backup.
     #[prost(message, optional, tag = "4")]
-    pub expire_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub expire_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Optional. The encryption configuration used to encrypt the backup. If this
     /// field is not specified, the backup will use the same encryption
     /// configuration as the source backup by default, namely
-    /// [encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type]
-    /// = `USE_CONFIG_DEFAULT_OR_BACKUP_ENCRYPTION`.
+    /// [encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.
+    /// encryption_type] = `USE_CONFIG_DEFAULT_OR_BACKUP_ENCRYPTION`.
     #[prost(message, optional, tag = "5")]
     pub encryption_config: ::core::option::Option<CopyBackupEncryptionConfig>,
 }
@@ -495,9 +462,7 @@ pub struct CopyBackupMetadata {
     /// [google.rpc.Status.code][google.rpc.Status.code] of 1,
     /// corresponding to `Code.CANCELLED`.
     #[prost(message, optional, tag = "4")]
-    pub cancel_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub cancel_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// The request for
 /// [UpdateBackup][google.spanner.admin.database.v1.DatabaseAdmin.UpdateBackup].
@@ -517,9 +482,7 @@ pub struct UpdateBackupRequest {
     /// specified; this prevents any future fields from being erased accidentally
     /// by clients that do not know about them.
     #[prost(message, optional, tag = "2")]
-    pub update_mask: ::core::option::Option<
-        super::super::super::super::protobuf::FieldMask,
-    >,
+    pub update_mask: ::core::option::Option<super::super::super::super::protobuf::FieldMask>,
 }
 /// The request for
 /// [GetBackup][google.spanner.admin.database.v1.DatabaseAdmin.GetBackup].
@@ -588,8 +551,8 @@ pub struct ListBackupsRequest {
     ///    * `state:CREATING` - The backup is pending creation.
     ///    * `state:READY` - The backup is fully created and ready for use.
     ///    * `(name:howl) AND (create_time < \"2018-03-28T14:50:00Z\")`
-    ///           - The backup name contains the string "howl" and `create_time`
-    ///               of the backup is before 2018-03-28T14:50:00Z.
+    ///           - The backup name contains the string "howl" and `create_time` of the backup is
+    ///             before 2018-03-28T14:50:00Z.
     ///    * `expire_time < \"2018-03-28T14:50:00Z\"`
     ///           - The backup `expire_time` is before 2018-03-28T14:50:00Z.
     ///    * `size_bytes > 10000000000` - The backup's size is greater than 10GB
@@ -648,14 +611,11 @@ pub struct ListBackupOperationsRequest {
     ///
     ///    * `name` - The name of the long-running operation
     ///    * `done` - False if the operation is in progress, else true.
-    ///    * `metadata.@type` - the type of metadata. For example, the type string
-    ///       for
-    ///       [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata]
-    ///       is
-    ///       `type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata`.
-    ///    * `metadata.<field_name>` - any field in metadata.value.
-    ///       `metadata.@type` must be specified first if filtering on metadata
-    ///       fields.
+    ///    * `metadata.@type` - the type of metadata. For example, the type string for
+    ///      [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata] is
+    ///      `type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata`.
+    ///    * `metadata.<field_name>` - any field in metadata.value. `metadata.@type` must be
+    ///      specified first if filtering on metadata fields.
     ///    * `error` - Error associated with the long-running operation.
     ///    * `response.@type` - the type of response.
     ///    * `response.<field_name>` - any field in response.value.
@@ -667,35 +627,34 @@ pub struct ListBackupOperationsRequest {
     /// Here are a few examples:
     ///
     ///    * `done:true` - The operation is complete.
-    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
-    ///       `metadata.database:prod` - Returns operations where:
+    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.
+    ///      CreateBackupMetadata) AND` \ `metadata.database:prod` - Returns operations where:
     ///       * The operation's metadata type is
     ///       [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata].
     ///       * The source database name of backup contains the string "prod".
-    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
-    ///      `(metadata.name:howl) AND` \
-    ///      `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \
-    ///      `(error:*)` - Returns operations where:
+    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.
+    ///      CreateBackupMetadata) AND` \ `(metadata.name:howl) AND` \
+    ///      `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \ `(error:*)` -
+    ///      Returns operations where:
     ///      * The operation's metadata type is
     ///      [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata].
     ///      * The backup name contains the string "howl".
     ///      * The operation started before 2018-03-28T14:50:00Z.
     ///      * The operation resulted in an error.
-    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CopyBackupMetadata) AND` \
-    ///      `(metadata.source_backup:test) AND` \
-    ///      `(metadata.progress.start_time < \"2022-01-18T14:50:00Z\") AND` \
-    ///      `(error:*)` - Returns operations where:
+    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.
+    ///      CopyBackupMetadata) AND` \ `(metadata.source_backup:test) AND` \
+    ///      `(metadata.progress.start_time < \"2022-01-18T14:50:00Z\") AND` \ `(error:*)` -
+    ///      Returns operations where:
     ///      * The operation's metadata type is
     ///      [CopyBackupMetadata][google.spanner.admin.database.v1.CopyBackupMetadata].
     ///      * The source backup name contains the string "test".
     ///      * The operation started before 2022-01-18T14:50:00Z.
     ///      * The operation resulted in an error.
-    ///    * `((metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CreateBackupMetadata) AND` \
-    ///      `(metadata.database:test_db)) OR` \
-    ///      `((metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.CopyBackupMetadata)
-    ///      AND` \
-    ///      `(metadata.source_backup:test_bkp)) AND` \
-    ///      `(error:*)` - Returns operations where:
+    ///    * `((metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.
+    ///      CreateBackupMetadata) AND` \ `(metadata.database:test_db)) OR` \
+    ///      `((metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.
+    ///      CopyBackupMetadata) AND` \ `(metadata.source_backup:test_bkp)) AND` \ `(error:*)` -
+    ///      Returns operations where:
     ///      * The operation's metadata matches either of criteria:
     ///        * The operation's metadata type is
     ///        [CreateBackupMetadata][google.spanner.admin.database.v1.CreateBackupMetadata]
@@ -712,10 +671,10 @@ pub struct ListBackupOperationsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.database.v1.ListBackupOperationsResponse.next_page_token]
-    /// from a previous
-    /// [ListBackupOperationsResponse][google.spanner.admin.database.v1.ListBackupOperationsResponse]
-    /// to the same `parent` and with the same `filter`.
+    /// [next_page_token][google.spanner.admin.database.v1.ListBackupOperationsResponse.
+    /// next_page_token] from a previous
+    /// [ListBackupOperationsResponse][google.spanner.admin.database.v1.
+    /// ListBackupOperationsResponse] to the same `parent` and with the same `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
@@ -735,9 +694,7 @@ pub struct ListBackupOperationsResponse {
     /// `operation.metadata.value.progress.start_time` in descending order starting
     /// from the most recently started operation.
     #[prost(message, repeated, tag = "1")]
-    pub operations: ::prost::alloc::vec::Vec<
-        super::super::super::super::longrunning::Operation,
-    >,
+    pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
     /// `next_page_token` can be sent in a subsequent
     /// [ListBackupOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListBackupOperations]
     /// call to fetch more of the matching metadata.
@@ -758,16 +715,12 @@ pub struct BackupInfo {
     /// request did not specify `version_time`, the `version_time` of the backup is
     /// equivalent to the `create_time`.
     #[prost(message, optional, tag = "4")]
-    pub version_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub version_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// The time the
     /// [CreateBackup][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackup]
     /// request was received.
     #[prost(message, optional, tag = "2")]
-    pub create_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub create_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Name of the database the backup was created from.
     #[prost(string, tag = "3")]
     pub source_database: ::prost::alloc::string::String,
@@ -778,12 +731,15 @@ pub struct BackupInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateBackupEncryptionConfig {
     /// Required. The encryption type of the backup.
-    #[prost(enumeration = "create_backup_encryption_config::EncryptionType", tag = "1")]
+    #[prost(
+        enumeration = "create_backup_encryption_config::EncryptionType",
+        tag = "1"
+    )]
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to protect the backup.
     /// This field should be set only when
-    /// [encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.encryption_type]
-    /// is `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
+    /// [encryption_type][google.spanner.admin.database.v1.CreateBackupEncryptionConfig.
+    /// encryption_type] is `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
     /// `projects/<project>/locations/<location>/keyRings/<key_ring>/cryptoKeys/<kms_key_name>`.
     #[prost(string, tag = "2")]
     pub kms_key_name: ::prost::alloc::string::String,
@@ -810,17 +766,7 @@ pub mod create_backup_encryption_config {
     /// Encryption types for the backup.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum EncryptionType {
         /// Unspecified. Do not use.
@@ -869,12 +815,15 @@ pub mod create_backup_encryption_config {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CopyBackupEncryptionConfig {
     /// Required. The encryption type of the backup.
-    #[prost(enumeration = "copy_backup_encryption_config::EncryptionType", tag = "1")]
+    #[prost(
+        enumeration = "copy_backup_encryption_config::EncryptionType",
+        tag = "1"
+    )]
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to protect the backup.
     /// This field should be set only when
-    /// [encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.encryption_type]
-    /// is `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
+    /// [encryption_type][google.spanner.admin.database.v1.CopyBackupEncryptionConfig.
+    /// encryption_type] is `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
     /// `projects/<project>/locations/<location>/keyRings/<key_ring>/cryptoKeys/<kms_key_name>`.
     #[prost(string, tag = "2")]
     pub kms_key_name: ::prost::alloc::string::String,
@@ -902,17 +851,7 @@ pub mod copy_backup_encryption_config {
     /// Encryption types for the backup.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum EncryptionType {
         /// Unspecified. Do not use.
@@ -977,6 +916,16 @@ pub struct FullBackupSpec {}
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct IncrementalBackupSpec {}
+/// Instance partition information for the backup.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BackupInstancePartition {
+    /// A unique identifier for the instance partition. Values are of the form
+    /// `projects/<project>/instances/<instance>/instancePartitions/<instance_partition_id>`
+    #[prost(string, tag = "1")]
+    pub instance_partition: ::prost::alloc::string::String,
+}
 /// Defines specifications of the backup schedule.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1011,9 +960,9 @@ pub struct BackupSchedule {
     /// [UpdateBackupSchedule][google.spanner.admin.database.v1.DatabaseAdmin.UpdateBackupSchedule]
     /// operation. A globally unique identifier for the backup schedule which
     /// cannot be changed. Values are of the form
-    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/[a-z][a-z0-9_\-]*\[a-z0-9\]`
-    /// The final segment of the name must be between 2 and 60 characters in
-    /// length.
+    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/
+    /// [a-z][a-z0-9_\-]*\[a-z0-9\]` The final segment of the name must be between 2 and 60
+    /// characters in length.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Optional. The schedule specification based on which the backup creations
@@ -1024,9 +973,7 @@ pub struct BackupSchedule {
     /// and at most 366 days. The backup is eligible to be automatically deleted
     /// once the retention period has elapsed.
     #[prost(message, optional, tag = "3")]
-    pub retention_duration: ::core::option::Option<
-        super::super::super::super::protobuf::Duration,
-    >,
+    pub retention_duration: ::core::option::Option<super::super::super::super::protobuf::Duration>,
     /// Optional. The encryption configuration that will be used to encrypt the
     /// backup. If this field is not specified, the backup will use the same
     /// encryption configuration as the database.
@@ -1036,9 +983,7 @@ pub struct BackupSchedule {
     /// If the schedule has never been updated, this field contains the timestamp
     /// when the schedule was first created.
     #[prost(message, optional, tag = "9")]
-    pub update_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub update_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Required. Backup type spec determines the type of backup that is created by
     /// the backup schedule. Currently, only full backups are supported.
     #[prost(oneof = "backup_schedule::BackupTypeSpec", tags = "7, 8")]
@@ -1068,7 +1013,7 @@ pub mod backup_schedule {
 pub struct CrontabSpec {
     /// Required. Textual representation of the crontab. User can customize the
     /// backup frequency and the backup version time using the cron
-    /// expression. The version time must be in UTC timzeone.
+    /// expression. The version time must be in UTC timezone.
     ///
     /// The backup will contain an externally consistent copy of the
     /// database at the version time. Allowed frequencies are 12 hour, 1 day,
@@ -1092,9 +1037,7 @@ pub struct CrontabSpec {
     /// version_time specified in `schedule_spec.cron_spec` and version_time +
     /// `creation_window`.
     #[prost(message, optional, tag = "3")]
-    pub creation_window: ::core::option::Option<
-        super::super::super::super::protobuf::Duration,
-    >,
+    pub creation_window: ::core::option::Option<super::super::super::super::protobuf::Duration>,
 }
 /// The request for
 /// [CreateBackupSchedule][google.spanner.admin.database.v1.DatabaseAdmin.CreateBackupSchedule].
@@ -1107,7 +1050,8 @@ pub struct CreateBackupScheduleRequest {
     pub parent: ::prost::alloc::string::String,
     /// Required. The Id to use for the backup schedule. The `backup_schedule_id`
     /// appended to `parent` forms the full backup schedule name of the form
-    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/<backup_schedule_id>`.
+    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/
+    /// <backup_schedule_id>`.
     #[prost(string, tag = "2")]
     pub backup_schedule_id: ::prost::alloc::string::String,
     /// Required. The backup schedule to create.
@@ -1122,7 +1066,8 @@ pub struct CreateBackupScheduleRequest {
 pub struct GetBackupScheduleRequest {
     /// Required. The name of the schedule to retrieve.
     /// Values are of the form
-    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/<backup_schedule_id>`.
+    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/
+    /// <backup_schedule_id>`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -1134,7 +1079,8 @@ pub struct GetBackupScheduleRequest {
 pub struct DeleteBackupScheduleRequest {
     /// Required. The name of the schedule to delete.
     /// Values are of the form
-    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/<backup_schedule_id>`.
+    /// `projects/<project>/instances/<instance>/databases/<database>/backupSchedules/
+    /// <backup_schedule_id>`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -1154,8 +1100,8 @@ pub struct ListBackupSchedulesRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// Optional. If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.database.v1.ListBackupSchedulesResponse.next_page_token]
-    /// from a previous
+    /// [next_page_token][google.spanner.admin.database.v1.ListBackupSchedulesResponse.
+    /// next_page_token] from a previous
     /// [ListBackupSchedulesResponse][google.spanner.admin.database.v1.ListBackupSchedulesResponse]
     /// to the same `parent`.
     #[prost(string, tag = "4")]
@@ -1177,7 +1123,8 @@ pub struct ListBackupSchedulesResponse {
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// [UpdateBackupScheduleRequest][google.spanner.admin.database.v1.DatabaseAdmin.UpdateBackupSchedule].
+/// [UpdateBackupScheduleRequest][google.spanner.admin.database.v1.DatabaseAdmin.
+/// UpdateBackupSchedule].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1193,9 +1140,7 @@ pub struct UpdateBackupScheduleRequest {
     /// specified; this prevents any future fields from being erased
     /// accidentally.
     #[prost(message, optional, tag = "2")]
-    pub update_mask: ::core::option::Option<
-        super::super::super::super::protobuf::FieldMask,
-    >,
+    pub update_mask: ::core::option::Option<super::super::super::super::protobuf::FieldMask>,
 }
 /// Information about the database restore.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -1239,9 +1184,7 @@ pub struct Database {
     pub state: i32,
     /// Output only. If exists, the time at which the database creation started.
     #[prost(message, optional, tag = "3")]
-    pub create_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub create_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Output only. Applicable only for restored databases. Contains information
     /// about the restore source.
     #[prost(message, optional, tag = "4")]
@@ -1277,9 +1220,8 @@ pub struct Database {
     /// sure to account for the time from the moment when the value is queried to
     /// the moment when you initiate the recovery.
     #[prost(message, optional, tag = "7")]
-    pub earliest_version_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub earliest_version_time:
+        ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// Output only. The read-write region which contains the database's leader
     /// replicas.
     ///
@@ -1307,17 +1249,7 @@ pub mod database {
     /// Indicates the current state of the database.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// Not specified.
@@ -1482,9 +1414,7 @@ pub struct UpdateDatabaseRequest {
     /// Required. The list of fields to update. Currently, only
     /// `enable_drop_protection` field can be updated.
     #[prost(message, optional, tag = "2")]
-    pub update_mask: ::core::option::Option<
-        super::super::super::super::protobuf::FieldMask,
-    >,
+    pub update_mask: ::core::option::Option<super::super::super::super::protobuf::FieldMask>,
 }
 /// Metadata type for the operation returned by
 /// [UpdateDatabase][google.spanner.admin.database.v1.DatabaseAdmin.UpdateDatabase].
@@ -1504,9 +1434,7 @@ pub struct UpdateDatabaseMetadata {
     /// The time at which this operation was cancelled. If set, this operation is
     /// in the process of undoing itself (which is best-effort).
     #[prost(message, optional, tag = "3")]
-    pub cancel_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub cancel_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// Enqueues the given DDL statements to be applied, in order but not
 /// necessarily all at once, to the database schema at some point (or
@@ -1615,9 +1543,8 @@ pub struct UpdateDatabaseDdlMetadata {
     /// succeeded so far, where `commit_timestamps\[i\]` is the commit
     /// timestamp for the statement `statements\[i\]`.
     #[prost(message, repeated, tag = "3")]
-    pub commit_timestamps: ::prost::alloc::vec::Vec<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub commit_timestamps:
+        ::prost::alloc::vec::Vec<super::super::super::super::protobuf::Timestamp>,
     /// Output only. When true, indicates that the operation is throttled e.g.
     /// due to resource constraints. When resources become available the operation
     /// will resume and this field will be false again.
@@ -1700,14 +1627,11 @@ pub struct ListDatabaseOperationsRequest {
     ///
     ///    * `name` - The name of the long-running operation
     ///    * `done` - False if the operation is in progress, else true.
-    ///    * `metadata.@type` - the type of metadata. For example, the type string
-    ///       for
-    ///       [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata]
-    ///       is
-    ///       `type.googleapis.com/google.spanner.admin.database.v1.RestoreDatabaseMetadata`.
-    ///    * `metadata.<field_name>` - any field in metadata.value.
-    ///       `metadata.@type` must be specified first, if filtering on metadata
-    ///       fields.
+    ///    * `metadata.@type` - the type of metadata. For example, the type string for
+    ///      [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata] is
+    ///      `type.googleapis.com/google.spanner.admin.database.v1.RestoreDatabaseMetadata`.
+    ///    * `metadata.<field_name>` - any field in metadata.value. `metadata.@type` must be
+    ///      specified first, if filtering on metadata fields.
     ///    * `error` - Error associated with the long-running operation.
     ///    * `response.@type` - the type of response.
     ///    * `response.<field_name>` - any field in response.value.
@@ -1719,12 +1643,11 @@ pub struct ListDatabaseOperationsRequest {
     /// Here are a few examples:
     ///
     ///    * `done:true` - The operation is complete.
-    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.RestoreDatabaseMetadata) AND` \
-    ///      `(metadata.source_type:BACKUP) AND` \
-    ///      `(metadata.backup_info.backup:backup_howl) AND` \
-    ///      `(metadata.name:restored_howl) AND` \
-    ///      `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \
-    ///      `(error:*)` - Return operations where:
+    ///    * `(metadata.@type=type.googleapis.com/google.spanner.admin.database.v1.
+    ///      RestoreDatabaseMetadata) AND` \ `(metadata.source_type:BACKUP) AND` \
+    ///      `(metadata.backup_info.backup:backup_howl) AND` \ `(metadata.name:restored_howl) AND`
+    ///      \ `(metadata.progress.start_time < \"2018-03-28T14:50:00Z\") AND` \ `(error:*)` -
+    ///      Return operations where:
     ///      * The operation's metadata type is
     ///      [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata].
     ///      * The database is restored from a backup.
@@ -1739,10 +1662,10 @@ pub struct ListDatabaseOperationsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.database.v1.ListDatabaseOperationsResponse.next_page_token]
-    /// from a previous
-    /// [ListDatabaseOperationsResponse][google.spanner.admin.database.v1.ListDatabaseOperationsResponse]
-    /// to the same `parent` and with the same `filter`.
+    /// [next_page_token][google.spanner.admin.database.v1.ListDatabaseOperationsResponse.
+    /// next_page_token] from a previous
+    /// [ListDatabaseOperationsResponse][google.spanner.admin.database.v1.
+    /// ListDatabaseOperationsResponse] to the same `parent` and with the same `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
@@ -1758,12 +1681,10 @@ pub struct ListDatabaseOperationsResponse {
     /// [metadata][google.longrunning.Operation.metadata] field type
     /// `metadata.type_url` describes the type of the metadata.
     #[prost(message, repeated, tag = "1")]
-    pub operations: ::prost::alloc::vec::Vec<
-        super::super::super::super::longrunning::Operation,
-    >,
+    pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
     /// `next_page_token` can be sent in a subsequent
-    /// [ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.ListDatabaseOperations]
-    /// call to fetch more of the matching metadata.
+    /// [ListDatabaseOperations][google.spanner.admin.database.v1.DatabaseAdmin.
+    /// ListDatabaseOperations] call to fetch more of the matching metadata.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
@@ -1790,8 +1711,8 @@ pub struct RestoreDatabaseRequest {
     /// key resources in Cloud KMS used to encrypt/decrypt the database to restore
     /// to. If this field is not specified, the restored database will use the same
     /// encryption configuration as the backup by default, namely
-    /// [encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.encryption_type]
-    /// = `USE_CONFIG_DEFAULT_OR_BACKUP_ENCRYPTION`.
+    /// [encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.
+    /// encryption_type] = `USE_CONFIG_DEFAULT_OR_BACKUP_ENCRYPTION`.
     #[prost(message, optional, tag = "4")]
     pub encryption_config: ::core::option::Option<RestoreDatabaseEncryptionConfig>,
     /// Required. The source from which to restore.
@@ -1824,8 +1745,8 @@ pub struct RestoreDatabaseEncryptionConfig {
     pub encryption_type: i32,
     /// Optional. The Cloud KMS key that will be used to encrypt/decrypt the
     /// restored database. This field should be set only when
-    /// [encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.encryption_type]
-    /// is `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
+    /// [encryption_type][google.spanner.admin.database.v1.RestoreDatabaseEncryptionConfig.
+    /// encryption_type] is `CUSTOMER_MANAGED_ENCRYPTION`. Values are of the form
     /// `projects/<project>/locations/<location>/keyRings/<key_ring>/cryptoKeys/<kms_key_name>`.
     #[prost(string, tag = "2")]
     pub kms_key_name: ::prost::alloc::string::String,
@@ -1852,17 +1773,7 @@ pub mod restore_database_encryption_config {
     /// Encryption types for the database to be restored.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum EncryptionType {
         /// Unspecified. Do not use.
@@ -1936,9 +1847,7 @@ pub struct RestoreDatabaseMetadata {
     /// [google.rpc.Status.code][google.rpc.Status.code] of 1, corresponding to
     /// `Code.CANCELLED`.
     #[prost(message, optional, tag = "5")]
-    pub cancel_time: ::core::option::Option<
-        super::super::super::super::protobuf::Timestamp,
-    >,
+    pub cancel_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// If exists, the name of the long-running operation that will be used to
     /// track the post-restore optimization process to optimize the performance of
     /// the restored database, and remove the dependency on the restore source.
@@ -1946,10 +1855,10 @@ pub struct RestoreDatabaseMetadata {
     /// `projects/<project>/instances/<instance>/databases/<database>/operations/<operation>`
     /// where the <database> is the name of database being created and restored to.
     /// The metadata type of the  long-running operation is
-    /// [OptimizeRestoredDatabaseMetadata][google.spanner.admin.database.v1.OptimizeRestoredDatabaseMetadata].
-    /// This long-running operation will be automatically created by the system
-    /// after the RestoreDatabase long-running operation completes successfully.
-    /// This operation will not be created if the restore was not successful.
+    /// [OptimizeRestoredDatabaseMetadata][google.spanner.admin.database.v1.
+    /// OptimizeRestoredDatabaseMetadata]. This long-running operation will be automatically
+    /// created by the system after the RestoreDatabase long-running operation completes
+    /// successfully. This operation will not be created if the restore was not successful.
     #[prost(string, tag = "6")]
     pub optimize_database_operation_name: ::prost::alloc::string::String,
     /// Information about the source used to restore the database, as specified by
@@ -2014,8 +1923,8 @@ pub struct ListDatabaseRolesRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.database.v1.ListDatabaseRolesResponse.next_page_token]
-    /// from a previous
+    /// [next_page_token][google.spanner.admin.database.v1.ListDatabaseRolesResponse.
+    /// next_page_token] from a previous
     /// [ListDatabaseRolesResponse][google.spanner.admin.database.v1.ListDatabaseRolesResponse].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
@@ -2034,6 +1943,69 @@ pub struct ListDatabaseRolesResponse {
     /// call to fetch more of the matching roles.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
+}
+/// The request for
+/// [AddSplitPoints][google.spanner.admin.database.v1.DatabaseAdmin.AddSplitPoints].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AddSplitPointsRequest {
+    /// Required. The database on whose tables/indexes split points are to be
+    /// added. Values are of the form
+    /// `projects/<project>/instances/<instance>/databases/<database>`.
+    #[prost(string, tag = "1")]
+    pub database: ::prost::alloc::string::String,
+    /// Required. The split points to add.
+    #[prost(message, repeated, tag = "2")]
+    pub split_points: ::prost::alloc::vec::Vec<SplitPoints>,
+    /// Optional. A user-supplied tag associated with the split points.
+    /// For example, "intital_data_load", "special_event_1".
+    /// Defaults to "CloudAddSplitPointsAPI" if not specified.
+    /// The length of the tag must not exceed 50 characters,else will be trimmed.
+    /// Only valid UTF8 characters are allowed.
+    #[prost(string, tag = "3")]
+    pub initiator: ::prost::alloc::string::String,
+}
+/// The response for
+/// [AddSplitPoints][google.spanner.admin.database.v1.DatabaseAdmin.AddSplitPoints].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct AddSplitPointsResponse {}
+/// The split points of a table/index.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SplitPoints {
+    /// The table to split.
+    #[prost(string, tag = "1")]
+    pub table: ::prost::alloc::string::String,
+    /// The index to split.
+    /// If specified, the `table` field must refer to the index's base table.
+    #[prost(string, tag = "2")]
+    pub index: ::prost::alloc::string::String,
+    /// Required. The list of split keys, i.e., the split boundaries.
+    #[prost(message, repeated, tag = "3")]
+    pub keys: ::prost::alloc::vec::Vec<split_points::Key>,
+    /// Optional. The expiration timestamp of the split points.
+    /// A timestamp in the past means immediate expiration.
+    /// The maximum value can be 30 days in the future.
+    /// Defaults to 10 days in the future if not specified.
+    #[prost(message, optional, tag = "5")]
+    pub expire_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
+}
+/// Nested message and enum types in `SplitPoints`.
+pub mod split_points {
+    /// A split key.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct Key {
+        /// Required. The column values making up the split key.
+        #[prost(message, optional, tag = "1")]
+        pub key_parts:
+            ::core::option::Option<super::super::super::super::super::protobuf::ListValue>,
+    }
 }
 /// Indicates the type of the restore source.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -2073,10 +2045,10 @@ pub mod database_admin_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Cloud Spanner Database Admin API
     ///
     /// The Cloud Spanner Database Admin API can be used to:
@@ -2101,7 +2073,7 @@ pub mod database_admin_client {
     }
     impl<T> DatabaseAdminClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -2122,14 +2094,13 @@ pub mod database_admin_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             DatabaseAdminClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2168,30 +2139,20 @@ pub mod database_admin_client {
         pub async fn list_databases(
             &mut self,
             request: impl tonic::IntoRequest<super::ListDatabasesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListDatabasesResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListDatabasesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/ListDatabases",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "ListDatabases",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "ListDatabases",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates a new Cloud Spanner database and starts to prepare it for serving.
@@ -2209,26 +2170,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/CreateDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "CreateDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "CreateDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the state of a Cloud Spanner database.
@@ -2236,26 +2189,18 @@ pub mod database_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatabaseRequest>,
         ) -> std::result::Result<tonic::Response<super::Database>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "GetDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "GetDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a Cloud Spanner database. The returned
@@ -2265,25 +2210,21 @@ pub mod database_admin_client {
         ///
         /// While the operation is pending:
         ///
-        ///   * The database's
-        ///     [reconciling][google.spanner.admin.database.v1.Database.reconciling]
+        ///   * The database's [reconciling][google.spanner.admin.database.v1.Database.reconciling]
         ///     field is set to true.
-        ///   * Cancelling the operation is best-effort. If the cancellation succeeds,
-        ///     the operation metadata's
+        ///   * Cancelling the operation is best-effort. If the cancellation succeeds, the operation
+        ///     metadata's
         ///     [cancel_time][google.spanner.admin.database.v1.UpdateDatabaseMetadata.cancel_time]
-        ///     is set, the updates are reverted, and the operation terminates with a
-        ///     `CANCELLED` status.
-        ///   * New UpdateDatabase requests will return a `FAILED_PRECONDITION` error
-        ///     until the pending operation is done (returns successfully or with
-        ///     error).
-        ///   * Reading the database via the API continues to give the pre-request
-        ///     values.
+        ///     is set, the updates are reverted, and the operation terminates with a `CANCELLED`
+        ///     status.
+        ///   * New UpdateDatabase requests will return a `FAILED_PRECONDITION` error until the
+        ///     pending operation is done (returns successfully or with error).
+        ///   * Reading the database via the API continues to give the pre-request values.
         ///
         /// Upon completion of the returned operation:
         ///
         ///   * The new values are in effect and readable via the API.
-        ///   * The database's
-        ///     [reconciling][google.spanner.admin.database.v1.Database.reconciling]
+        ///   * The database's [reconciling][google.spanner.admin.database.v1.Database.reconciling]
         ///     field becomes false.
         ///
         /// The returned [long-running operation][google.longrunning.Operation] will
@@ -2301,26 +2242,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/UpdateDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "UpdateDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "UpdateDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates the schema of a Cloud Spanner database by
@@ -2338,26 +2271,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/UpdateDatabaseDdl",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "UpdateDatabaseDdl",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "UpdateDatabaseDdl",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Drops (aka deletes) a Cloud Spanner database.
@@ -2372,26 +2297,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::protobuf::Empty>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/DropDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "DropDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "DropDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Returns the schema of a Cloud Spanner database as a list of formatted
@@ -2400,30 +2317,20 @@ pub mod database_admin_client {
         pub async fn get_database_ddl(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatabaseDdlRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::GetDatabaseDdlResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::GetDatabaseDdlResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/GetDatabaseDdl",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "GetDatabaseDdl",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "GetDatabaseDdl",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Sets the access control policy on a database or backup resource.
@@ -2442,26 +2349,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::iam::v1::Policy>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/SetIamPolicy",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "SetIamPolicy",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "SetIamPolicy",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the access control policy for a database or backup resource.
@@ -2481,26 +2380,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::iam::v1::Policy>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/GetIamPolicy",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "GetIamPolicy",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "GetIamPolicy",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Returns permissions that the caller has on the specified database or backup
@@ -2519,31 +2410,21 @@ pub mod database_admin_client {
                 super::super::super::super::super::iam::v1::TestIamPermissionsRequest,
             >,
         ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::super::super::iam::v1::TestIamPermissionsResponse,
-            >,
+            tonic::Response<super::super::super::super::super::iam::v1::TestIamPermissionsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/TestIamPermissions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "TestIamPermissions",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "TestIamPermissions",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Starts creating a new Cloud Spanner Backup.
@@ -2565,26 +2446,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/CreateBackup",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "CreateBackup",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "CreateBackup",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Starts copying a Cloud Spanner Backup.
@@ -2607,26 +2480,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/CopyBackup",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "CopyBackup",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "CopyBackup",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets metadata on a pending or completed
@@ -2635,26 +2500,18 @@ pub mod database_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetBackupRequest>,
         ) -> std::result::Result<tonic::Response<super::Backup>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/GetBackup",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "GetBackup",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "GetBackup",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a pending or completed
@@ -2663,26 +2520,18 @@ pub mod database_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateBackupRequest>,
         ) -> std::result::Result<tonic::Response<super::Backup>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/UpdateBackup",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "UpdateBackup",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "UpdateBackup",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a pending or completed
@@ -2694,26 +2543,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::protobuf::Empty>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/DeleteBackup",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "DeleteBackup",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "DeleteBackup",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists completed and pending backups.
@@ -2722,30 +2563,20 @@ pub mod database_admin_client {
         pub async fn list_backups(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBackupsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListBackupsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListBackupsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/ListBackups",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "ListBackups",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "ListBackups",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Create a new database by restoring from a completed backup. The new
@@ -2753,9 +2584,9 @@ pub mod database_admin_client {
         /// instance configuration as the instance containing
         /// the backup. The returned database [long-running
         /// operation][google.longrunning.Operation] has a name of the format
-        /// `projects/<project>/instances/<instance>/databases/<database>/operations/<operation_id>`,
-        /// and can be used to track the progress of the operation, and to cancel it.
-        /// The [metadata][google.longrunning.Operation.metadata] field type is
+        /// `projects/<project>/instances/<instance>/databases/<database>/operations/
+        /// <operation_id>`, and can be used to track the progress of the operation, and to
+        /// cancel it. The [metadata][google.longrunning.Operation.metadata] field type is
         /// [RestoreDatabaseMetadata][google.spanner.admin.database.v1.RestoreDatabaseMetadata].
         /// The [response][google.longrunning.Operation.response] type
         /// is [Database][google.spanner.admin.database.v1.Database], if
@@ -2772,26 +2603,18 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/RestoreDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "RestoreDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "RestoreDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists database [longrunning-operations][google.longrunning.Operation].
@@ -2809,26 +2632,18 @@ pub mod database_admin_client {
             tonic::Response<super::ListDatabaseOperationsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/ListDatabaseOperations",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "ListDatabaseOperations",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "ListDatabaseOperations",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists the backup [long-running operations][google.longrunning.Operation] in
@@ -2844,60 +2659,60 @@ pub mod database_admin_client {
         pub async fn list_backup_operations(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBackupOperationsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListBackupOperationsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListBackupOperationsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/ListBackupOperations",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "ListBackupOperations",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "ListBackupOperations",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists Cloud Spanner database roles.
         pub async fn list_database_roles(
             &mut self,
             request: impl tonic::IntoRequest<super::ListDatabaseRolesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListDatabaseRolesResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListDatabaseRolesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/ListDatabaseRoles",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "ListDatabaseRoles",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "ListDatabaseRoles",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Adds split points to specified tables, indexes of a database.
+        pub async fn add_split_points(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AddSplitPointsRequest>,
+        ) -> std::result::Result<tonic::Response<super::AddSplitPointsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.spanner.admin.database.v1.DatabaseAdmin/AddSplitPoints",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "AddSplitPoints",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates a new backup schedule.
@@ -2905,26 +2720,18 @@ pub mod database_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateBackupScheduleRequest>,
         ) -> std::result::Result<tonic::Response<super::BackupSchedule>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/CreateBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "CreateBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "CreateBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets backup schedule for the input schedule name.
@@ -2932,26 +2739,18 @@ pub mod database_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetBackupScheduleRequest>,
         ) -> std::result::Result<tonic::Response<super::BackupSchedule>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/GetBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "GetBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "GetBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a backup schedule.
@@ -2959,26 +2758,18 @@ pub mod database_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateBackupScheduleRequest>,
         ) -> std::result::Result<tonic::Response<super::BackupSchedule>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/UpdateBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "UpdateBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "UpdateBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a backup schedule.
@@ -2989,56 +2780,38 @@ pub mod database_admin_client {
             tonic::Response<super::super::super::super::super::protobuf::Empty>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/DeleteBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "DeleteBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "DeleteBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists all the backup schedules for the database.
         pub async fn list_backup_schedules(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBackupSchedulesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListBackupSchedulesResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListBackupSchedulesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.database.v1.DatabaseAdmin/ListBackupSchedules",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.spanner.admin.database.v1.DatabaseAdmin",
-                        "ListBackupSchedules",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.admin.database.v1.DatabaseAdmin",
+                "ListBackupSchedules",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }

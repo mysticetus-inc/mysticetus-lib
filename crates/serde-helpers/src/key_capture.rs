@@ -2,9 +2,10 @@ use std::borrow::Cow;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-use crate::string_dst::StringDst;
 use serde::de::{self, Deserialize};
 use serde::ser::{self, Impossible, Serialize, Serializer};
+
+use crate::string_dst::StringDst;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct KeyCapture<D>(pub D);

@@ -474,7 +474,7 @@ pub(crate) mod de_impl {
     use std::marker::PhantomData;
 
     use serde::{Deserialize, de};
-    use serde_helpers::from_str_visitor::FromStrVisitor;
+    use serde_helpers::from_str::FromStrVisitor;
 
     use crate::collection::FeatureCollectionDeserializer;
     use crate::feature::FeatureDeserializer;

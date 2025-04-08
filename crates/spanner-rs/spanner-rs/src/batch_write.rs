@@ -1,7 +1,7 @@
 #![allow(unused)] // TODO
 
 use std::pin::Pin;
-use std::task::{ready, Context, Poll};
+use std::task::{Context, Poll, ready};
 
 use futures::Stream;
 use protos::spanner::batch_write_request::MutationGroup;

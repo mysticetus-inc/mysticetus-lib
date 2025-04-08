@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::fmt;
 
 use bytes::Bytes;
-use reqwest::header::InvalidHeaderValue;
 use reqwest::StatusCode;
+use reqwest::header::InvalidHeaderValue;
 use serde_json::Value;
 
 #[derive(Debug, thiserror::Error)]

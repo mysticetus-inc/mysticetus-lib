@@ -19,9 +19,7 @@ pub struct Condition {
     pub message: ::prost::alloc::string::String,
     /// Last time the condition transitioned from one status to another.
     #[prost(message, optional, tag = "4")]
-    pub last_transition_time: ::core::option::Option<
-        super::super::super::protobuf::Timestamp,
-    >,
+    pub last_transition_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// How to interpret failures of this condition, one of Error, Warning, Info
     #[prost(enumeration = "condition::Severity", tag = "5")]
     pub severity: i32,
@@ -36,17 +34,7 @@ pub mod condition {
     /// Represents the possible Condition states.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// The default value. This value is used if the state is omitted.
@@ -89,17 +77,7 @@ pub mod condition {
     /// Represents the severity of the condition failures.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Severity {
         /// Unspecified severity
@@ -138,17 +116,7 @@ pub mod condition {
     /// Reasons common to all types of conditions.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum CommonReason {
         /// Default value.
@@ -221,9 +189,7 @@ pub mod condition {
                 "CONTAINER_IMAGE_AUTHORIZATION_CHECK_FAILED" => {
                     Some(Self::ContainerImageAuthorizationCheckFailed)
                 }
-                "ENCRYPTION_KEY_PERMISSION_DENIED" => {
-                    Some(Self::EncryptionKeyPermissionDenied)
-                }
+                "ENCRYPTION_KEY_PERMISSION_DENIED" => Some(Self::EncryptionKeyPermissionDenied),
                 "ENCRYPTION_KEY_CHECK_FAILED" => Some(Self::EncryptionKeyCheckFailed),
                 "SECRETS_ACCESS_CHECK_FAILED" => Some(Self::SecretsAccessCheckFailed),
                 "WAITING_FOR_OPERATION" => Some(Self::WaitingForOperation),
@@ -237,17 +203,7 @@ pub mod condition {
     /// Reasons specific to Revision resource.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum RevisionReason {
         /// Default value.
@@ -316,9 +272,7 @@ pub mod condition {
                 "RETIRING" => Some(Self::Retiring),
                 "RECREATING" => Some(Self::Recreating),
                 "HEALTH_CHECK_CONTAINER_ERROR" => Some(Self::HealthCheckContainerError),
-                "CUSTOMIZED_PATH_RESPONSE_PENDING" => {
-                    Some(Self::CustomizedPathResponsePending)
-                }
+                "CUSTOMIZED_PATH_RESPONSE_PENDING" => Some(Self::CustomizedPathResponsePending),
                 "MIN_INSTANCES_NOT_PROVISIONED" => Some(Self::MinInstancesNotProvisioned),
                 "ACTIVE_REVISION_LIMIT_REACHED" => Some(Self::ActiveRevisionLimitReached),
                 "NO_DEPLOYMENT" => Some(Self::NoDeployment),
@@ -331,17 +285,7 @@ pub mod condition {
     /// Reasons specific to Execution resource.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum ExecutionReason {
         /// Default value.
@@ -377,9 +321,7 @@ pub mod condition {
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
                 "EXECUTION_REASON_UNDEFINED" => Some(Self::Undefined),
-                "JOB_STATUS_SERVICE_POLLING_ERROR" => {
-                    Some(Self::JobStatusServicePollingError)
-                }
+                "JOB_STATUS_SERVICE_POLLING_ERROR" => Some(Self::JobStatusServicePollingError),
                 "NON_ZERO_EXIT_CODE" => Some(Self::NonZeroExitCode),
                 "CANCELLED" => Some(Self::Cancelled),
                 "CANCELLING" => Some(Self::Cancelling),
@@ -466,6 +408,13 @@ pub struct Container {
     /// Names of the containers that must start before this container.
     #[prost(string, repeated, tag = "12")]
     pub depends_on: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Base image for this container. Only supported for services. If set, it
+    /// indicates that the service is enrolled into automatic base image update.
+    #[prost(string, tag = "13")]
+    pub base_image_uri: ::prost::alloc::string::String,
+    /// Output only. The build info of the container image.
+    #[prost(message, optional, tag = "15")]
+    pub build_info: ::core::option::Option<BuildInfo>,
 }
 /// ResourceRequirements describes the compute resource requirements.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -481,10 +430,8 @@ pub struct ResourceRequirements {
     ///    * For supported 'memory' values and syntax, go to
     ///   <https://cloud.google.com/run/docs/configuring/memory-limits>
     #[prost(map = "string, string", tag = "1")]
-    pub limits: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub limits:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Determines whether CPU is only allocated during requests (true by default).
     /// However, if ResourceRequirements is set, the caller must explicitly
     /// set this field to true to preserve the default behavior.
@@ -645,10 +592,9 @@ pub struct SecretVolumeSource {
     /// * Internally, a umask of 0222 will be applied to any non-zero value.
     /// * This is an integer representation of the mode bits. So, the octal
     /// integer value should look exactly as the chmod numeric notation with a
-    /// leading zero. Some examples: for chmod 777 (a=rwx), set to 0777 (octal) or
-    /// 511 (base-10). For chmod 640 (u=rw,g=r), set to 0640 (octal) or
-    /// 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or 493
-    /// (base-10).
+    /// leading zero. Some examples: for chmod 640 (u=rw,g=r), set to 0640 (octal)
+    /// or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or
+    /// 493 (base-10).
     /// * This might be in conflict with other options that affect the
     /// file mode, like fsGroup, and the result can be other mode bits set.
     ///
@@ -680,10 +626,9 @@ pub struct VersionToPath {
     /// * Internally, a umask of 0222 will be applied to any non-zero value.
     /// * This is an integer representation of the mode bits. So, the octal
     /// integer value should look exactly as the chmod numeric notation with a
-    /// leading zero. Some examples: for chmod 777 (a=rwx), set to 0777 (octal) or
-    /// 511 (base-10). For chmod 640 (u=rw,g=r), set to 0640 (octal) or
-    /// 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or 493
-    /// (base-10).
+    /// leading zero. Some examples: for chmod 640 (u=rw,g=r), set to 0640 (octal)
+    /// or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or
+    /// 493 (base-10).
     /// * This might be in conflict with other options that affect the
     /// file mode, like fsGroup, and the result can be other mode bits set.
     #[prost(int32, tag = "3")]
@@ -734,17 +679,7 @@ pub mod empty_dir_volume_source {
     /// The different types of medium supported for EmptyDir.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Medium {
         /// When not specified, falls back to the default implementation which
@@ -913,6 +848,19 @@ pub struct GrpcAction {
     #[prost(string, tag = "2")]
     pub service: ::prost::alloc::string::String,
 }
+/// Build information of the image.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BuildInfo {
+    /// Output only. Entry point of the function when the image is a Cloud Run
+    /// function.
+    #[prost(string, tag = "1")]
+    pub function_target: ::prost::alloc::string::String,
+    /// Output only. Source code location of the image.
+    #[prost(string, tag = "2")]
+    pub source_location: ::prost::alloc::string::String,
+}
 /// VPC Access settings. For more information on sending traffic to a VPC
 /// network, visit <https://cloud.google.com/run/docs/configuring/connecting-vpc.>
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -963,17 +911,7 @@ pub mod vpc_access {
     /// Egress options for VPC access.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum VpcEgress {
         /// Unspecified
@@ -1078,6 +1016,11 @@ pub struct ServiceScaling {
     /// Optional. The scaling mode for the service.
     #[prost(enumeration = "service_scaling::ScalingMode", tag = "3")]
     pub scaling_mode: i32,
+    /// Optional. total instance count for the service in manual scaling mode. This
+    /// number of instances is divided among all revisions with specified traffic
+    /// based on the percent of traffic they are receiving.
+    #[prost(int32, optional, tag = "6")]
+    pub manual_instance_count: ::core::option::Option<i32>,
 }
 /// Nested message and enum types in `ServiceScaling`.
 pub mod service_scaling {
@@ -1085,17 +1028,7 @@ pub mod service_scaling {
     /// AUTOMATIC.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum ScalingMode {
         /// Unspecified.
@@ -1136,6 +1069,53 @@ pub struct NodeSelector {
     /// Required. GPU accelerator type to attach to an instance.
     #[prost(string, tag = "1")]
     pub accelerator: ::prost::alloc::string::String,
+}
+/// Describes the Build step of the function that builds a container from the
+/// given source.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BuildConfig {
+    /// Output only. The Cloud Build name of the latest successful deployment of
+    /// the function.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The Cloud Storage bucket URI where the function source code is located.
+    #[prost(string, tag = "2")]
+    pub source_location: ::prost::alloc::string::String,
+    /// Optional. The name of the function (as defined in source code) that will be
+    /// executed. Defaults to the resource name suffix, if not specified. For
+    /// backward compatibility, if function with given name is not found, then the
+    /// system will try to use function named "function".
+    #[prost(string, tag = "3")]
+    pub function_target: ::prost::alloc::string::String,
+    /// Optional. Artifact Registry URI to store the built image.
+    #[prost(string, tag = "4")]
+    pub image_uri: ::prost::alloc::string::String,
+    /// Optional. The base image used to build the function.
+    #[prost(string, tag = "5")]
+    pub base_image: ::prost::alloc::string::String,
+    /// Optional. Sets whether the function will receive automatic base image
+    /// updates.
+    #[prost(bool, tag = "6")]
+    pub enable_automatic_updates: bool,
+    /// Optional. Name of the Cloud Build Custom Worker Pool that should be used to
+    /// build the Cloud Run function. The format of this field is
+    /// `projects/{project}/locations/{region}/workerPools/{workerPool}` where
+    /// `{project}` and `{region}` are the project id and region respectively where
+    /// the worker pool is defined and `{workerPool}` is the short name of the
+    /// worker pool.
+    #[prost(string, tag = "7")]
+    pub worker_pool: ::prost::alloc::string::String,
+    /// Optional. User-provided build-time environment variables for the function
+    #[prost(map = "string, string", tag = "8")]
+    pub environment_variables:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    /// Optional. Service account to be used for building the container. The format
+    /// of this field is
+    /// `projects/{projectId}/serviceAccounts/{serviceAccountEmail}`.
+    #[prost(string, tag = "9")]
+    pub service_account: ::prost::alloc::string::String,
 }
 /// Allowed ingress traffic for the Container.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -1272,10 +1252,8 @@ pub struct RevisionTemplate {
     /// namespaces, and they will be rejected. All system labels in v1 now have a
     /// corresponding field in v2 RevisionTemplate.
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Optional. Unstructured key value map that may be set by external tools to
     /// store and arbitrary metadata. They are not queryable and should be
     /// preserved when modifying objects.
@@ -1288,10 +1266,8 @@ pub struct RevisionTemplate {
     /// <p>This field follows Kubernetes annotations' namespacing, limits, and
     /// rules.
     #[prost(map = "string, string", tag = "3")]
-    pub annotations: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub annotations:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Optional. Scaling settings for this Revision.
     #[prost(message, optional, tag = "4")]
     pub scaling: ::core::option::Option<RevisionScaling>,
@@ -1325,13 +1301,21 @@ pub struct RevisionTemplate {
     #[prost(string, tag = "14")]
     pub encryption_key: ::prost::alloc::string::String,
     /// Optional. Sets the maximum number of requests that each serving instance
-    /// can receive. If not specified or 0, defaults to 80 when requested
-    /// `CPU >= 1` and defaults to 1 when requested `CPU < 1`.
+    /// can receive. If not specified or 0, concurrency defaults to 80 when
+    /// requested `CPU >= 1` and defaults to 1 when requested `CPU < 1`.
     #[prost(int32, tag = "15")]
     pub max_instance_request_concurrency: i32,
     /// Optional. Enables service mesh connectivity.
     #[prost(message, optional, tag = "16")]
     pub service_mesh: ::core::option::Option<ServiceMesh>,
+    /// Optional. The action to take if the encryption key is revoked.
+    #[prost(enumeration = "EncryptionKeyRevocationAction", tag = "17")]
+    pub encryption_key_revocation_action: i32,
+    /// Optional. If encryption_key_revocation_action is SHUTDOWN, the duration
+    /// before shutting down all instances. The minimum increment is 1 hour.
+    #[prost(message, optional, tag = "18")]
+    pub encryption_key_shutdown_duration:
+        ::core::option::Option<super::super::super::protobuf::Duration>,
     /// Optional. Enable session affinity.
     #[prost(bool, tag = "19")]
     pub session_affinity: bool,
@@ -1573,10 +1557,8 @@ pub struct Service {
     /// namespaces, and they will be rejected. All system labels in v1 now have a
     /// corresponding field in v2 Service.
     #[prost(map = "string, string", tag = "5")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Optional. Unstructured key value map that may be set by external tools to
     /// store and arbitrary metadata. They are not queryable and should be
     /// preserved when modifying objects.
@@ -1589,10 +1571,8 @@ pub struct Service {
     /// <p>This field follows Kubernetes
     /// annotations' namespacing, limits, and rules.
     #[prost(map = "string, string", tag = "6")]
-    pub annotations: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub annotations:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Output only. The creation time.
     #[prost(message, optional, tag = "7")]
     pub create_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
@@ -1604,7 +1584,7 @@ pub struct Service {
     #[prost(message, optional, tag = "9")]
     pub delete_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// Output only. For a deleted resource, the time after which it will be
-    /// permamently deleted.
+    /// permanently deleted.
     #[prost(message, optional, tag = "10")]
     pub expire_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// Output only. Email address of the authenticated creator.
@@ -1631,7 +1611,7 @@ pub struct Service {
     /// Set the launch stage to a preview stage on input to allow use of preview
     /// features in that stage. On read (or output), describes whether the resource
     /// uses preview features.
-    /// <p>
+    ///
     /// For example, if ALPHA is provided as input, but only BETA and GA-level
     /// features are used, this field will be BETA on output.
     #[prost(enumeration = "super::super::super::api::LaunchStage", tag = "16")]
@@ -1709,6 +1689,9 @@ pub struct Service {
     /// Output only. Reserved for future use.
     #[prost(bool, tag = "38")]
     pub satisfies_pzs: bool,
+    /// Optional. Configuration for building a Cloud Run function.
+    #[prost(message, optional, tag = "41")]
+    pub build_config: ::core::option::Option<BuildConfig>,
     /// Output only. Returns true if the Service is currently being acted upon by
     /// the system to bring it into the desired state.
     ///
@@ -1716,7 +1699,7 @@ pub struct Service {
     /// will asynchronously perform all necessary steps to bring the Service to the
     /// desired serving state. This process is called reconciliation.
     /// While reconciliation is in process, `observed_generation`,
-    /// `latest_ready_revison`, `traffic_statuses`, and `uri` will have transient
+    /// `latest_ready_revision`, `traffic_statuses`, and `uri` will have transient
     /// values that might mismatch the intended state: Once reconciliation is over
     /// (and this field is false), there are two possible outcomes: reconciliation
     /// succeeded and the serving state matches the Service, or there was an error,
@@ -1745,10 +1728,10 @@ pub mod services_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Cloud Run Service Control Plane API
     #[derive(Debug, Clone)]
     pub struct ServicesClient<T> {
@@ -1767,7 +1750,7 @@ pub mod services_client {
     }
     impl<T> ServicesClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -1788,14 +1771,13 @@ pub mod services_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             ServicesClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -1838,23 +1820,17 @@ pub mod services_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Services/CreateService",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/CreateService");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.cloud.run.v2.Services", "CreateService"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "CreateService",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets information about a Service.
@@ -1862,46 +1838,36 @@ pub mod services_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetServiceRequest>,
         ) -> std::result::Result<tonic::Response<super::Service>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Services/GetService",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/GetService");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.run.v2.Services", "GetService"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "GetService",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists Services. Results are sorted by creation time, descending.
         pub async fn list_services(
             &mut self,
             request: impl tonic::IntoRequest<super::ListServicesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListServicesResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListServicesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Services/ListServices",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/ListServices");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.run.v2.Services", "ListServices"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "ListServices",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a Service.
@@ -1912,23 +1878,17 @@ pub mod services_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Services/UpdateService",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/UpdateService");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.cloud.run.v2.Services", "UpdateService"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "UpdateService",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a Service.
@@ -1941,79 +1901,61 @@ pub mod services_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Services/DeleteService",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/DeleteService");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.cloud.run.v2.Services", "DeleteService"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "DeleteService",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the IAM Access Control policy currently in effect for the given
         /// Cloud Run Service. This result does not include any inherited policies.
         pub async fn get_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::super::iam::v1::GetIamPolicyRequest,
-            >,
+            request: impl tonic::IntoRequest<super::super::super::super::iam::v1::GetIamPolicyRequest>,
         ) -> std::result::Result<
             tonic::Response<super::super::super::super::iam::v1::Policy>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Services/GetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/GetIamPolicy");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.run.v2.Services", "GetIamPolicy"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "GetIamPolicy",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Sets the IAM Access control policy for the specified Service. Overwrites
         /// any existing policy.
         pub async fn set_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::super::iam::v1::SetIamPolicyRequest,
-            >,
+            request: impl tonic::IntoRequest<super::super::super::super::iam::v1::SetIamPolicyRequest>,
         ) -> std::result::Result<
             tonic::Response<super::super::super::super::iam::v1::Policy>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Services/SetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/SetIamPolicy");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.run.v2.Services", "SetIamPolicy"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "SetIamPolicy",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Returns permissions that a caller has on the specified Project.
@@ -2025,28 +1967,21 @@ pub mod services_client {
                 super::super::super::super::iam::v1::TestIamPermissionsRequest,
             >,
         ) -> std::result::Result<
-            tonic::Response<
-                super::super::super::super::iam::v1::TestIamPermissionsResponse,
-            >,
+            tonic::Response<super::super::super::super::iam::v1::TestIamPermissionsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.run.v2.Services/TestIamPermissions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.cloud.run.v2.Services", "TestIamPermissions"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Services",
+                "TestIamPermissions",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -2153,19 +2088,15 @@ pub struct Revision {
     /// <https://cloud.google.com/resource-manager/docs/creating-managing-labels> or
     /// <https://cloud.google.com/run/docs/configuring/labels.>
     #[prost(map = "string, string", tag = "4")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Output only. Unstructured key value map that may
     /// be set by external tools to store and arbitrary metadata.
     /// They are not queryable and should be preserved
     /// when modifying objects.
     #[prost(map = "string, string", tag = "5")]
-    pub annotations: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub annotations:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Output only. The creation time.
     #[prost(message, optional, tag = "6")]
     pub create_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
@@ -2185,7 +2116,8 @@ pub struct Revision {
     /// [Google Cloud Platform Launch
     /// Stages](<https://cloud.google.com/terms/launch-stages>). Cloud Run supports
     /// `ALPHA`, `BETA`, and `GA`.
-    /// <p>Note that this value might not be what was used
+    ///
+    /// Note that this value might not be what was used
     /// as input. For example, if ALPHA was provided as input in the parent
     /// resource, but only BETA and GA-level features are were, this field will be
     /// BETA.
@@ -2236,9 +2168,8 @@ pub struct Revision {
     /// If encryption_key_revocation_action is SHUTDOWN, the duration before
     /// shutting down all instances. The minimum increment is 1 hour.
     #[prost(message, optional, tag = "24")]
-    pub encryption_key_shutdown_duration: ::core::option::Option<
-        super::super::super::protobuf::Duration,
-    >,
+    pub encryption_key_shutdown_duration:
+        ::core::option::Option<super::super::super::protobuf::Duration>,
     /// Output only. Indicates whether the resource's reconciliation is still in
     /// progress. See comments in `Service.reconciling` for additional information
     /// on reconciliation process in Cloud Run.
@@ -2281,10 +2212,10 @@ pub mod revisions_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Cloud Run Revision Control Plane API.
     #[derive(Debug, Clone)]
     pub struct RevisionsClient<T> {
@@ -2303,7 +2234,7 @@ pub mod revisions_client {
     }
     impl<T> RevisionsClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -2324,14 +2255,13 @@ pub mod revisions_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             RevisionsClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2371,21 +2301,17 @@ pub mod revisions_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetRevisionRequest>,
         ) -> std::result::Result<tonic::Response<super::Revision>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.cloud.run.v2.Revisions/GetRevision",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Revisions/GetRevision");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.cloud.run.v2.Revisions", "GetRevision"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Revisions",
+                "GetRevision",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists Revisions from a given Service, or from a given location.  Results
@@ -2393,27 +2319,20 @@ pub mod revisions_client {
         pub async fn list_revisions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListRevisionsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListRevisionsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListRevisionsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.run.v2.Revisions/ListRevisions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.cloud.run.v2.Revisions", "ListRevisions"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Revisions",
+                "ListRevisions",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a Revision.
@@ -2424,23 +2343,18 @@ pub mod revisions_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.run.v2.Revisions/DeleteRevision",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.cloud.run.v2.Revisions", "DeleteRevision"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.cloud.run.v2.Revisions",
+                "DeleteRevision",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }

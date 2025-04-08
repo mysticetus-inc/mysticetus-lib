@@ -15,7 +15,7 @@ use bytes::Bytes;
 use gcp_auth_channel::AuthChannel;
 use protos::spanner::transaction_options::read_only::TimestampBound;
 use protos::spanner::transaction_options::read_write::ReadLockMode;
-use protos::spanner::transaction_options::{Mode, ReadOnly, ReadWrite};
+use protos::spanner::transaction_options::{IsolationLevel, Mode, ReadOnly, ReadWrite};
 use protos::spanner::{
     self, BeginTransactionRequest, CommitRequest, CommitResponse, ExecuteSqlRequest,
     PartialResultSet, ReadRequest, ResultSet, TransactionOptions, TransactionSelector,
@@ -38,6 +38,7 @@ const ALL_KEY_SET: spanner::KeySet = spanner::KeySet {
 
 /// Default set of options for a read write transaction.
 const DEFAULT_READ_WRITE: TransactionOptions = TransactionOptions {
+    isolation_level: IsolationLevel::Unspecified as i32,
     exclude_txn_from_change_streams: false,
     mode: Some(Mode::ReadWrite(ReadWrite {
         multiplexed_session_previous_transaction_id: Bytes::new(),
@@ -48,6 +49,7 @@ const DEFAULT_READ_WRITE: TransactionOptions = TransactionOptions {
 /// Default set of options for a read only/snapshot transaction.
 const DEFAULT_READ_ONLY: TransactionOptions = TransactionOptions {
     exclude_txn_from_change_streams: false,
+    isolation_level: IsolationLevel::Unspecified as i32,
     mode: Some(Mode::ReadOnly(ReadOnly {
         return_read_timestamp: true,
         timestamp_bound: Some(TimestampBound::Strong(true)),
@@ -133,6 +135,7 @@ fn build_sql_request(
         query_mode: execute_sql_request::QueryMode::Profile as i32,
         seqno: 0,
         query_options: None,
+        last_statement: false,
     }
 }
 

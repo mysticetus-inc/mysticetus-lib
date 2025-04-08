@@ -11,32 +11,26 @@
 ///
 /// Cloud Spanner supports three transaction modes:
 ///
-///    1. Locking read-write. This type of transaction is the only way
-///       to write data into Cloud Spanner. These transactions rely on
-///       pessimistic locking and, if necessary, two-phase commit.
-///       Locking read-write transactions may abort, requiring the
-///       application to retry.
+///    1. Locking read-write. This type of transaction is the only way to write data into Cloud
+///       Spanner. These transactions rely on pessimistic locking and, if necessary, two-phase
+///       commit. Locking read-write transactions may abort, requiring the application to retry.
 ///
-///    2. Snapshot read-only. Snapshot read-only transactions provide guaranteed
-///       consistency across several reads, but do not allow
-///       writes. Snapshot read-only transactions can be configured to read at
-///       timestamps in the past, or configured to perform a strong read
-///       (where Spanner will select a timestamp such that the read is
-///       guaranteed to see the effects of all transactions that have committed
-///       before the start of the read). Snapshot read-only transactions do not
-///       need to be committed.
+///    2. Snapshot read-only. Snapshot read-only transactions provide guaranteed consistency across
+///       several reads, but do not allow writes. Snapshot read-only transactions can be configured
+///       to read at timestamps in the past, or configured to perform a strong read (where Spanner
+///       will select a timestamp such that the read is guaranteed to see the effects of all
+///       transactions that have committed before the start of the read). Snapshot read-only
+///       transactions do not need to be committed.
 ///
 ///       Queries on change streams must be performed with the snapshot read-only
 ///       transaction mode, specifying a strong read. Please see
 ///       [TransactionOptions.ReadOnly.strong][google.spanner.v1.TransactionOptions.ReadOnly.strong]
 ///       for more details.
 ///
-///    3. Partitioned DML. This type of transaction is used to execute
-///       a single Partitioned DML statement. Partitioned DML partitions
-///       the key space and runs the DML statement over each partition
-///       in parallel using separate, internal transactions that commit
-///       independently. Partitioned DML transactions do not need to be
-///       committed.
+///    3. Partitioned DML. This type of transaction is used to execute a single Partitioned DML
+///       statement. Partitioned DML partitions the key space and runs the DML statement over each
+///       partition in parallel using separate, internal transactions that commit independently.
+///       Partitioned DML transactions do not need to be committed.
 ///
 /// For transactions that only read, snapshot read-only transactions
 /// provide simpler semantics and are almost always faster. In
@@ -188,9 +182,10 @@
 /// boundedly stale reads usually return fresher results.
 ///
 /// See
-/// [TransactionOptions.ReadOnly.read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.read_timestamp]
-/// and
-/// [TransactionOptions.ReadOnly.exact_staleness][google.spanner.v1.TransactionOptions.ReadOnly.exact_staleness].
+/// [TransactionOptions.ReadOnly.read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.
+/// read_timestamp] and
+/// [TransactionOptions.ReadOnly.exact_staleness][google.spanner.v1.TransactionOptions.ReadOnly.
+/// exact_staleness].
 ///
 /// Bounded staleness:
 ///
@@ -220,9 +215,10 @@
 /// read-only transactions.
 ///
 /// See
-/// [TransactionOptions.ReadOnly.max_staleness][google.spanner.v1.TransactionOptions.ReadOnly.max_staleness]
-/// and
-/// [TransactionOptions.ReadOnly.min_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.min_read_timestamp].
+/// [TransactionOptions.ReadOnly.max_staleness][google.spanner.v1.TransactionOptions.ReadOnly.
+/// max_staleness] and
+/// [TransactionOptions.ReadOnly.min_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.
+/// min_read_timestamp].
 ///
 /// Old read timestamps and garbage collection:
 ///
@@ -287,37 +283,32 @@
 /// That said, Partitioned DML is not a drop-in replacement for standard DML used
 /// in ReadWrite transactions.
 ///
-///   - The DML statement must be fully-partitionable. Specifically, the statement
-///     must be expressible as the union of many statements which each access only
-///     a single row of the table.
+///   - The DML statement must be fully-partitionable. Specifically, the statement must be
+///     expressible as the union of many statements which each access only a single row of the
+///     table.
 ///
-///   - The statement is not applied atomically to all rows of the table. Rather,
-///     the statement is applied atomically to partitions of the table, in
-///     independent transactions. Secondary index rows are updated atomically
-///     with the base table rows.
+///   - The statement is not applied atomically to all rows of the table. Rather, the statement is
+///     applied atomically to partitions of the table, in independent transactions. Secondary index
+///     rows are updated atomically with the base table rows.
 ///
-///   - Partitioned DML does not guarantee exactly-once execution semantics
-///     against a partition. The statement will be applied at least once to each
-///     partition. It is strongly recommended that the DML statement should be
-///     idempotent to avoid unexpected results. For instance, it is potentially
-///     dangerous to run a statement such as
-///     `UPDATE table SET column = column + 1` as it could be run multiple times
-///     against some rows.
+///   - Partitioned DML does not guarantee exactly-once execution semantics against a partition. The
+///     statement will be applied at least once to each partition. It is strongly recommended that
+///     the DML statement should be idempotent to avoid unexpected results. For instance, it is
+///     potentially dangerous to run a statement such as `UPDATE table SET column = column + 1` as
+///     it could be run multiple times against some rows.
 ///
-///   - The partitions are committed automatically - there is no support for
-///     Commit or Rollback. If the call returns an error, or if the client issuing
-///     the ExecuteSql call dies, it is possible that some rows had the statement
-///     executed on them successfully. It is also possible that statement was
-///     never executed against other rows.
+///   - The partitions are committed automatically - there is no support for Commit or Rollback. If
+///     the call returns an error, or if the client issuing the ExecuteSql call dies, it is possible
+///     that some rows had the statement executed on them successfully. It is also possible that
+///     statement was never executed against other rows.
 ///
-///   - Partitioned DML transactions may only contain the execution of a single
-///     DML statement via ExecuteSql or ExecuteStreamingSql.
+///   - Partitioned DML transactions may only contain the execution of a single DML statement via
+///     ExecuteSql or ExecuteStreamingSql.
 ///
-///   - If any error is encountered during the execution of the partitioned DML
-///     operation (for instance, a UNIQUE INDEX violation, division by zero, or a
-///     value that cannot be stored due to schema constraints), then the
-///     operation is stopped at that point and an error is returned. It is
-///     possible that at this point, some partitions have been committed (or even
+///   - If any error is encountered during the execution of the partitioned DML operation (for
+///     instance, a UNIQUE INDEX violation, division by zero, or a value that cannot be stored due
+///     to schema constraints), then the operation is stopped at that point and an error is
+///     returned. It is possible that at this point, some partitions have been committed (or even
 ///     committed multiple times), and other partitions have not been run at all.
 ///
 /// Given the above, Partitioned DML is good fit for large, database-wide,
@@ -343,6 +334,9 @@ pub struct TransactionOptions {
     /// `INVALID_ARGUMENT` error.
     #[prost(bool, tag = "5")]
     pub exclude_txn_from_change_streams: bool,
+    /// Isolation level for the transaction.
+    #[prost(enumeration = "transaction_options::IsolationLevel", tag = "6")]
+    pub isolation_level: i32,
     /// Required. The type of transaction.
     #[prost(oneof = "transaction_options::Mode", tags = "1, 3, 2")]
     pub mode: ::core::option::Option<transaction_options::Mode>,
@@ -373,31 +367,34 @@ pub mod transaction_options {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum ReadLockMode {
             /// Default value.
             ///
-            /// If the value is not specified, the pessimistic read lock is used.
+            /// * If isolation level is `REPEATABLE_READ`, then it is an error to specify
+            ///   `read_lock_mode`. Locking semantics default to `OPTIMISTIC`. No validation checks
+            ///   are done for reads, except for:
+            ///      1. reads done as part of queries that use `SELECT FOR UPDATE`
+            ///      2. reads done as part of statements with a `LOCK_SCANNED_RANGES` hint
+            ///      3. reads done as part of DML statements
+            ///    to validate that the data that was served at the snapshot time is
+            ///    unchanged at commit time.
+            /// * At all other isolation levels, if `read_lock_mode` is the default value, then
+            ///   pessimistic read lock is used.
             Unspecified = 0,
             /// Pessimistic lock mode.
             ///
             /// Read locks are acquired immediately on read.
+            /// Semantics described only applies to `SERIALIZABLE` isolation.
             Pessimistic = 1,
             /// Optimistic lock mode.
             ///
             /// Locks for reads within the transaction are not acquired on read.
             /// Instead the locks are acquired on a commit to validate that
             /// read/queried data has not changed since the transaction started.
+            /// Semantics described only applies to `SERIALIZABLE` isolation.
             Optimistic = 2,
         }
         impl ReadLockMode {
@@ -509,6 +506,61 @@ pub mod transaction_options {
             ExactStaleness(super::super::super::super::protobuf::Duration),
         }
     }
+    /// `IsolationLevel` is used when setting `isolation_level` for a transaction.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum IsolationLevel {
+        /// Default value.
+        ///
+        /// If the value is not specified, the `SERIALIZABLE` isolation level is
+        /// used.
+        Unspecified = 0,
+        /// All transactions appear as if they executed in a serial order, even if
+        /// some of the reads, writes, and other operations of distinct transactions
+        /// actually occurred in parallel. Spanner assigns commit timestamps that
+        /// reflect the order of committed transactions to implement this property.
+        /// Spanner offers a stronger guarantee than serializability called external
+        /// consistency. For further details, please refer to
+        /// <https://cloud.google.com/spanner/docs/true-time-external-consistency#serializability.>
+        Serializable = 1,
+        /// All reads performed during the transaction observe a consistent snapshot
+        /// of the database, and the transaction will only successfully commit in the
+        /// absence of conflicts between its updates and any concurrent updates that
+        /// have occurred since that snapshot. Consequently, in contrast to
+        /// `SERIALIZABLE` transactions, only write-write conflicts are detected in
+        /// snapshot transactions.
+        ///
+        /// This isolation level does not support Read-only and Partitioned DML
+        /// transactions.
+        ///
+        /// When `REPEATABLE_READ` is specified on a read-write transaction, the
+        /// locking semantics default to `OPTIMISTIC`.
+        RepeatableRead = 2,
+    }
+    impl IsolationLevel {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "ISOLATION_LEVEL_UNSPECIFIED",
+                Self::Serializable => "SERIALIZABLE",
+                Self::RepeatableRead => "REPEATABLE_READ",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "ISOLATION_LEVEL_UNSPECIFIED" => Some(Self::Unspecified),
+                "SERIALIZABLE" => Some(Self::Serializable),
+                "REPEATABLE_READ" => Some(Self::RepeatableRead),
+                _ => None,
+            }
+        }
+    }
     /// Required. The type of transaction.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -554,7 +606,8 @@ pub struct Transaction {
     pub id: ::prost::bytes::Bytes,
     /// For snapshot read-only transactions, the read timestamp chosen
     /// for the transaction. Not returned by default: see
-    /// [TransactionOptions.ReadOnly.return_read_timestamp][google.spanner.v1.TransactionOptions.ReadOnly.return_read_timestamp].
+    /// [TransactionOptions.ReadOnly.return_read_timestamp][google.spanner.v1.TransactionOptions.
+    /// ReadOnly.return_read_timestamp].
     ///
     /// A timestamp in RFC3339 UTC \"Zulu\" format, accurate to nanoseconds.
     /// Example: `"2014-10-02T15:01:23.045123456Z"`.
@@ -644,9 +697,7 @@ pub struct CommitResponse {
     /// Clients should examine and retry the commit if any of the following
     /// reasons are populated.
     #[prost(oneof = "commit_response::MultiplexedSessionRetry", tags = "4")]
-    pub multiplexed_session_retry: ::core::option::Option<
-        commit_response::MultiplexedSessionRetry,
-    >,
+    pub multiplexed_session_retry: ::core::option::Option<commit_response::MultiplexedSessionRetry>,
 }
 /// Nested message and enum types in `CommitResponse`.
 pub mod commit_response {
@@ -847,8 +898,10 @@ pub struct Mutation {
 }
 /// Nested message and enum types in `Mutation`.
 pub mod mutation {
-    /// Arguments to [insert][google.spanner.v1.Mutation.insert], [update][google.spanner.v1.Mutation.update], [insert_or_update][google.spanner.v1.Mutation.insert_or_update], and
-    /// [replace][google.spanner.v1.Mutation.replace] operations.
+    /// Arguments to [insert][google.spanner.v1.Mutation.insert],
+    /// [update][google.spanner.v1.Mutation.update],
+    /// [insert_or_update][google.spanner.v1.Mutation.insert_or_update], and [replace][google.
+    /// spanner.v1.Mutation.replace] operations.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
@@ -856,7 +909,8 @@ pub mod mutation {
         /// Required. The table whose rows will be written.
         #[prost(string, tag = "1")]
         pub table: ::prost::alloc::string::String,
-        /// The names of the columns in [table][google.spanner.v1.Mutation.Write.table] to be written.
+        /// The names of the columns in [table][google.spanner.v1.Mutation.Write.table] to be
+        /// written.
         ///
         /// The list of columns must contain enough columns to allow
         /// Cloud Spanner to derive values for all primary key columns in the
@@ -866,11 +920,12 @@ pub mod mutation {
         /// The values to be written. `values` can contain more than one
         /// list of values. If it does, then multiple rows are written, one
         /// for each entry in `values`. Each list in `values` must have
-        /// exactly as many entries as there are entries in [columns][google.spanner.v1.Mutation.Write.columns]
-        /// above. Sending multiple lists is equivalent to sending multiple
-        /// `Mutation`s, each containing one `values` entry and repeating
-        /// [table][google.spanner.v1.Mutation.Write.table] and [columns][google.spanner.v1.Mutation.Write.columns]. Individual values in each list are
-        /// encoded as described [here][google.spanner.v1.TypeCode].
+        /// exactly as many entries as there are entries in
+        /// [columns][google.spanner.v1.Mutation.Write.columns] above. Sending multiple
+        /// lists is equivalent to sending multiple `Mutation`s, each containing one
+        /// `values` entry and repeating [table][google.spanner.v1.Mutation.Write.table]
+        /// and [columns][google.spanner.v1.Mutation.Write.columns]. Individual values in each list
+        /// are encoded as described [here][google.spanner.v1.TypeCode].
         #[prost(message, repeated, tag = "3")]
         pub values: ::prost::alloc::vec::Vec<super::super::super::protobuf::ListValue>,
     }
@@ -882,12 +937,12 @@ pub mod mutation {
         /// Required. The table whose rows will be deleted.
         #[prost(string, tag = "1")]
         pub table: ::prost::alloc::string::String,
-        /// Required. The primary keys of the rows within [table][google.spanner.v1.Mutation.Delete.table] to delete.  The
-        /// primary keys must be specified in the order in which they appear in the
-        /// `PRIMARY KEY()` clause of the table's equivalent DDL statement (the DDL
-        /// statement used to create the table).
-        /// Delete is idempotent. The transaction will succeed even if some or all
-        /// rows do not exist.
+        /// Required. The primary keys of the rows within
+        /// [table][google.spanner.v1.Mutation.Delete.table] to delete.  The primary keys
+        /// must be specified in the order in which they appear in the `PRIMARY KEY()`
+        /// clause of the table's equivalent DDL statement (the DDL statement used to
+        /// create the table). Delete is idempotent. The transaction will succeed even if
+        /// some or all rows do not exist.
         #[prost(message, optional, tag = "2")]
         pub key_set: ::core::option::Option<super::KeySet>,
     }
@@ -904,19 +959,20 @@ pub mod mutation {
         /// already exist, the transaction fails with error `NOT_FOUND`.
         #[prost(message, tag = "2")]
         Update(Write),
-        /// Like [insert][google.spanner.v1.Mutation.insert], except that if the row already exists, then
-        /// its column values are overwritten with the ones provided. Any
+        /// Like [insert][google.spanner.v1.Mutation.insert], except that if the row already exists,
+        /// then its column values are overwritten with the ones provided. Any
         /// column values not explicitly written are preserved.
         ///
-        /// When using [insert_or_update][google.spanner.v1.Mutation.insert_or_update], just as when using [insert][google.spanner.v1.Mutation.insert], all `NOT
-        /// NULL` columns in the table must be given a value. This holds true
-        /// even when the row already exists and will therefore actually be updated.
+        /// When using [insert_or_update][google.spanner.v1.Mutation.insert_or_update], just as when
+        /// using [insert][google.spanner.v1.Mutation.insert], all `NOT NULL` columns in the
+        /// table must be given a value. This holds true even when the row already exists
+        /// and will therefore actually be updated.
         #[prost(message, tag = "3")]
         InsertOrUpdate(Write),
-        /// Like [insert][google.spanner.v1.Mutation.insert], except that if the row already exists, it is
-        /// deleted, and the column values provided are inserted
-        /// instead. Unlike [insert_or_update][google.spanner.v1.Mutation.insert_or_update], this means any values not
-        /// explicitly written become `NULL`.
+        /// Like [insert][google.spanner.v1.Mutation.insert], except that if the row already exists,
+        /// it is deleted, and the column values provided are inserted
+        /// instead. Unlike [insert_or_update][google.spanner.v1.Mutation.insert_or_update], this
+        /// means any values not explicitly written become `NULL`.
         ///
         /// In an interleaved table, if you create the child table with the
         /// `ON DELETE CASCADE` annotation, then replacing a parent row
@@ -930,7 +986,8 @@ pub mod mutation {
         Delete(Delete),
     }
 }
-/// Node information for nodes appearing in a [QueryPlan.plan_nodes][google.spanner.v1.QueryPlan.plan_nodes].
+/// Node information for nodes appearing in a
+/// [QueryPlan.plan_nodes][google.spanner.v1.QueryPlan.plan_nodes].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -940,8 +997,8 @@ pub struct PlanNode {
     pub index: i32,
     /// Used to determine the type of node. May be needed for visualizing
     /// different kinds of nodes differently. For example, If the node is a
-    /// [SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR] node, it will have a condensed representation
-    /// which can be used to directly embed a description of the node in its
+    /// [SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR] node, it will have a condensed
+    /// representation which can be used to directly embed a description of the node in its
     /// parent.
     #[prost(enumeration = "plan_node::Kind", tag = "2")]
     pub kind: i32,
@@ -988,9 +1045,9 @@ pub mod plan_node {
         /// with the output variable.
         #[prost(string, tag = "2")]
         pub r#type: ::prost::alloc::string::String,
-        /// Only present if the child node is [SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR] and corresponds
-        /// to an output variable of the parent node. The field carries the name of
-        /// the output variable.
+        /// Only present if the child node is [SCALAR][google.spanner.v1.PlanNode.Kind.SCALAR] and
+        /// corresponds to an output variable of the parent node. The field carries the
+        /// name of the output variable.
         /// For example, a `TableScan` operator that reads rows from a table will
         /// have child links to the `SCALAR` nodes representing the output variables
         /// created for each column that is read by the operator. The corresponding
@@ -1016,21 +1073,11 @@ pub mod plan_node {
         #[prost(map = "string, int32", tag = "2")]
         pub subqueries: ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     }
-    /// The kind of [PlanNode][google.spanner.v1.PlanNode]. Distinguishes between the two different kinds of
-    /// nodes that can appear in a query plan.
+    /// The kind of [PlanNode][google.spanner.v1.PlanNode]. Distinguishes between the two different
+    /// kinds of nodes that can appear in a query plan.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Kind {
         /// Not specified.
@@ -1074,8 +1121,8 @@ pub mod plan_node {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryPlan {
     /// The nodes in the query plan. Plan nodes are returned in pre-order starting
-    /// with the plan root. Each [PlanNode][google.spanner.v1.PlanNode]'s `id` corresponds to its index in
-    /// `plan_nodes`.
+    /// with the plan root. Each [PlanNode][google.spanner.v1.PlanNode]'s `id` corresponds to its
+    /// index in `plan_nodes`.
     #[prost(message, repeated, tag = "1")]
     pub plan_nodes: ::prost::alloc::vec::Vec<PlanNode>,
 }
@@ -1214,8 +1261,7 @@ pub enum TypeCode {
     ///
     /// - Whitespace characters are not preserved.
     /// - If a JSON object has duplicate keys, only the first key is preserved.
-    /// - Members of a JSON object are not guaranteed to have their order
-    ///    preserved.
+    /// - Members of a JSON object are not guaranteed to have their order preserved.
     /// - JSON array elements will have their order preserved.
     Json = 11,
     /// Encoded as a base64-encoded `string`, as described in RFC 4648,
@@ -1229,6 +1275,9 @@ pub enum TypeCode {
     /// For example, `P1Y2M3DT4H5M6.5S` represents time duration of 1 year, 2
     /// months, 3 days, 4 hours, 5 minutes, and 6.5 seconds.
     Interval = 16,
+    /// Encoded as `string`, in lower-case hexa-decimal format, as described
+    /// in RFC 9562, section 4.
+    Uuid = 17,
 }
 impl TypeCode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1253,6 +1302,7 @@ impl TypeCode {
             Self::Proto => "PROTO",
             Self::Enum => "ENUM",
             Self::Interval => "INTERVAL",
+            Self::Uuid => "UUID",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1274,6 +1324,7 @@ impl TypeCode {
             "PROTO" => Some(Self::Proto),
             "ENUM" => Some(Self::Enum),
             "INTERVAL" => Some(Self::Interval),
+            "UUID" => Some(Self::Uuid),
             _ => None,
         }
     }
@@ -1344,11 +1395,10 @@ pub struct ResultSet {
     #[prost(message, optional, tag = "1")]
     pub metadata: ::core::option::Option<ResultSetMetadata>,
     /// Each element in `rows` is a row whose format is defined by
-    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. The ith element
-    /// in each row matches the ith field in
-    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. Elements are
-    /// encoded based on type as described
-    /// [here][google.spanner.v1.TypeCode].
+    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. The ith
+    /// element in each row matches the ith field in
+    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. Elements
+    /// are encoded based on type as described [here][google.spanner.v1.TypeCode].
     #[prost(message, repeated, tag = "2")]
     pub rows: ::prost::alloc::vec::Vec<super::super::protobuf::ListValue>,
     /// Query plan and execution statistics for the SQL statement that
@@ -1356,18 +1406,16 @@ pub struct ResultSet {
     /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
     /// DML statements always produce stats containing the number of rows
     /// modified, unless executed using the
-    /// [ExecuteSqlRequest.QueryMode.PLAN][google.spanner.v1.ExecuteSqlRequest.QueryMode.PLAN] [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
-    /// Other fields may or may not be populated, based on the
+    /// [ExecuteSqlRequest.QueryMode.PLAN][google.spanner.v1.ExecuteSqlRequest.QueryMode.PLAN]
+    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
+    /// Other fields might or might not be populated, based on the
     /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
     #[prost(message, optional, tag = "3")]
     pub stats: ::core::option::Option<ResultSetStats>,
-    /// Optional. A precommit token will be included if the read-write transaction
-    /// is on a multiplexed session.
-    /// The precommit token with the highest sequence number from this transaction
-    /// attempt should be passed to the
+    /// Optional. A precommit token is included if the read-write transaction is on
+    /// a multiplexed session. Pass the precommit token with the highest sequence
+    /// number from this transaction attempt to the
     /// [Commit][google.spanner.v1.Spanner.Commit] request for this transaction.
-    /// This feature is not yet supported and will result in an UNIMPLEMENTED
-    /// error.
     #[prost(message, optional, tag = "5")]
     pub precommit_token: ::core::option::Option<MultiplexedSessionPrecommitToken>,
 }
@@ -1391,45 +1439,45 @@ pub struct PartialResultSet {
     /// Most values are encoded based on type as described
     /// [here][google.spanner.v1.TypeCode].
     ///
-    /// It is possible that the last value in values is "chunked",
+    /// It's possible that the last value in values is "chunked",
     /// meaning that the rest of the value is sent in subsequent
-    /// `PartialResultSet`(s). This is denoted by the [chunked_value][google.spanner.v1.PartialResultSet.chunked_value]
-    /// field. Two or more chunked values can be merged to form a
-    /// complete value as follows:
+    /// `PartialResultSet`(s). This is denoted by the
+    /// [chunked_value][google.spanner.v1.PartialResultSet.chunked_value] field.
+    /// Two or more chunked values can be merged to form a complete value as
+    /// follows:
     ///
-    ///    * `bool/number/null`: cannot be chunked
+    ///    * `bool/number/null`: can't be chunked
     ///    * `string`: concatenate the strings
-    ///    * `list`: concatenate the lists. If the last element in a list is a
-    ///      `string`, `list`, or `object`, merge it with the first element in
-    ///      the next list by applying these rules recursively.
-    ///    * `object`: concatenate the (field name, field value) pairs. If a
-    ///      field name is duplicated, then apply these rules recursively
-    ///      to merge the field values.
+    ///    * `list`: concatenate the lists. If the last element in a list is a `string`, `list`, or
+    ///      `object`, merge it with the first element in the next list by applying these rules
+    ///      recursively.
+    ///    * `object`: concatenate the (field name, field value) pairs. If a field name is
+    ///      duplicated, then apply these rules recursively to merge the field values.
     ///
     /// Some examples of merging:
     ///
-    ///      # Strings are concatenated.
+    ///      Strings are concatenated.
     ///      "foo", "bar" => "foobar"
     ///
-    ///      # Lists of non-strings are concatenated.
+    ///      Lists of non-strings are concatenated.
     ///      \[2, 3\], \[4\] => \[2, 3, 4\]
     ///
-    ///      # Lists are concatenated, but the last and first elements are merged
-    ///      # because they are strings.
+    ///      Lists are concatenated, but the last and first elements are merged
+    ///      because they are strings.
     ///      \["a", "b"\], \["c", "d"\] => \["a", "bc", "d"\]
     ///
-    ///      # Lists are concatenated, but the last and first elements are merged
-    ///      # because they are lists. Recursively, the last and first elements
-    ///      # of the inner lists are merged because they are strings.
+    ///      Lists are concatenated, but the last and first elements are merged
+    ///      because they are lists. Recursively, the last and first elements
+    ///      of the inner lists are merged because they are strings.
     ///      \["a", ["b", "c"]\], \[["d"\], "e"] => \["a", ["b", "cd"\], "e"]
     ///
-    ///      # Non-overlapping object fields are combined.
+    ///      Non-overlapping object fields are combined.
     ///      {"a": "1"}, {"b": "2"} => {"a": "1", "b": 2"}
     ///
-    ///      # Overlapping object fields are merged.
+    ///      Overlapping object fields are merged.
     ///      {"a": "1"}, {"a": "2"} => {"a": "12"}
     ///
-    ///      # Examples of merging objects containing lists of strings.
+    ///      Examples of merging objects containing lists of strings.
     ///      {"a": \["1"\]}, {"a": \["2"\]} => {"a": \["12"\]}
     ///
     /// For a more complete example, suppose a streaming SQL query is
@@ -1445,7 +1493,6 @@ pub struct PartialResultSet {
     ///      {
     ///        "values": \["orl"\]
     ///        "chunked_value": true
-    ///        "resume_token": "Bqp2..."
     ///      }
     ///      {
     ///        "values": \["d"\]
@@ -1455,11 +1502,17 @@ pub struct PartialResultSet {
     /// This sequence of `PartialResultSet`s encodes two rows, one
     /// containing the field value `"Hello"`, and a second containing the
     /// field value `"World" = "W" + "orl" + "d"`.
+    ///
+    /// Not all `PartialResultSet`s contain a `resume_token`. Execution can only be
+    /// resumed from a previously yielded `resume_token`. For the above sequence of
+    /// `PartialResultSet`s, resuming the query with `"resume_token": "Af65..."`
+    /// yields results from the `PartialResultSet` with value "orl".
     #[prost(message, repeated, tag = "2")]
     pub values: ::prost::alloc::vec::Vec<super::super::protobuf::Value>,
-    /// If true, then the final value in [values][google.spanner.v1.PartialResultSet.values] is chunked, and must
-    /// be combined with more values from subsequent `PartialResultSet`s
-    /// to obtain a complete field value.
+    /// If true, then the final value in
+    /// [values][google.spanner.v1.PartialResultSet.values] is chunked, and must be
+    /// combined with more values from subsequent `PartialResultSet`s to obtain a
+    /// complete field value.
     #[prost(bool, tag = "3")]
     pub chunked_value: bool,
     /// Streaming calls might be interrupted for a variety of reasons, such
@@ -1471,29 +1524,31 @@ pub struct PartialResultSet {
     pub resume_token: ::prost::bytes::Bytes,
     /// Query plan and execution statistics for the statement that produced this
     /// streaming result set. These can be requested by setting
-    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode] and are sent
-    /// only once with the last response in the stream.
-    /// This field will also be present in the last response for DML
-    /// statements.
+    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode]
+    /// and are sent only once with the last response in the stream. This field is
+    /// also present in the last response for DML statements.
     #[prost(message, optional, tag = "5")]
     pub stats: ::core::option::Option<ResultSetStats>,
-    /// Optional. A precommit token will be included if the read-write transaction
-    /// is on a multiplexed session.
-    /// The precommit token with the highest sequence number from this transaction
-    /// attempt should be passed to the
+    /// Optional. A precommit token is included if the read-write transaction
+    /// has multiplexed sessions enabled. Pass the precommit token with the highest
+    /// sequence number from this transaction attempt to the
     /// [Commit][google.spanner.v1.Spanner.Commit] request for this transaction.
-    /// This feature is not yet supported and will result in an UNIMPLEMENTED
-    /// error.
     #[prost(message, optional, tag = "8")]
     pub precommit_token: ::core::option::Option<MultiplexedSessionPrecommitToken>,
+    /// Optional. Indicates whether this is the last `PartialResultSet` in the
+    /// stream. The server might optionally set this field. Clients shouldn't rely
+    /// on this field being set in all cases.
+    #[prost(bool, tag = "9")]
+    pub last: bool,
 }
-/// Metadata about a [ResultSet][google.spanner.v1.ResultSet] or [PartialResultSet][google.spanner.v1.PartialResultSet].
+/// Metadata about a [ResultSet][google.spanner.v1.ResultSet] or
+/// [PartialResultSet][google.spanner.v1.PartialResultSet].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetMetadata {
     /// Indicates the field names and types for the rows in the result
-    /// set.  For example, a SQL query like `"SELECT UserId, UserName FROM
+    /// set. For example, a SQL query like `"SELECT UserId, UserName FROM
     /// Users"` could return a `row_type` value like:
     ///
     ///      "fields": [
@@ -1519,12 +1574,14 @@ pub struct ResultSetMetadata {
     #[prost(message, optional, tag = "3")]
     pub undeclared_parameters: ::core::option::Option<StructType>,
 }
-/// Additional statistics about a [ResultSet][google.spanner.v1.ResultSet] or [PartialResultSet][google.spanner.v1.PartialResultSet].
+/// Additional statistics about a [ResultSet][google.spanner.v1.ResultSet] or
+/// [PartialResultSet][google.spanner.v1.PartialResultSet].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetStats {
-    /// [QueryPlan][google.spanner.v1.QueryPlan] for the query associated with this result.
+    /// [QueryPlan][google.spanner.v1.QueryPlan] for the query associated with this
+    /// result.
     #[prost(message, optional, tag = "1")]
     pub query_plan: ::core::option::Option<QueryPlan>,
     /// Aggregated statistics from the execution of the query. Only present when
@@ -1552,7 +1609,7 @@ pub mod result_set_stats {
         /// Standard DML returns an exact count of rows that were modified.
         #[prost(int64, tag = "3")]
         RowCountExact(i64),
-        /// Partitioned DML does not offer exactly-once semantics, so it
+        /// Partitioned DML doesn't offer exactly-once semantics, so it
         /// returns a lower bound of the rows modified.
         #[prost(int64, tag = "4")]
         RowCountLowerBound(i64),
@@ -1611,27 +1668,23 @@ pub struct Session {
     pub name: ::prost::alloc::string::String,
     /// The labels for the session.
     ///
-    ///   * Label keys must be between 1 and 63 characters long and must conform to
-    ///     the following regular expression: `[a-z](\[-a-z0-9\]*[a-z0-9])?`.
-    ///   * Label values must be between 0 and 63 characters long and must conform
-    ///     to the regular expression `([a-z](\[-a-z0-9\]*[a-z0-9])?)?`.
+    ///   * Label keys must be between 1 and 63 characters long and must conform to the following
+    ///     regular expression: `[a-z](\[-a-z0-9\]*[a-z0-9])?`.
+    ///   * Label values must be between 0 and 63 characters long and must conform to the regular
+    ///     expression `([a-z](\[-a-z0-9\]*[a-z0-9])?)?`.
     ///   * No more than 64 labels can be associated with a given session.
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Output only. The timestamp when the session is created.
     #[prost(message, optional, tag = "3")]
     pub create_time: ::core::option::Option<super::super::protobuf::Timestamp>,
     /// Output only. The approximate timestamp when the session is last used. It is
     /// typically earlier than the actual last use time.
     #[prost(message, optional, tag = "4")]
-    pub approximate_last_use_time: ::core::option::Option<
-        super::super::protobuf::Timestamp,
-    >,
+    pub approximate_last_use_time: ::core::option::Option<super::super::protobuf::Timestamp>,
     /// The database role which created this session.
     #[prost(string, tag = "5")]
     pub creator_role: ::prost::alloc::string::String,
@@ -1680,8 +1733,8 @@ pub struct ListSessionsRequest {
     /// Some examples of using filters are:
     ///
     ///    * `labels.env:*` --> The session has the label "env".
-    ///    * `labels.env:dev` --> The session has the label "env" and the value of
-    ///                         the label contains the string "dev".
+    ///    * `labels.env:dev` --> The session has the label "env" and the value of the label
+    ///      contains the string "dev".
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
 }
@@ -1750,29 +1803,17 @@ pub mod request_options {
     /// The priority acts as a hint to the Cloud Spanner scheduler and does not
     /// guarantee priority or order of execution. For example:
     ///
-    /// * Some parts of a write operation always execute at `PRIORITY_HIGH`,
-    ///    regardless of the specified priority. This may cause you to see an
-    ///    increase in high priority workload even when executing a low priority
-    ///    request. This can also potentially cause a priority inversion where a
-    ///    lower priority request will be fulfilled ahead of a higher priority
-    ///    request.
-    /// * If a transaction contains multiple operations with different priorities,
-    ///    Cloud Spanner does not guarantee to process the higher priority
-    ///    operations first. There may be other constraints to satisfy, such as
-    ///    order of operations.
+    /// * Some parts of a write operation always execute at `PRIORITY_HIGH`, regardless of the
+    ///   specified priority. This may cause you to see an increase in high priority workload even
+    ///   when executing a low priority request. This can also potentially cause a priority
+    ///   inversion where a lower priority request will be fulfilled ahead of a higher priority
+    ///   request.
+    /// * If a transaction contains multiple operations with different priorities, Cloud Spanner
+    ///   does not guarantee to process the higher priority operations first. There may be other
+    ///   constraints to satisfy, such as order of operations.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Priority {
         /// `PRIORITY_UNSPECIFIED` is equivalent to `PRIORITY_HIGH`.
@@ -1829,20 +1870,18 @@ pub mod directed_read_options {
     /// Callers must provide one or more of the following fields for replica
     /// selection:
     ///
-    ///    * `location` - The location must be one of the regions within the
-    ///       multi-region configuration of your database.
+    ///    * `location` - The location must be one of the regions within the multi-region
+    ///      configuration of your database.
     ///    * `type` - The type of the replica.
     ///
     /// Some examples of using replica_selectors are:
     ///
-    ///    * `location:us-east1` --> The "us-east1" replica(s) of any available type
-    ///                              will be used to process the request.
-    ///    * `type:READ_ONLY`    --> The "READ_ONLY" type replica(s) in nearest
-    ///                              available location will be used to process the
-    ///                              request.
-    ///    * `location:us-east1 type:READ_ONLY` --> The "READ_ONLY" type replica(s)
-    ///                           in location "us-east1" will be used to process
-    ///                           the request.
+    ///    * `location:us-east1` --> The "us-east1" replica(s) of any available type will be used to
+    ///      process the request.
+    ///    * `type:READ_ONLY`    --> The "READ_ONLY" type replica(s) in nearest available location
+    ///      will be used to process the request.
+    ///    * `location:us-east1 type:READ_ONLY` --> The "READ_ONLY" type replica(s) in location
+    ///      "us-east1" will be used to process the request.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1860,15 +1899,7 @@ pub mod directed_read_options {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum Type {
@@ -2047,6 +2078,17 @@ pub struct ExecuteSqlRequest {
     /// `partition_token`, the API returns an `INVALID_ARGUMENT` error.
     #[prost(bool, tag = "16")]
     pub data_boost_enabled: bool,
+    /// Optional. If set to true, this statement marks the end of the transaction.
+    /// The transaction should be committed or aborted after this statement
+    /// executes, and attempts to execute any other requests against this
+    /// transaction (including reads and queries) will be rejected.
+    ///
+    /// For DML statements, setting this option may cause some error reporting to
+    /// be deferred until commit time (e.g. validation of unique constraints).
+    /// Given this, successful execution of a DML statement should not be assumed
+    /// until a subsequent Commit call completes successfully.
+    #[prost(bool, tag = "17")]
+    pub last_statement: bool,
 }
 /// Nested message and enum types in `ExecuteSqlRequest`.
 pub mod execute_sql_request {
@@ -2109,17 +2151,7 @@ pub mod execute_sql_request {
     /// Mode in which the statement must be processed.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum QueryMode {
         /// The default mode. Only the statement results are returned.
@@ -2202,6 +2234,17 @@ pub struct ExecuteBatchDmlRequest {
     /// Common options for this request.
     #[prost(message, optional, tag = "5")]
     pub request_options: ::core::option::Option<RequestOptions>,
+    /// Optional. If set to true, this request marks the end of the transaction.
+    /// The transaction should be committed or aborted after these statements
+    /// execute, and attempts to execute any other requests against this
+    /// transaction (including reads and queries) will be rejected.
+    ///
+    /// Setting this option may cause some error reporting to be deferred until
+    /// commit time (e.g. validation of unique constraints). Given this, successful
+    /// execution of statements should not be assumed until a subsequent Commit
+    /// call completes successfully.
+    #[prost(bool, tag = "6")]
+    pub last_statements: bool,
 }
 /// Nested message and enum types in `ExecuteBatchDmlRequest`.
 pub mod execute_batch_dml_request {
@@ -2238,10 +2281,7 @@ pub mod execute_batch_dml_request {
         /// definition of [Type][google.spanner.v1.Type] for more information
         /// about SQL types.
         #[prost(map = "string, message", tag = "3")]
-        pub param_types: ::std::collections::HashMap<
-            ::prost::alloc::string::String,
-            super::Type,
-        >,
+        pub param_types: ::std::collections::HashMap<::prost::alloc::string::String, super::Type>,
     }
 }
 /// The response for
@@ -2256,10 +2296,9 @@ pub mod execute_batch_dml_request {
 /// 1. Check the status in the response message. The
 /// [google.rpc.Code][google.rpc.Code] enum
 ///     value `OK` indicates that all statements were executed successfully.
-/// 2. If the status was not `OK`, check the number of result sets in the
-///     response. If the response contains `N`
-///     [ResultSet][google.spanner.v1.ResultSet] messages, then statement `N+1` in
-///     the request failed.
+/// 2. If the status was not `OK`, check the number of result sets in the response. If the response
+///    contains `N` [ResultSet][google.spanner.v1.ResultSet] messages, then statement `N+1` in the
+///    request failed.
 ///
 /// Example 1:
 ///
@@ -2549,17 +2588,7 @@ pub mod read_request {
     /// An option to control the order in which rows are returned from a read.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum OrderBy {
         /// Default value.
@@ -2599,17 +2628,7 @@ pub mod read_request {
     /// A lock hint mechanism for reads done within a transaction.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum LockHint {
         /// Default value.
@@ -2848,10 +2867,10 @@ pub mod spanner_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Cloud Spanner API
     ///
     /// The Cloud Spanner API can be used to manage sessions and execute
@@ -2873,7 +2892,7 @@ pub mod spanner_client {
     }
     impl<T> SpannerClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -2894,14 +2913,13 @@ pub mod spanner_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             SpannerClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2959,21 +2977,17 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSessionRequest>,
         ) -> std::result::Result<tonic::Response<super::Session>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/CreateSession",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/CreateSession");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "CreateSession"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "CreateSession",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates multiple new sessions.
@@ -2983,27 +2997,20 @@ pub mod spanner_client {
         pub async fn batch_create_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::BatchCreateSessionsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::BatchCreateSessionsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::BatchCreateSessionsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/BatchCreateSessions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.spanner.v1.Spanner", "BatchCreateSessions"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "BatchCreateSessions",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets a session. Returns `NOT_FOUND` if the session does not exist.
@@ -3013,18 +3020,12 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSessionRequest>,
         ) -> std::result::Result<tonic::Response<super::Session>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/GetSession",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/GetSession");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "GetSession"));
@@ -3034,22 +3035,14 @@ pub mod spanner_client {
         pub async fn list_sessions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSessionsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListSessionsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListSessionsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/ListSessions",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ListSessions");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ListSessions"));
@@ -3061,25 +3054,19 @@ pub mod spanner_client {
         pub async fn delete_session(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSessionRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/DeleteSession",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/DeleteSession");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "DeleteSession"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "DeleteSession",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Executes an SQL statement, returning all results in a single reply. This
@@ -3099,18 +3086,12 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteSqlRequest>,
         ) -> std::result::Result<tonic::Response<super::ResultSet>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/ExecuteSql",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteSql");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteSql"));
@@ -3128,23 +3109,18 @@ pub mod spanner_client {
             tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.v1.Spanner/ExecuteStreamingSql",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteStreamingSql"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "ExecuteStreamingSql",
+            ));
             self.inner.server_streaming(req, path, codec).await
         }
         /// Executes a batch of SQL DML statements. This method allows many statements
@@ -3162,25 +3138,19 @@ pub mod spanner_client {
         pub async fn execute_batch_dml(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteBatchDmlRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ExecuteBatchDmlResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ExecuteBatchDmlResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/ExecuteBatchDml",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/ExecuteBatchDml");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "ExecuteBatchDml"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "ExecuteBatchDml",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Reads rows from the database using key lookups and scans, as a
@@ -3201,18 +3171,11 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ReadRequest>,
         ) -> std::result::Result<tonic::Response<super::ResultSet>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/Read",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Read");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Read"));
@@ -3230,21 +3193,17 @@ pub mod spanner_client {
             tonic::Response<tonic::codec::Streaming<super::PartialResultSet>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/StreamingRead",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/StreamingRead");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "StreamingRead"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "StreamingRead",
+            ));
             self.inner.server_streaming(req, path, codec).await
         }
         /// Begins a new transaction. This step can often be skipped:
@@ -3256,23 +3215,17 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::BeginTransactionRequest>,
         ) -> std::result::Result<tonic::Response<super::Transaction>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/BeginTransaction",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BeginTransaction");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.spanner.v1.Spanner", "BeginTransaction"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "BeginTransaction",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Commits a transaction. The request includes the mutations to be
@@ -3293,18 +3246,11 @@ pub mod spanner_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CommitRequest>,
         ) -> std::result::Result<tonic::Response<super::CommitResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/Commit",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Commit");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Commit"));
@@ -3322,22 +3268,13 @@ pub mod spanner_client {
         pub async fn rollback(
             &mut self,
             request: impl tonic::IntoRequest<super::RollbackRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/Rollback",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/Rollback");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "Rollback"));
@@ -3358,25 +3295,18 @@ pub mod spanner_client {
         pub async fn partition_query(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionQueryRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::PartitionResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/PartitionQuery",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionQuery");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "PartitionQuery"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "PartitionQuery",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates a set of partition tokens that can be used to execute a read
@@ -3396,25 +3326,18 @@ pub mod spanner_client {
         pub async fn partition_read(
             &mut self,
             request: impl tonic::IntoRequest<super::PartitionReadRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::PartitionResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::PartitionResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/PartitionRead",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/PartitionRead");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.spanner.v1.Spanner", "PartitionRead"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.spanner.v1.Spanner",
+                "PartitionRead",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Batches the supplied mutation groups in a collection of efficient
@@ -3439,18 +3362,12 @@ pub mod spanner_client {
             tonic::Response<tonic::codec::Streaming<super::BatchWriteResponse>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.spanner.v1.Spanner/BatchWrite",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.spanner.v1.Spanner/BatchWrite");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.spanner.v1.Spanner", "BatchWrite"));

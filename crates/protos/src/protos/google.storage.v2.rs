@@ -217,9 +217,7 @@ pub mod compose_object_request {
         pub generation: i64,
         /// Conditions that must be met for this operation to execute.
         #[prost(message, optional, tag = "3")]
-        pub object_preconditions: ::core::option::Option<
-            source_object::ObjectPreconditions,
-        >,
+        pub object_preconditions: ::core::option::Option<source_object::ObjectPreconditions>,
     }
     /// Nested message and enum types in `SourceObject`.
     pub mod source_object {
@@ -489,6 +487,236 @@ pub struct ReadObjectResponse {
     #[prost(message, optional, tag = "4")]
     pub metadata: ::core::option::Option<Object>,
 }
+/// Describes the object to read in a BidiReadObject request.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiReadObjectSpec {
+    /// Required. The name of the bucket containing the object to read.
+    #[prost(string, tag = "1")]
+    pub bucket: ::prost::alloc::string::String,
+    /// Required. The name of the object to read.
+    #[prost(string, tag = "2")]
+    pub object: ::prost::alloc::string::String,
+    /// If present, selects a specific revision of this object (as opposed
+    /// to the latest version, the default).
+    #[prost(int64, tag = "3")]
+    pub generation: i64,
+    /// Makes the operation conditional on whether the object's current generation
+    /// matches the given value. Setting to 0 makes the operation succeed only if
+    /// there are no live versions of the object.
+    #[prost(int64, optional, tag = "4")]
+    pub if_generation_match: ::core::option::Option<i64>,
+    /// Makes the operation conditional on whether the object's live generation
+    /// does not match the given value. If no live object exists, the precondition
+    /// fails. Setting to 0 makes the operation succeed only if there is a live
+    /// version of the object.
+    #[prost(int64, optional, tag = "5")]
+    pub if_generation_not_match: ::core::option::Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration matches the given value.
+    #[prost(int64, optional, tag = "6")]
+    pub if_metageneration_match: ::core::option::Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration does not match the given value.
+    #[prost(int64, optional, tag = "7")]
+    pub if_metageneration_not_match: ::core::option::Option<i64>,
+    /// A set of parameters common to Storage API requests concerning an object.
+    #[prost(message, optional, tag = "8")]
+    pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
+    /// Mask specifying which fields to read.
+    /// The checksummed_data field and its children will always be present.
+    /// If no mask is specified, will default to all fields except metadata.owner
+    /// and metadata.acl.
+    /// * may be used to mean "all fields".
+    /// As per <https://google.aip.dev/161,> this field is deprecated.
+    /// As an alternative, grpc metadata can be used:
+    /// <https://cloud.google.com/apis/docs/system-parameters#definitions>
+    #[deprecated]
+    #[prost(message, optional, tag = "12")]
+    pub read_mask: ::core::option::Option<super::super::protobuf::FieldMask>,
+    /// The client can optionally set this field. The read handle is an optimized
+    /// way of creating new streams. Read handles are generated and periodically
+    /// refreshed from prior reads.
+    #[prost(message, optional, tag = "13")]
+    pub read_handle: ::core::option::Option<BidiReadHandle>,
+    /// The routing token that influences request routing for the stream. Must be
+    /// provided if a BidiReadObjectRedirectedError is returned.
+    #[prost(string, optional, tag = "14")]
+    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
+}
+/// Request message for BidiReadObject.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiReadObjectRequest {
+    /// The first message of each stream should set this field. If this is not
+    /// the first message, an error will be returned. Describes the object to read.
+    #[prost(message, optional, tag = "1")]
+    pub read_object_spec: ::core::option::Option<BidiReadObjectSpec>,
+    /// Provides a list of 0 or more (up to 100) ranges to read. If a single range
+    /// is large enough to require multiple responses, they are guaranteed to be
+    /// delivered in increasing offset order. There are no ordering guarantees
+    /// across ranges. When no ranges are provided, the response message will not
+    /// include ObjectRangeData. For full object downloads, the offset and size can
+    /// be set to 0.
+    #[prost(message, repeated, tag = "8")]
+    pub read_ranges: ::prost::alloc::vec::Vec<ReadRange>,
+}
+/// Response message for BidiReadObject.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiReadObjectResponse {
+    /// A portion of the object's data. The service **may** leave data
+    /// empty for any given ReadResponse. This enables the service to inform the
+    /// client that the request is still live while it is running an operation to
+    /// generate more data.
+    /// The service **may** pipeline multiple responses belonging to different read
+    /// requests. Each ObjectRangeData entry will have a read_id
+    /// set to the same value as the corresponding source read request.
+    #[prost(message, repeated, tag = "6")]
+    pub object_data_ranges: ::prost::alloc::vec::Vec<ObjectRangeData>,
+    /// Metadata of the object whose media is being returned.
+    /// Only populated in the first response in the stream and not populated when
+    /// the stream is opened with a read handle.
+    #[prost(message, optional, tag = "4")]
+    pub metadata: ::core::option::Option<Object>,
+    /// This field will be periodically refreshed, however it may not be set in
+    /// every response. It allows the client to more efficiently open subsequent
+    /// bidirectional streams to the same object.
+    #[prost(message, optional, tag = "7")]
+    pub read_handle: ::core::option::Option<BidiReadHandle>,
+}
+/// Error proto containing details for a redirected read. This error is only
+/// returned on initial open in case of a redirect.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiReadObjectRedirectedError {
+    /// The read handle for the redirected read. The client can use this for the
+    /// subsequent open.
+    #[prost(message, optional, tag = "1")]
+    pub read_handle: ::core::option::Option<BidiReadHandle>,
+    /// The routing token that should be used when reopening the read stream.
+    #[prost(string, optional, tag = "2")]
+    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
+}
+/// Error proto containing details for a redirected write. This error is only
+/// returned on initial open in case of a redirect.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiWriteObjectRedirectedError {
+    /// The routing token that should be used when reopening the write stream.
+    #[prost(string, optional, tag = "1")]
+    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
+    /// Opaque value describing a previous write.
+    #[prost(message, optional, tag = "2")]
+    pub write_handle: ::core::option::Option<BidiWriteHandle>,
+    /// The generation of the object that triggered the redirect.
+    /// Note that if this error was returned as part of an appendable object
+    /// create, this object generation is now successfully created and
+    /// append_object_spec should be used when reconnecting.
+    #[prost(int64, optional, tag = "3")]
+    pub generation: ::core::option::Option<i64>,
+}
+/// Error extension proto containing details for all outstanding reads on the
+/// failed stream
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiReadObjectError {
+    /// The error code for each outstanding read_range
+    #[prost(message, repeated, tag = "1")]
+    pub read_range_errors: ::prost::alloc::vec::Vec<ReadRangeError>,
+}
+/// Error extension proto containing details for a single range read
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ReadRangeError {
+    /// The id of the corresponding read_range
+    #[prost(int64, tag = "1")]
+    pub read_id: i64,
+    /// The status which should be an enum value of \[google.rpc.Code\].
+    #[prost(message, optional, tag = "2")]
+    pub status: ::core::option::Option<super::super::rpc::Status>,
+}
+/// Describes a range of bytes to read in a BidiReadObjectRanges request.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ReadRange {
+    /// Required. The offset for the first byte to return in the read, relative to
+    /// the start of the object.
+    ///
+    /// A negative read_offset value will be interpreted as the number of bytes
+    /// back from the end of the object to be returned. For example, if an object's
+    /// length is 15 bytes, a ReadObjectRequest with read_offset = -5 and
+    /// read_length = 3 would return bytes 10 through 12 of the object. Requesting
+    /// a negative offset with magnitude larger than the size of the object will
+    /// return the entire object. A read_offset larger than the size of the object
+    /// will result in an OutOfRange error.
+    #[prost(int64, tag = "1")]
+    pub read_offset: i64,
+    /// Optional. The maximum number of data bytes the server is allowed to return
+    /// across all response messages with the same read_id. A read_length of zero
+    /// indicates to read until the resource end, and a negative read_length will
+    /// cause an error. If the stream returns fewer bytes than allowed by the
+    /// read_length and no error occurred, the stream includes all data from the
+    /// read_offset to the resource end.
+    #[prost(int64, tag = "2")]
+    pub read_length: i64,
+    /// Required. Read identifier provided by the client. When the client issues
+    /// more than one outstanding ReadRange on the same stream, responses can be
+    /// mapped back to their corresponding requests using this value. Clients must
+    /// ensure that all outstanding requests have different read_id values. The
+    /// server may close the stream with an error if this condition is not met.
+    #[prost(int64, tag = "3")]
+    pub read_id: i64,
+}
+/// Contains data and metadata for a range of an object.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ObjectRangeData {
+    /// A portion of the data for the object.
+    #[prost(message, optional, tag = "1")]
+    pub checksummed_data: ::core::option::Option<ChecksummedData>,
+    /// The ReadRange describes the content being returned with read_id set to the
+    /// corresponding ReadObjectRequest in the stream. Multiple ObjectRangeData
+    /// messages may have the same read_id but increasing offsets.
+    /// ReadObjectResponse messages with the same read_id are guaranteed to be
+    /// delivered in increasing offset order.
+    #[prost(message, optional, tag = "2")]
+    pub read_range: ::core::option::Option<ReadRange>,
+    /// If set, indicates there are no more bytes to read for the given ReadRange.
+    #[prost(bool, tag = "3")]
+    pub range_end: bool,
+}
+/// BidiReadHandle contains a handle from a previous BiDiReadObject
+/// invocation. The client can use this instead of BidiReadObjectSpec as an
+/// optimized way of opening subsequent bidirectional streams to the same object.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiReadHandle {
+    /// Required. Opaque value describing a previous read.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub handle: ::prost::bytes::Bytes,
+}
+/// BidiWriteHandle contains a handle from a previous BidiWriteObject
+/// invocation. The client can use this as an optimized way of opening subsequent
+/// bidirectional streams to the same object.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BidiWriteHandle {
+    /// Required. Opaque value describing a previous write.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub handle: ::prost::bytes::Bytes,
+}
 /// Describes an attempt to insert an object, possibly over multiple requests.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -530,6 +758,10 @@ pub struct WriteObjectSpec {
     /// number of bytes.
     #[prost(int64, optional, tag = "8")]
     pub object_size: ::core::option::Option<i64>,
+    /// If true, the object will be created in appendable mode.
+    /// This field may only be set when using BidiWriteObject.
+    #[prost(bool, optional, tag = "9")]
+    pub appendable: ::core::option::Option<bool>,
 }
 /// Request message for WriteObject.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -628,6 +860,37 @@ pub mod write_object_response {
         Resource(super::Object),
     }
 }
+/// Describes an attempt to append to an object, possibly over multiple requests.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AppendObjectSpec {
+    /// Required. The name of the bucket containing the object to write.
+    #[prost(string, tag = "1")]
+    pub bucket: ::prost::alloc::string::String,
+    /// Required. The name of the object to open for writing.
+    #[prost(string, tag = "2")]
+    pub object: ::prost::alloc::string::String,
+    /// Required. The generation number of the object to open for writing.
+    #[prost(int64, tag = "3")]
+    pub generation: i64,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration matches the given value.
+    #[prost(int64, optional, tag = "4")]
+    pub if_metageneration_match: ::core::option::Option<i64>,
+    /// Makes the operation conditional on whether the object's current
+    /// metageneration does not match the given value.
+    #[prost(int64, optional, tag = "5")]
+    pub if_metageneration_not_match: ::core::option::Option<i64>,
+    /// An optional routing token that influences request routing for the stream.
+    /// Must be provided if a BidiWriteObjectRedirectedError is returned.
+    #[prost(string, optional, tag = "6")]
+    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
+    /// An optional write handle returned from a previous BidiWriteObjectResponse
+    /// message or a BidiWriteObjectRedirectedError error.
+    #[prost(message, optional, tag = "7")]
+    pub write_handle: ::core::option::Option<BidiWriteHandle>,
+}
 /// Request message for BidiWriteObject.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -650,7 +913,8 @@ pub struct BidiWriteObjectRequest {
     pub write_offset: i64,
     /// Checksums for the complete object. If the checksums computed by the service
     /// don't match the specified checksums the call will fail. May only be
-    /// provided in last request (with finish_write set).
+    /// provided in the first request or the
+    /// last request (with finish_write set).
     #[prost(message, optional, tag = "6")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
     /// For each BidiWriteObjectRequest where state_lookup is `true` or the client
@@ -683,7 +947,7 @@ pub struct BidiWriteObjectRequest {
     #[prost(message, optional, tag = "10")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
     /// The first message of each stream should set one of the following.
-    #[prost(oneof = "bidi_write_object_request::FirstMessage", tags = "1, 2")]
+    #[prost(oneof = "bidi_write_object_request::FirstMessage", tags = "1, 2, 11")]
     pub first_message: ::core::option::Option<bidi_write_object_request::FirstMessage>,
     /// A portion of the data for the object.
     #[prost(oneof = "bidi_write_object_request::Data", tags = "4")]
@@ -704,6 +968,9 @@ pub mod bidi_write_object_request {
         /// destination bucket and object name, preconditions, etc.
         #[prost(message, tag = "2")]
         WriteObjectSpec(super::WriteObjectSpec),
+        /// For appendable uploads. Describes the object to append to.
+        #[prost(message, tag = "11")]
+        AppendObjectSpec(super::AppendObjectSpec),
     }
     /// A portion of the data for the object.
     #[derive(serde::Deserialize, serde::Serialize)]
@@ -721,6 +988,11 @@ pub mod bidi_write_object_request {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BidiWriteObjectResponse {
+    /// An optional write handle that will periodically be present in response
+    /// messages. Clients should save it for later use in establishing a new stream
+    /// if a connection is interrupted.
+    #[prost(message, optional, tag = "3")]
+    pub write_handle: ::core::option::Option<BidiWriteHandle>,
     /// The response will set one of the following.
     #[prost(oneof = "bidi_write_object_response::WriteStatus", tags = "1, 2")]
     pub write_status: ::core::option::Option<bidi_write_object_response::WriteStatus>,
@@ -1012,22 +1284,93 @@ pub struct RewriteResponse {
     #[prost(message, optional, tag = "5")]
     pub resource: ::core::option::Option<Object>,
 }
+/// Request message for MoveObject.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MoveObjectRequest {
+    /// Required. Name of the bucket in which the object resides.
+    #[prost(string, tag = "1")]
+    pub bucket: ::prost::alloc::string::String,
+    /// Required. Name of the source object.
+    #[prost(string, tag = "2")]
+    pub source_object: ::prost::alloc::string::String,
+    /// Required. Name of the destination object.
+    #[prost(string, tag = "3")]
+    pub destination_object: ::prost::alloc::string::String,
+    /// Optional. Makes the operation conditional on whether the source object's
+    /// current generation matches the given value. `if_source_generation_match`
+    /// and `if_source_generation_not_match` conditions are mutually exclusive:
+    /// it's an error for both of them to be set in the request.
+    #[prost(int64, optional, tag = "4")]
+    pub if_source_generation_match: ::core::option::Option<i64>,
+    /// Optional. Makes the operation conditional on whether the source object's
+    /// current generation does not match the given value.
+    /// `if_source_generation_match` and `if_source_generation_not_match`
+    /// conditions are mutually exclusive: it's an error for both of them to be set
+    /// in the request.
+    #[prost(int64, optional, tag = "5")]
+    pub if_source_generation_not_match: ::core::option::Option<i64>,
+    /// Optional. Makes the operation conditional on whether the source object's
+    /// current metageneration matches the given value.
+    /// `if_source_metageneration_match` and `if_source_metageneration_not_match`
+    /// conditions are mutually exclusive: it's an error for both of them to be set
+    /// in the request.
+    #[prost(int64, optional, tag = "6")]
+    pub if_source_metageneration_match: ::core::option::Option<i64>,
+    /// Optional. Makes the operation conditional on whether the source object's
+    /// current metageneration does not match the given value.
+    /// `if_source_metageneration_match` and `if_source_metageneration_not_match`
+    /// conditions are mutually exclusive: it's an error for both of them to be set
+    /// in the request.
+    #[prost(int64, optional, tag = "7")]
+    pub if_source_metageneration_not_match: ::core::option::Option<i64>,
+    /// Optional. Makes the operation conditional on whether the destination
+    /// object's current generation matches the given value. Setting to 0 makes the
+    /// operation succeed only if there are no live versions of the object.
+    /// `if_generation_match` and `if_generation_not_match` conditions are mutually
+    /// exclusive: it's an error for both of them to be set in the request.
+    #[prost(int64, optional, tag = "8")]
+    pub if_generation_match: ::core::option::Option<i64>,
+    /// Optional. Makes the operation conditional on whether the destination
+    /// object's current generation does not match the given value. If no live
+    /// object exists, the precondition fails. Setting to 0 makes the operation
+    /// succeed only if there is a live version of the object.
+    /// `if_generation_match` and `if_generation_not_match` conditions are mutually
+    /// exclusive: it's an error for both of them to be set in the request.
+    #[prost(int64, optional, tag = "9")]
+    pub if_generation_not_match: ::core::option::Option<i64>,
+    /// Optional. Makes the operation conditional on whether the destination
+    /// object's current metageneration matches the given value.
+    /// `if_metageneration_match` and `if_metageneration_not_match` conditions are
+    /// mutually exclusive: it's an error for both of them to be set in the
+    /// request.
+    #[prost(int64, optional, tag = "10")]
+    pub if_metageneration_match: ::core::option::Option<i64>,
+    /// Optional. Makes the operation conditional on whether the destination
+    /// object's current metageneration does not match the given value.
+    /// `if_metageneration_match` and `if_metageneration_not_match` conditions are
+    /// mutually exclusive: it's an error for both of them to be set in the
+    /// request.
+    #[prost(int64, optional, tag = "11")]
+    pub if_metageneration_not_match: ::core::option::Option<i64>,
+}
 /// Request message StartResumableWrite.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StartResumableWriteRequest {
-    /// Required. The destination bucket, object, and metadata, as well as any
-    /// preconditions.
+    /// Required. Contains the information necessary to start a resumable write.
     #[prost(message, optional, tag = "1")]
     pub write_object_spec: ::core::option::Option<WriteObjectSpec>,
-    /// A set of parameters common to Storage API requests concerning an object.
+    /// A set of parameters common to Storage API requests related to an object.
     #[prost(message, optional, tag = "3")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
-    /// The checksums of the complete object. This will be used to validate the
-    /// uploaded object. For each upload, object_checksums can be provided with
-    /// either StartResumableWriteRequest or the WriteObjectRequest with
-    /// finish_write set to `true`.
+    /// The checksums of the complete object. This is used to validate the
+    /// uploaded object. For each upload, `object_checksums` can be provided when
+    /// initiating a resumable upload with`StartResumableWriteRequest` or when
+    /// completing a write with `WriteObjectRequest` with
+    /// `finish_write` set to `true`.
     #[prost(message, optional, tag = "5")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
 }
@@ -1036,8 +1379,11 @@ pub struct StartResumableWriteRequest {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StartResumableWriteResponse {
-    /// The upload_id of the newly started resumable write operation. This
-    /// value should be copied into the `WriteObjectRequest.upload_id` field.
+    /// A unique identifier for the initiated resumable write operation.
+    /// As the ID grants write access, you should keep it confidential during
+    /// the upload to prevent unauthorized access and data tampering during your
+    /// upload. This ID should be included in subsequent `WriteObject` requests to
+    /// upload the object data.
     #[prost(string, tag = "1")]
     pub upload_id: ::prost::alloc::string::String,
 }
@@ -1119,17 +1465,7 @@ pub mod service_constants {
     /// A collection of constant values meaningful to the Storage API.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Values {
         /// Unused. Proto3 requires first enum to be 0.
@@ -1191,24 +1527,12 @@ pub mod service_constants {
                 Self::Unspecified => "VALUES_UNSPECIFIED",
                 Self::MaxReadChunkBytes => "MAX_READ_CHUNK_BYTES",
                 Self::MaxObjectSizeMb => "MAX_OBJECT_SIZE_MB",
-                Self::MaxCustomMetadataFieldNameBytes => {
-                    "MAX_CUSTOM_METADATA_FIELD_NAME_BYTES"
-                }
-                Self::MaxCustomMetadataFieldValueBytes => {
-                    "MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES"
-                }
-                Self::MaxCustomMetadataTotalSizeBytes => {
-                    "MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES"
-                }
-                Self::MaxBucketMetadataTotalSizeBytes => {
-                    "MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES"
-                }
-                Self::MaxNotificationConfigsPerBucket => {
-                    "MAX_NOTIFICATION_CONFIGS_PER_BUCKET"
-                }
-                Self::MaxNotificationCustomAttributes => {
-                    "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES"
-                }
+                Self::MaxCustomMetadataFieldNameBytes => "MAX_CUSTOM_METADATA_FIELD_NAME_BYTES",
+                Self::MaxCustomMetadataFieldValueBytes => "MAX_CUSTOM_METADATA_FIELD_VALUE_BYTES",
+                Self::MaxCustomMetadataTotalSizeBytes => "MAX_CUSTOM_METADATA_TOTAL_SIZE_BYTES",
+                Self::MaxBucketMetadataTotalSizeBytes => "MAX_BUCKET_METADATA_TOTAL_SIZE_BYTES",
+                Self::MaxNotificationConfigsPerBucket => "MAX_NOTIFICATION_CONFIGS_PER_BUCKET",
+                Self::MaxNotificationCustomAttributes => "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES",
                 Self::MaxNotificationCustomAttributeKeyLength => {
                     "MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH"
                 }
@@ -1242,9 +1566,7 @@ pub mod service_constants {
                 "MAX_NOTIFICATION_CONFIGS_PER_BUCKET" => {
                     Some(Self::MaxNotificationConfigsPerBucket)
                 }
-                "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES" => {
-                    Some(Self::MaxNotificationCustomAttributes)
-                }
+                "MAX_NOTIFICATION_CUSTOM_ATTRIBUTES" => Some(Self::MaxNotificationCustomAttributes),
                 "MAX_NOTIFICATION_CUSTOM_ATTRIBUTE_KEY_LENGTH" => {
                     Some(Self::MaxNotificationCustomAttributeKeyLength)
                 }
@@ -1357,10 +1679,8 @@ pub struct Bucket {
     pub default_event_based_hold: bool,
     /// User-provided labels, in key/value pairs.
     #[prost(map = "string, string", tag = "15")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// The bucket's website config, controlling how the service behaves
     /// when accessing bucket contents as a web site. See the
     /// [<https://cloud.google.com/storage/docs/static-website][Static> Website
@@ -1477,9 +1797,8 @@ pub mod bucket {
     pub struct IamConfig {
         /// Bucket restriction options currently enforced on the bucket.
         #[prost(message, optional, tag = "1")]
-        pub uniform_bucket_level_access: ::core::option::Option<
-            iam_config::UniformBucketLevelAccess,
-        >,
+        pub uniform_bucket_level_access:
+            ::core::option::Option<iam_config::UniformBucketLevelAccess>,
         /// Whether IAM will enforce public access prevention. Valid values are
         /// "enforced" or "inherited".
         #[prost(string, tag = "3")]
@@ -1501,9 +1820,7 @@ pub mod bucket {
             /// `false`. Mutable until the specified deadline is reached, but not
             /// afterward.
             #[prost(message, optional, tag = "2")]
-            pub lock_time: ::core::option::Option<
-                super::super::super::super::protobuf::Timestamp,
-            >,
+            pub lock_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
         }
     }
     /// Lifecycle properties of a bucket.
@@ -1562,9 +1879,8 @@ pub mod bucket {
                 /// This condition is satisfied when an object is created before midnight
                 /// of the specified date in UTC.
                 #[prost(message, optional, tag = "2")]
-                pub created_before: ::core::option::Option<
-                    super::super::super::super::super::r#type::Date,
-                >,
+                pub created_before:
+                    ::core::option::Option<super::super::super::super::super::r#type::Date>,
                 /// Relevant only for versioned objects. If the value is
                 /// `true`, this condition matches live objects; if the value
                 /// is `false`, it matches archived objects.
@@ -1580,9 +1896,7 @@ pub mod bucket {
                 /// `NEARLINE`, `COLDLINE`, `STANDARD`, and
                 /// `DURABLE_REDUCED_AVAILABILITY`.
                 #[prost(string, repeated, tag = "5")]
-                pub matches_storage_class: ::prost::alloc::vec::Vec<
-                    ::prost::alloc::string::String,
-                >,
+                pub matches_storage_class: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
                 /// Number of days that have elapsed since the custom timestamp set on an
                 /// object.
                 /// The value of the field must be a nonnegative integer.
@@ -1591,9 +1905,8 @@ pub mod bucket {
                 /// An object matches this condition if the custom timestamp set on the
                 /// object is before the specified date in UTC.
                 #[prost(message, optional, tag = "8")]
-                pub custom_time_before: ::core::option::Option<
-                    super::super::super::super::super::r#type::Date,
-                >,
+                pub custom_time_before:
+                    ::core::option::Option<super::super::super::super::super::r#type::Date>,
                 /// This condition is relevant only for versioned objects. An object
                 /// version satisfies this condition only if these many days have been
                 /// passed since it became noncurrent. The value of the field must be a
@@ -1605,21 +1918,16 @@ pub mod bucket {
                 /// version satisfies this condition only if it became noncurrent before
                 /// the specified date in UTC.
                 #[prost(message, optional, tag = "10")]
-                pub noncurrent_time_before: ::core::option::Option<
-                    super::super::super::super::super::r#type::Date,
-                >,
+                pub noncurrent_time_before:
+                    ::core::option::Option<super::super::super::super::super::r#type::Date>,
                 /// List of object name prefixes. If any prefix exactly matches the
                 /// beginning of the object name, the condition evaluates to true.
                 #[prost(string, repeated, tag = "11")]
-                pub matches_prefix: ::prost::alloc::vec::Vec<
-                    ::prost::alloc::string::String,
-                >,
+                pub matches_prefix: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
                 /// List of object name suffixes. If any suffix exactly matches the
                 /// end of the object name, the condition evaluates to true.
                 #[prost(string, repeated, tag = "12")]
-                pub matches_suffix: ::prost::alloc::vec::Vec<
-                    ::prost::alloc::string::String,
-                >,
+                pub matches_suffix: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
             }
         }
     }
@@ -1644,9 +1952,7 @@ pub mod bucket {
         /// Server-determined value that indicates the time from which policy was
         /// enforced and effective.
         #[prost(message, optional, tag = "1")]
-        pub effective_time: ::core::option::Option<
-            super::super::super::protobuf::Timestamp,
-        >,
+        pub effective_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
         /// Once locked, an object retention policy cannot be modified.
         #[prost(bool, tag = "2")]
         pub is_locked: bool,
@@ -1656,9 +1962,7 @@ pub mod bucket {
         /// only be used for testing purposes. Any `nanos` value specified will be
         /// rounded down to the nearest second.
         #[prost(message, optional, tag = "4")]
-        pub retention_duration: ::core::option::Option<
-            super::super::super::protobuf::Duration,
-        >,
+        pub retention_duration: ::core::option::Option<super::super::super::protobuf::Duration>,
     }
     /// Soft delete policy properties of a bucket.
     #[derive(serde::Deserialize, serde::Serialize)]
@@ -1669,14 +1973,10 @@ pub mod bucket {
         /// retained and cannot be permanently deleted. The duration must be greater
         /// than or equal to 7 days and less than 1 year.
         #[prost(message, optional, tag = "1")]
-        pub retention_duration: ::core::option::Option<
-            super::super::super::protobuf::Duration,
-        >,
+        pub retention_duration: ::core::option::Option<super::super::super::protobuf::Duration>,
         /// Time from which the policy was effective. This is service-provided.
         #[prost(message, optional, tag = "2")]
-        pub effective_time: ::core::option::Option<
-            super::super::super::protobuf::Timestamp,
-        >,
+        pub effective_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     }
     /// Properties of a bucket related to versioning.
     /// For more on Cloud Storage versioning, see
@@ -1734,22 +2034,17 @@ pub mod bucket {
         /// Autoclass is enabled when the bucket is created, the toggle_time is set
         /// to the bucket creation time.
         #[prost(message, optional, tag = "2")]
-        pub toggle_time: ::core::option::Option<
-            super::super::super::protobuf::Timestamp,
-        >,
+        pub toggle_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
         /// An object in an Autoclass bucket will eventually cool down to the
         /// terminal storage class if there is no access to the object.
         /// The only valid values are NEARLINE and ARCHIVE.
         #[prost(string, optional, tag = "3")]
-        pub terminal_storage_class: ::core::option::Option<
-            ::prost::alloc::string::String,
-        >,
+        pub terminal_storage_class: ::core::option::Option<::prost::alloc::string::String>,
         /// Output only. Latest instant at which the autoclass terminal storage class
         /// was updated.
         #[prost(message, optional, tag = "4")]
-        pub terminal_storage_class_update_time: ::core::option::Option<
-            super::super::super::protobuf::Timestamp,
-        >,
+        pub terminal_storage_class_update_time:
+            ::core::option::Option<super::super::super::protobuf::Timestamp>,
     }
     /// Configuration for a bucket's hierarchical namespace feature.
     #[derive(serde::Deserialize, serde::Serialize)]
@@ -1935,6 +2230,9 @@ pub struct Object {
     /// became noncurrent.
     #[prost(message, optional, tag = "12")]
     pub delete_time: ::core::option::Option<super::super::protobuf::Timestamp>,
+    /// Output only. The time when the object was finalized.
+    #[prost(message, optional, tag = "36")]
+    pub finalize_time: ::core::option::Option<super::super::protobuf::Timestamp>,
     /// Content-Type of the object data, matching
     /// [<https://tools.ietf.org/html/rfc7231#section-3.1.1.5][RFC> 7231 §3.1.1.5].
     /// If an object is stored without a Content-Type, it is served as
@@ -1970,9 +2268,7 @@ pub struct Object {
     /// Output only. The time at which the object's storage class was last changed.
     /// When the object is initially created, it will be set to time_created.
     #[prost(message, optional, tag = "19")]
-    pub update_storage_class_time: ::core::option::Option<
-        super::super::protobuf::Timestamp,
-    >,
+    pub update_storage_class_time: ::core::option::Option<super::super::protobuf::Timestamp>,
     /// Whether an object is under temporary hold. While this flag is set to true,
     /// the object is protected against deletion and overwrites.  A common use case
     /// of this flag is regulatory investigations where objects need to be retained
@@ -1991,10 +2287,8 @@ pub struct Object {
     pub retention_expire_time: ::core::option::Option<super::super::protobuf::Timestamp>,
     /// User-provided metadata, in key/value pairs.
     #[prost(map = "string, string", tag = "22")]
-    pub metadata: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub metadata:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Whether an object is under event-based hold.
     /// An event-based hold is a way to force the retention of an object until
     /// after some event occurs. Once the hold is released by explicitly setting
@@ -2152,10 +2446,10 @@ pub mod storage_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// ## API Overview and Naming Syntax
     ///
     /// The Cloud Storage gRPC API allows applications to read and write data through
@@ -2163,13 +2457,12 @@ pub mod storage_client {
     /// abstractions please see https://cloud.google.com/storage/docs.
     ///
     /// Resources are named as follows:
-    ///   - Projects are referred to as they are defined by the Resource Manager API,
-    ///     using strings like `projects/123456` or `projects/my-string-id`.
-    ///   - Buckets are named using string names of the form:
-    ///     `projects/{project}/buckets/{bucket}`
+    ///   - Projects are referred to as they are defined by the Resource Manager API, using strings
+    ///     like `projects/123456` or `projects/my-string-id`.
+    ///   - Buckets are named using string names of the form: `projects/{project}/buckets/{bucket}`
     ///     For globally unique buckets, `_` may be substituted for the project.
-    ///   - Objects are uniquely identified by their name along with the name of the
-    ///     bucket they belong to, as separate strings in this API. For example:
+    ///   - Objects are uniquely identified by their name along with the name of the bucket they
+    ///     belong to, as separate strings in this API. For example:
     ///
     ///       ReadObjectRequest {
     ///         bucket: 'projects/_/buckets/my-bucket'
@@ -2194,7 +2487,7 @@ pub mod storage_client {
     }
     impl<T> StorageClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -2215,14 +2508,13 @@ pub mod storage_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             StorageClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2261,22 +2553,14 @@ pub mod storage_client {
         pub async fn delete_bucket(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteBucketRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/DeleteBucket",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/DeleteBucket");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "DeleteBucket"));
@@ -2287,18 +2571,11 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetBucketRequest>,
         ) -> std::result::Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/GetBucket",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetBucket");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "GetBucket"));
@@ -2309,18 +2586,12 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateBucketRequest>,
         ) -> std::result::Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/CreateBucket",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/CreateBucket");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "CreateBucket"));
@@ -2330,22 +2601,14 @@ pub mod storage_client {
         pub async fn list_buckets(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBucketsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListBucketsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListBucketsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/ListBuckets",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ListBuckets");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "ListBuckets"));
@@ -2356,26 +2619,18 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::LockBucketRetentionPolicyRequest>,
         ) -> std::result::Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.storage.v2.Storage/LockBucketRetentionPolicy",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.storage.v2.Storage",
-                        "LockBucketRetentionPolicy",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "LockBucketRetentionPolicy",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the IAM policy for a specified bucket.
@@ -2383,25 +2638,15 @@ pub mod storage_client {
         /// `projects/_/buckets/{bucket}`.
         pub async fn get_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::iam::v1::GetIamPolicyRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::iam::v1::Policy>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            request: impl tonic::IntoRequest<super::super::super::iam::v1::GetIamPolicyRequest>,
+        ) -> std::result::Result<tonic::Response<super::super::super::iam::v1::Policy>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/GetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetIamPolicy");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "GetIamPolicy"));
@@ -2412,25 +2657,15 @@ pub mod storage_client {
         /// `projects/_/buckets/{bucket}`.
         pub async fn set_iam_policy(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::iam::v1::SetIamPolicyRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::iam::v1::Policy>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            request: impl tonic::IntoRequest<super::super::super::iam::v1::SetIamPolicyRequest>,
+        ) -> std::result::Result<tonic::Response<super::super::super::iam::v1::Policy>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/SetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/SetIamPolicy");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "SetIamPolicy"));
@@ -2445,30 +2680,23 @@ pub mod storage_client {
         /// for a managed folder.
         pub async fn test_iam_permissions(
             &mut self,
-            request: impl tonic::IntoRequest<
-                super::super::super::iam::v1::TestIamPermissionsRequest,
-            >,
+            request: impl tonic::IntoRequest<super::super::super::iam::v1::TestIamPermissionsRequest>,
         ) -> std::result::Result<
             tonic::Response<super::super::super::iam::v1::TestIamPermissionsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.storage.v2.Storage/TestIamPermissions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.storage.v2.Storage", "TestIamPermissions"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "TestIamPermissions",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a bucket. Equivalent to JSON API's storage.buckets.patch method.
@@ -2476,18 +2704,12 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateBucketRequest>,
         ) -> std::result::Result<tonic::Response<super::Bucket>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/UpdateBucket",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/UpdateBucket");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "UpdateBucket"));
@@ -2499,48 +2721,50 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::ComposeObjectRequest>,
         ) -> std::result::Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/ComposeObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ComposeObject");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.storage.v2.Storage", "ComposeObject"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "ComposeObject",
+            ));
             self.inner.unary(req, path, codec).await
         }
-        /// Deletes an object and its metadata.
+        /// Deletes an object and its metadata. Deletions are permanent if versioning
+        /// is not enabled for the bucket, or if the generation parameter is used, or
+        /// if [soft delete](https://cloud.google.com/storage/docs/soft-delete) is not
+        /// enabled for the bucket.
+        /// When this API is used to delete an object from a bucket that has soft
+        /// delete policy enabled, the object becomes soft deleted, and the
+        /// `softDeleteTime` and `hardDeleteTime` properties are set on the object.
+        /// This API cannot be used to permanently delete soft-deleted objects.
+        /// Soft-deleted objects are permanently deleted according to their
+        /// `hardDeleteTime`.
         ///
-        /// Deletions are normally permanent when versioning is disabled or whenever
-        /// the generation parameter is used. However, if soft delete is enabled for
-        /// the bucket, deleted objects can be restored using RestoreObject until the
-        /// soft delete retention period has passed.
+        /// You can use the [`RestoreObject`][google.storage.v2.Storage.RestoreObject]
+        /// API to restore soft-deleted objects until the soft delete retention period
+        /// has passed.
+        ///
+        /// **IAM Permissions**:
+        ///
+        /// Requires `storage.objects.delete`
+        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        /// the bucket.
         pub async fn delete_object(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteObjectRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/DeleteObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/DeleteObject");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "DeleteObject"));
@@ -2551,21 +2775,17 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::RestoreObjectRequest>,
         ) -> std::result::Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/RestoreObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/RestoreObject");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.storage.v2.Storage", "RestoreObject"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "RestoreObject",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Cancels an in-progress resumable upload.
@@ -2579,52 +2799,51 @@ pub mod storage_client {
         pub async fn cancel_resumable_write(
             &mut self,
             request: impl tonic::IntoRequest<super::CancelResumableWriteRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::CancelResumableWriteResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::CancelResumableWriteResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.storage.v2.Storage/CancelResumableWrite",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.storage.v2.Storage", "CancelResumableWrite"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "CancelResumableWrite",
+            ));
             self.inner.unary(req, path, codec).await
         }
-        /// Retrieves an object's metadata.
+        /// Retrieves object metadata.
+        ///
+        /// **IAM Permissions**:
+        ///
+        /// Requires `storage.objects.get`
+        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        /// the bucket. To return object ACLs, the authenticated user must also have
+        /// the `storage.objects.getIamPolicy` permission.
         pub async fn get_object(
             &mut self,
             request: impl tonic::IntoRequest<super::GetObjectRequest>,
         ) -> std::result::Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/GetObject",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/GetObject");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "GetObject"));
             self.inner.unary(req, path, codec).await
         }
-        /// Reads an object's data.
+        /// Retrieves object data.
+        ///
+        /// **IAM Permissions**:
+        ///
+        /// Requires `storage.objects.get`
+        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        /// the bucket.
         pub async fn read_object(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadObjectRequest>,
@@ -2632,22 +2851,55 @@ pub mod storage_client {
             tonic::Response<tonic::codec::Streaming<super::ReadObjectResponse>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/ReadObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ReadObject");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "ReadObject"));
             self.inner.server_streaming(req, path, codec).await
+        }
+        /// Reads an object's data.
+        ///
+        /// This is a bi-directional API with the added support for reading multiple
+        /// ranges within one stream both within and across multiple messages.
+        /// If the server encountered an error for any of the inputs, the stream will
+        /// be closed with the relevant error code.
+        /// Because the API allows for multiple outstanding requests, when the stream
+        /// is closed the error response will contain a BidiReadObjectRangesError proto
+        /// in the error extension describing the error for each outstanding read_id.
+        ///
+        /// **IAM Permissions**:
+        ///
+        /// Requires `storage.objects.get`
+        ///
+        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        /// the bucket.
+        ///
+        /// This API is currently in preview and is not yet available for general
+        /// use.
+        pub async fn bidi_read_object(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<Message = super::BidiReadObjectRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::BidiReadObjectResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/BidiReadObject");
+            let mut req = request.into_streaming_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "BidiReadObject",
+            ));
+            self.inner.streaming(req, path, codec).await
         }
         /// Updates an object's metadata.
         /// Equivalent to JSON API's storage.objects.patch.
@@ -2655,18 +2907,12 @@ pub mod storage_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateObjectRequest>,
         ) -> std::result::Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/UpdateObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/UpdateObject");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "UpdateObject"));
@@ -2688,34 +2934,31 @@ pub mod storage_client {
         /// finishing the upload (either explicitly by the client or due to a network
         /// error or an error response from the server), the client should do as
         /// follows:
-        ///   - Check the result Status of the stream, to determine if writing can be
-        ///     resumed on this stream or must be restarted from scratch (by calling
-        ///     `StartResumableWrite()`). The resumable errors are DEADLINE_EXCEEDED,
-        ///     INTERNAL, and UNAVAILABLE. For each case, the client should use binary
-        ///     exponential backoff before retrying.  Additionally, writes can be
-        ///     resumed after RESOURCE_EXHAUSTED errors, but only after taking
-        ///     appropriate measures, which may include reducing aggregate send rate
-        ///     across clients and/or requesting a quota increase for your project.
-        ///   - If the call to `WriteObject` returns `ABORTED`, that indicates
-        ///     concurrent attempts to update the resumable write, caused either by
-        ///     multiple racing clients or by a single client where the previous
-        ///     request was timed out on the client side but nonetheless reached the
-        ///     server. In this case the client should take steps to prevent further
-        ///     concurrent writes (e.g., increase the timeouts, stop using more than
-        ///     one process to perform the upload, etc.), and then should follow the
-        ///     steps below for resuming the upload.
-        ///   - For resumable errors, the client should call `QueryWriteStatus()` and
-        ///     then continue writing from the returned `persisted_size`. This may be
-        ///     less than the amount of data the client previously sent. Note also that
-        ///     it is acceptable to send data starting at an offset earlier than the
-        ///     returned `persisted_size`; in this case, the service will skip data at
-        ///     offsets that were already persisted (without checking that it matches
-        ///     the previously written data), and write only the data starting from the
-        ///     persisted offset. Even though the data isn't written, it may still
-        ///     incur a performance cost over resuming at the correct write offset.
-        ///     This behavior can make client-side handling simpler in some cases.
-        ///   - Clients must only send data that is a multiple of 256 KiB per message,
-        ///     unless the object is being finished with `finish_write` set to `true`.
+        ///   - Check the result Status of the stream, to determine if writing can be resumed on
+        ///     this stream or must be restarted from scratch (by calling `StartResumableWrite()`).
+        ///     The resumable errors are DEADLINE_EXCEEDED, INTERNAL, and UNAVAILABLE. For each
+        ///     case, the client should use binary exponential backoff before retrying.
+        ///     Additionally, writes can be resumed after RESOURCE_EXHAUSTED errors, but only after
+        ///     taking appropriate measures, which may include reducing aggregate send rate across
+        ///     clients and/or requesting a quota increase for your project.
+        ///   - If the call to `WriteObject` returns `ABORTED`, that indicates concurrent attempts
+        ///     to update the resumable write, caused either by multiple racing clients or by a
+        ///     single client where the previous request was timed out on the client side but
+        ///     nonetheless reached the server. In this case the client should take steps to prevent
+        ///     further concurrent writes (e.g., increase the timeouts, stop using more than one
+        ///     process to perform the upload, etc.), and then should follow the steps below for
+        ///     resuming the upload.
+        ///   - For resumable errors, the client should call `QueryWriteStatus()` and then continue
+        ///     writing from the returned `persisted_size`. This may be less than the amount of data
+        ///     the client previously sent. Note also that it is acceptable to send data starting at
+        ///     an offset earlier than the returned `persisted_size`; in this case, the service will
+        ///     skip data at offsets that were already persisted (without checking that it matches
+        ///     the previously written data), and write only the data starting from the persisted
+        ///     offset. Even though the data isn't written, it may still incur a performance cost
+        ///     over resuming at the correct write offset. This behavior can make client-side
+        ///     handling simpler in some cases.
+        ///   - Clients must only send data that is a multiple of 256 KiB per message, unless the
+        ///     object is being finished with `finish_write` set to `true`.
         ///
         /// The service will not view the object as complete until the client has
         /// sent a `WriteObjectRequest` with `finish_write` set to `true`. Sending any
@@ -2725,33 +2968,29 @@ pub mod storage_client {
         /// whether the service views the object as complete.
         ///
         /// Attempting to resume an already finalized object will result in an OK
-        /// status, with a WriteObjectResponse containing the finalized object's
+        /// status, with a `WriteObjectResponse` containing the finalized object's
         /// metadata.
         ///
         /// Alternatively, the BidiWriteObject operation may be used to write an
         /// object with controls over flushing and the ability to fetch the ability to
         /// determine the current persisted size.
+        ///
+        /// **IAM Permissions**:
+        ///
+        /// Requires `storage.objects.create`
+        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        /// the bucket.
         pub async fn write_object(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<
-                Message = super::WriteObjectRequest,
-            >,
-        ) -> std::result::Result<
-            tonic::Response<super::WriteObjectResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            request: impl tonic::IntoStreamingRequest<Message = super::WriteObjectRequest>,
+        ) -> std::result::Result<tonic::Response<super::WriteObjectResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/WriteObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/WriteObject");
             let mut req = request.into_streaming_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "WriteObject"));
@@ -2774,50 +3013,43 @@ pub mod storage_client {
         /// always be sent to the client, regardless of the value of `state_lookup`.
         pub async fn bidi_write_object(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<
-                Message = super::BidiWriteObjectRequest,
-            >,
+            request: impl tonic::IntoStreamingRequest<Message = super::BidiWriteObjectRequest>,
         ) -> std::result::Result<
             tonic::Response<tonic::codec::Streaming<super::BidiWriteObjectResponse>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/BidiWriteObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/BidiWriteObject");
             let mut req = request.into_streaming_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.storage.v2.Storage", "BidiWriteObject"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "BidiWriteObject",
+            ));
             self.inner.streaming(req, path, codec).await
         }
         /// Retrieves a list of objects matching the criteria.
+        ///
+        /// **IAM Permissions**:
+        ///
+        /// The authenticated user requires `storage.objects.list`
+        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions)
+        /// to use this method. To return object ACLs, the authenticated user must also
+        /// have the `storage.objects.getIamPolicy` permission.
         pub async fn list_objects(
             &mut self,
             request: impl tonic::IntoRequest<super::ListObjectsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListObjectsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListObjectsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/ListObjects",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/ListObjects");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "ListObjects"));
@@ -2828,93 +3060,101 @@ pub mod storage_client {
         pub async fn rewrite_object(
             &mut self,
             request: impl tonic::IntoRequest<super::RewriteObjectRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::RewriteResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::RewriteResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/RewriteObject",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/RewriteObject");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.storage.v2.Storage", "RewriteObject"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "RewriteObject",
+            ));
             self.inner.unary(req, path, codec).await
         }
-        /// Starts a resumable write. How long the write operation remains valid, and
-        /// what happens when the write operation becomes invalid, are
-        /// service-dependent.
+        /// Starts a resumable write operation. This
+        /// method is part of the [Resumable
+        /// upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
+        /// This allows you to upload large objects in multiple chunks, which is more
+        /// resilient to network interruptions than a single upload. The validity
+        /// duration of the write operation, and the consequences of it becoming
+        /// invalid, are service-dependent.
+        ///
+        /// **IAM Permissions**:
+        ///
+        /// Requires `storage.objects.create`
+        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
+        /// the bucket.
         pub async fn start_resumable_write(
             &mut self,
             request: impl tonic::IntoRequest<super::StartResumableWriteRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::StartResumableWriteResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::StartResumableWriteResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.storage.v2.Storage/StartResumableWrite",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.storage.v2.Storage", "StartResumableWrite"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "StartResumableWrite",
+            ));
             self.inner.unary(req, path, codec).await
         }
-        /// Determines the `persisted_size` for an object that is being written, which
-        /// can then be used as the `write_offset` for the next `Write()` call.
+        /// Determines the `persisted_size` of an object that is being written. This
+        /// method is part of the [resumable
+        /// upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
+        /// The returned value is the size of the object that has been persisted so
+        /// far. The value can be used as the `write_offset` for the next `Write()`
+        /// call.
         ///
-        /// If the object does not exist (i.e., the object has been deleted, or the
-        /// first `Write()` has not yet reached the service), this method returns the
+        /// If the object does not exist, meaning if it was deleted, or the
+        /// first `Write()` has not yet reached the service, this method returns the
         /// error `NOT_FOUND`.
         ///
-        /// The client **may** call `QueryWriteStatus()` at any time to determine how
-        /// much data has been processed for this object. This is useful if the
-        /// client is buffering data and needs to know which data can be safely
-        /// evicted. For any sequence of `QueryWriteStatus()` calls for a given
-        /// object name, the sequence of returned `persisted_size` values will be
+        /// This method is useful for clients that buffer data and need to know which
+        /// data can be safely evicted. The client can call `QueryWriteStatus()` at any
+        /// time to determine how much data has been logged for this object.
+        /// For any sequence of `QueryWriteStatus()` calls for a given
+        /// object name, the sequence of returned `persisted_size` values are
         /// non-decreasing.
         pub async fn query_write_status(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryWriteStatusRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::QueryWriteStatusResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::QueryWriteStatusResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.storage.v2.Storage/QueryWriteStatus",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/QueryWriteStatus");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.storage.v2.Storage",
+                "QueryWriteStatus",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Moves the source object to the destination object in the same bucket.
+        pub async fn move_object(
+            &mut self,
+            request: impl tonic::IntoRequest<super::MoveObjectRequest>,
+        ) -> std::result::Result<tonic::Response<super::Object>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path =
+                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/MoveObject");
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.storage.v2.Storage", "QueryWriteStatus"),
-                );
+                .insert(GrpcMethod::new("google.storage.v2.Storage", "MoveObject"));
             self.inner.unary(req, path, codec).await
         }
     }

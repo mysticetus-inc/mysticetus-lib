@@ -113,8 +113,8 @@ pub struct Policy {
     /// * Getting a policy that includes a conditional role binding
     /// * Adding a conditional role binding to a policy
     /// * Changing a conditional role binding in a policy
-    /// * Removing any role binding, with or without a condition, from a policy
-    ///    that includes conditions
+    /// * Removing any role binding, with or without a condition, from a policy that includes
+    ///   conditions
     ///
     /// **Important:** If you use IAM Conditions, you must include the `etag` field
     /// whenever you call `setIamPolicy`. If you omit this field, then IAM allows
@@ -171,46 +171,41 @@ pub struct Binding {
     /// Specifies the principals requesting access for a Google Cloud resource.
     /// `members` can have the following values:
     ///
-    /// * `allUsers`: A special identifier that represents anyone who is
-    ///     on the internet; with or without a Google account.
+    /// * `allUsers`: A special identifier that represents anyone who is on the internet; with or
+    ///   without a Google account.
     ///
-    /// * `allAuthenticatedUsers`: A special identifier that represents anyone
-    ///     who is authenticated with a Google account or a service account.
+    /// * `allAuthenticatedUsers`: A special identifier that represents anyone who is authenticated
+    ///   with a Google account or a service account.
     ///
-    /// * `user:{emailid}`: An email address that represents a specific Google
-    ///     account. For example, `alice@example.com` .
-    ///
-    ///
-    /// * `serviceAccount:{emailid}`: An email address that represents a service
-    ///     account. For example, `my-other-app@appspot.gserviceaccount.com`.
-    ///
-    /// * `group:{emailid}`: An email address that represents a Google group.
-    ///     For example, `admins@example.com`.
-    ///
-    /// * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique
-    ///     identifier) representing a user that has been recently deleted. For
-    ///     example, `alice@example.com?uid=123456789012345678901`. If the user is
-    ///     recovered, this value reverts to `user:{emailid}` and the recovered user
-    ///     retains the role in the binding.
-    ///
-    /// * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus
-    ///     unique identifier) representing a service account that has been recently
-    ///     deleted. For example,
-    ///     `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`.
-    ///     If the service account is undeleted, this value reverts to
-    ///     `serviceAccount:{emailid}` and the undeleted service account retains the
-    ///     role in the binding.
-    ///
-    /// * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique
-    ///     identifier) representing a Google group that has been recently
-    ///     deleted. For example, `admins@example.com?uid=123456789012345678901`. If
-    ///     the group is recovered, this value reverts to `group:{emailid}` and the
-    ///     recovered group retains the role in the binding.
+    /// * `user:{emailid}`: An email address that represents a specific Google account. For
+    ///   example, `alice@example.com` .
     ///
     ///
-    /// * `domain:{domain}`: The G Suite domain (primary) that represents all the
-    ///     users of that domain. For example, `google.com` or `example.com`.
+    /// * `serviceAccount:{emailid}`: An email address that represents a service account. For
+    ///   example, `my-other-app@appspot.gserviceaccount.com`.
     ///
+    /// * `group:{emailid}`: An email address that represents a Google group. For example,
+    ///   `admins@example.com`.
+    ///
+    /// * `deleted:user:{emailid}?uid={uniqueid}`: An email address (plus unique identifier)
+    ///   representing a user that has been recently deleted. For example,
+    ///   `alice@example.com?uid=123456789012345678901`. If the user is recovered, this value
+    ///   reverts to `user:{emailid}` and the recovered user retains the role in the binding.
+    ///
+    /// * `deleted:serviceAccount:{emailid}?uid={uniqueid}`: An email address (plus unique
+    ///   identifier) representing a service account that has been recently deleted. For example,
+    ///   `my-other-app@appspot.gserviceaccount.com?uid=123456789012345678901`. If the service
+    ///   account is undeleted, this value reverts to `serviceAccount:{emailid}` and the undeleted
+    ///   service account retains the role in the binding.
+    ///
+    /// * `deleted:group:{emailid}?uid={uniqueid}`: An email address (plus unique identifier)
+    ///   representing a Google group that has been recently deleted. For example,
+    ///   `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value
+    ///   reverts to `group:{emailid}` and the recovered group retains the role in the binding.
+    ///
+    ///
+    /// * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that
+    ///   domain. For example, `google.com` or `example.com`.
     ///
     #[prost(string, repeated, tag = "2")]
     pub members: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -332,17 +327,7 @@ pub mod audit_log_config {
     /// Admin writes are always logged, and are not configurable.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum LogType {
         /// Default case. Should never be this.
@@ -420,17 +405,7 @@ pub mod binding_delta {
     /// The type of action performed on a Binding in a policy.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Action {
         /// Unspecified.
@@ -495,17 +470,7 @@ pub mod audit_config_delta {
     /// The type of action performed on an audit configuration in a policy.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Action {
         /// Unspecified.
@@ -608,10 +573,10 @@ pub mod iam_policy_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// API Overview
     ///
     /// Manages Identity and Access Management (IAM) policies.
@@ -654,7 +619,7 @@ pub mod iam_policy_client {
     }
     impl<T> IamPolicyClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -675,14 +640,13 @@ pub mod iam_policy_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             IamPolicyClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -725,18 +689,12 @@ pub mod iam_policy_client {
             &mut self,
             request: impl tonic::IntoRequest<super::SetIamPolicyRequest>,
         ) -> std::result::Result<tonic::Response<super::Policy>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.iam.v1.IAMPolicy/SetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/SetIamPolicy");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.iam.v1.IAMPolicy", "SetIamPolicy"));
@@ -749,18 +707,12 @@ pub mod iam_policy_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetIamPolicyRequest>,
         ) -> std::result::Result<tonic::Response<super::Policy>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.iam.v1.IAMPolicy/GetIamPolicy",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/GetIamPolicy");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.iam.v1.IAMPolicy", "GetIamPolicy"));
@@ -776,27 +728,19 @@ pub mod iam_policy_client {
         pub async fn test_iam_permissions(
             &mut self,
             request: impl tonic::IntoRequest<super::TestIamPermissionsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::TestIamPermissionsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::TestIamPermissionsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.iam.v1.IAMPolicy/TestIamPermissions",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/TestIamPermissions");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.iam.v1.IAMPolicy", "TestIamPermissions"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.iam.v1.IAMPolicy",
+                "TestIamPermissions",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }

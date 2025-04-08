@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::pin::Pin;
-use std::task::{ready, Context, Poll};
+use std::task::{Context, Poll, ready};
 
 use futures::Stream;
 use pin_project_lite::pin_project;
-use reqwest::{header, RequestBuilder};
+use reqwest::{RequestBuilder, header};
 use tokio_util::sync::ReusableBoxFuture;
 
 use crate::client::Client;
@@ -98,9 +98,9 @@ impl<'a> ListBuilder<'a> {
                 let shared_clone = shared.clone();
                 let url = request.url().clone();
 
-                let fut =  ReusableBoxFuture::new(async move {
+                let fut = ReusableBoxFuture::new(async move {
                     let header = shared_clone.auth.get_header().await?;
-        
+
                     request.headers_mut().insert(header::AUTHORIZATION, header);
                     crate::execute_and_validate_with_backoff(&shared_clone.client, request)
                         .await?
@@ -110,10 +110,11 @@ impl<'a> ListBuilder<'a> {
                 });
 
                 (Some(url), fut)
-            },
-            Err(error) => {
-                (None, ReusableBoxFuture::new(std::future::ready(Err(Error::from(error)))))
-            },
+            }
+            Err(error) => (
+                None,
+                ReusableBoxFuture::new(std::future::ready(Err(Error::from(error)))),
+            ),
         };
 
         ListStream {
@@ -223,7 +224,10 @@ impl ListStreamProjection<'_, '_> {
         token: String,
         cx: &mut Context<'_>,
     ) -> Option<Result<List, Error>> {
-        let url = self.url.as_ref().expect("this will be Some unless the initial request fails");
+        let url = self
+            .url
+            .as_ref()
+            .expect("this will be Some unless the initial request fails");
 
         self.fut
             .as_mut()

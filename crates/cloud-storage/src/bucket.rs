@@ -8,6 +8,7 @@ use protos::storage::{Object, storage_client};
 use super::Error;
 use crate::get::GetBuilder;
 use crate::read::ReadBuilder;
+use crate::write::WriteBuilder;
 
 #[derive(Debug, Clone)]
 pub struct BucketClient {
@@ -69,6 +70,11 @@ impl BucketClient {
     #[inline]
     pub fn read<S>(&mut self, path: S) -> ReadBuilder<'_, S, (), ()> {
         ReadBuilder::new(self, path)
+    }
+
+    #[inline]
+    pub fn write(&mut self, path: impl Into<String>) -> WriteBuilder<'_> {
+        WriteBuilder::new(self, path.into(), crate::write::NonResumable)
     }
 
     #[inline]

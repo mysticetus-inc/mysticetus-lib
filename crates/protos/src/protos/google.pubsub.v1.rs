@@ -28,17 +28,7 @@ pub mod schema {
     /// Possible schema definition types.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Type {
         /// Default value. This value is unused.
@@ -373,10 +363,10 @@ pub mod schema_service_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// Service for doing schema-related operations.
     #[derive(Debug, Clone)]
     pub struct SchemaServiceClient<T> {
@@ -395,7 +385,7 @@ pub mod schema_service_client {
     }
     impl<T> SchemaServiceClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -416,14 +406,13 @@ pub mod schema_service_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             SchemaServiceClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -463,23 +452,18 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::Schema>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/CreateSchema",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.SchemaService", "CreateSchema"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "CreateSchema",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets a schema.
@@ -487,78 +471,56 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::Schema>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.SchemaService/GetSchema",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/GetSchema");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.pubsub.v1.SchemaService", "GetSchema"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "GetSchema",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists schemas in a project.
         pub async fn list_schemas(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSchemasRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListSchemasResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListSchemasResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.SchemaService/ListSchemas",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ListSchemas");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.SchemaService", "ListSchemas"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "ListSchemas",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists all schema revisions for the named schema.
         pub async fn list_schema_revisions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSchemaRevisionsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListSchemaRevisionsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListSchemaRevisionsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/ListSchemaRevisions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.pubsub.v1.SchemaService",
-                        "ListSchemaRevisions",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "ListSchemaRevisions",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Commits a new schema revision to an existing schema.
@@ -566,23 +528,18 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CommitSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::Schema>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/CommitSchema",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.SchemaService", "CommitSchema"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "CommitSchema",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates a new schema revision that is a copy of the provided revision_id.
@@ -590,23 +547,18 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::RollbackSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::Schema>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/RollbackSchema",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.SchemaService", "RollbackSchema"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "RollbackSchema",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a specific schema revision.
@@ -614,107 +566,78 @@ pub mod schema_service_client {
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSchemaRevisionRequest>,
         ) -> std::result::Result<tonic::Response<super::Schema>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/DeleteSchemaRevision",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.pubsub.v1.SchemaService",
-                        "DeleteSchemaRevision",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "DeleteSchemaRevision",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a schema.
         pub async fn delete_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSchemaRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/DeleteSchema",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.SchemaService", "DeleteSchema"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "DeleteSchema",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Validates a schema.
         pub async fn validate_schema(
             &mut self,
             request: impl tonic::IntoRequest<super::ValidateSchemaRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ValidateSchemaResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ValidateSchemaResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/ValidateSchema",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.SchemaService", "ValidateSchema"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "ValidateSchema",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Validates a message against a schema.
         pub async fn validate_message(
             &mut self,
             request: impl tonic::IntoRequest<super::ValidateMessageRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ValidateMessageResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ValidateMessageResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/ValidateMessage",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.SchemaService", "ValidateMessage"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.SchemaService",
+                "ValidateMessage",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -731,9 +654,7 @@ pub struct MessageStoragePolicy {
     /// regions. An empty list means that no regions are allowed, and is not a
     /// valid configuration.
     #[prost(string, repeated, tag = "1")]
-    pub allowed_persistence_regions: ::prost::alloc::vec::Vec<
-        ::prost::alloc::string::String,
-    >,
+    pub allowed_persistence_regions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Optional. If true, `allowed_persistence_regions` is also used to enforce
     /// in-transit guarantees for messages. That is, Pub/Sub will fail
     /// Publish operations on this topic and subscribe operations
@@ -777,7 +698,10 @@ pub struct IngestionDataSourceSettings {
     #[prost(message, optional, tag = "4")]
     pub platform_logs_settings: ::core::option::Option<PlatformLogsSettings>,
     /// Only one source type can have settings set.
-    #[prost(oneof = "ingestion_data_source_settings::Source", tags = "1, 2")]
+    #[prost(
+        oneof = "ingestion_data_source_settings::Source",
+        tags = "1, 2, 3, 5, 6"
+    )]
     pub source: ::core::option::Option<ingestion_data_source_settings::Source>,
 }
 /// Nested message and enum types in `IngestionDataSourceSettings`.
@@ -816,15 +740,7 @@ pub mod ingestion_data_source_settings {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum State {
@@ -834,13 +750,12 @@ pub mod ingestion_data_source_settings {
             Active = 1,
             /// Permission denied encountered while consuming data from Kinesis.
             /// This can happen if:
-            ///    - The provided `aws_role_arn` does not exist or does not have the
-            ///      appropriate permissions attached.
-            ///    - The provided `aws_role_arn` is not set up properly for Identity
-            ///      Federation using `gcp_service_account`.
-            ///    - The Pub/Sub SA is not granted the
-            ///      `iam.serviceAccounts.getOpenIdToken` permission on
-            ///      `gcp_service_account`.
+            ///    - The provided `aws_role_arn` does not exist or does not have the appropriate
+            ///      permissions attached.
+            ///    - The provided `aws_role_arn` is not set up properly for Identity Federation
+            ///      using `gcp_service_account`.
+            ///    - The Pub/Sub SA is not granted the `iam.serviceAccounts.getOpenIdToken`
+            ///      permission on `gcp_service_account`.
             KinesisPermissionDenied = 2,
             /// Permission denied encountered while publishing to the topic. This can
             /// happen if the Pub/Sub SA has not been granted the [appropriate publish
@@ -897,9 +812,8 @@ pub mod ingestion_data_source_settings {
         /// Optional. Only objects with a larger or equal creation timestamp will be
         /// ingested.
         #[prost(message, optional, tag = "6")]
-        pub minimum_object_create_time: ::core::option::Option<
-            super::super::super::protobuf::Timestamp,
-        >,
+        pub minimum_object_create_time:
+            ::core::option::Option<super::super::super::protobuf::Timestamp>,
         /// Optional. Glob pattern used to match objects that will be ingested. If
         /// unset, all objects will be ingested. See the [supported
         /// patterns](<https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-objects-and-prefixes-using-glob>).
@@ -941,15 +855,7 @@ pub mod ingestion_data_source_settings {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum State {
@@ -984,9 +890,7 @@ pub mod ingestion_data_source_settings {
                 match self {
                     Self::Unspecified => "STATE_UNSPECIFIED",
                     Self::Active => "ACTIVE",
-                    Self::CloudStoragePermissionDenied => {
-                        "CLOUD_STORAGE_PERMISSION_DENIED"
-                    }
+                    Self::CloudStoragePermissionDenied => "CLOUD_STORAGE_PERMISSION_DENIED",
                     Self::PublishPermissionDenied => "PUBLISH_PERMISSION_DENIED",
                     Self::BucketNotFound => "BUCKET_NOT_FOUND",
                     Self::TooManyObjects => "TOO_MANY_OBJECTS",
@@ -997,9 +901,7 @@ pub mod ingestion_data_source_settings {
                 match value {
                     "STATE_UNSPECIFIED" => Some(Self::Unspecified),
                     "ACTIVE" => Some(Self::Active),
-                    "CLOUD_STORAGE_PERMISSION_DENIED" => {
-                        Some(Self::CloudStoragePermissionDenied)
-                    }
+                    "CLOUD_STORAGE_PERMISSION_DENIED" => Some(Self::CloudStoragePermissionDenied),
                     "PUBLISH_PERMISSION_DENIED" => Some(Self::PublishPermissionDenied),
                     "BUCKET_NOT_FOUND" => Some(Self::BucketNotFound),
                     "TOO_MANY_OBJECTS" => Some(Self::TooManyObjects),
@@ -1025,6 +927,271 @@ pub mod ingestion_data_source_settings {
             PubsubAvroFormat(PubSubAvroFormat),
         }
     }
+    /// Ingestion settings for Azure Event Hubs.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AzureEventHubs {
+        /// Output only. An output-only field that indicates the state of the Event
+        /// Hubs ingestion source.
+        #[prost(enumeration = "azure_event_hubs::State", tag = "1")]
+        pub state: i32,
+        /// Optional. Name of the resource group within the azure subscription.
+        #[prost(string, tag = "2")]
+        pub resource_group: ::prost::alloc::string::String,
+        /// Optional. The name of the Event Hubs namespace.
+        #[prost(string, tag = "3")]
+        pub namespace: ::prost::alloc::string::String,
+        /// Optional. The name of the Event Hub.
+        #[prost(string, tag = "4")]
+        pub event_hub: ::prost::alloc::string::String,
+        /// Optional. The client id of the Azure application that is being used to
+        /// authenticate Pub/Sub.
+        #[prost(string, tag = "5")]
+        pub client_id: ::prost::alloc::string::String,
+        /// Optional. The tenant id of the Azure application that is being used to
+        /// authenticate Pub/Sub.
+        #[prost(string, tag = "6")]
+        pub tenant_id: ::prost::alloc::string::String,
+        /// Optional. The Azure subscription id.
+        #[prost(string, tag = "7")]
+        pub subscription_id: ::prost::alloc::string::String,
+        /// Optional. The GCP service account to be used for Federated Identity
+        /// authentication.
+        #[prost(string, tag = "8")]
+        pub gcp_service_account: ::prost::alloc::string::String,
+    }
+    /// Nested message and enum types in `AzureEventHubs`.
+    pub mod azure_event_hubs {
+        /// Possible states for managed ingestion from Event Hubs.
+        #[derive(serde::Deserialize, serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        #[derive(
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+        )]
+        #[repr(i32)]
+        pub enum State {
+            /// Default value. This value is unused.
+            Unspecified = 0,
+            /// Ingestion is active.
+            Active = 1,
+            /// Permission denied encountered while consuming data from Event Hubs.
+            /// This can happen when `client_id`, or `tenant_id` are invalid. Or the
+            /// right permissions haven't been granted.
+            EventHubsPermissionDenied = 2,
+            /// Permission denied encountered while publishing to the topic.
+            PublishPermissionDenied = 3,
+            /// The provided Event Hubs namespace couldn't be found.
+            NamespaceNotFound = 4,
+            /// The provided Event Hub couldn't be found.
+            EventHubNotFound = 5,
+            /// The provided Event Hubs subscription couldn't be found.
+            SubscriptionNotFound = 6,
+            /// The provided Event Hubs resource group couldn't be found.
+            ResourceGroupNotFound = 7,
+        }
+        impl State {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    Self::Unspecified => "STATE_UNSPECIFIED",
+                    Self::Active => "ACTIVE",
+                    Self::EventHubsPermissionDenied => "EVENT_HUBS_PERMISSION_DENIED",
+                    Self::PublishPermissionDenied => "PUBLISH_PERMISSION_DENIED",
+                    Self::NamespaceNotFound => "NAMESPACE_NOT_FOUND",
+                    Self::EventHubNotFound => "EVENT_HUB_NOT_FOUND",
+                    Self::SubscriptionNotFound => "SUBSCRIPTION_NOT_FOUND",
+                    Self::ResourceGroupNotFound => "RESOURCE_GROUP_NOT_FOUND",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                    "ACTIVE" => Some(Self::Active),
+                    "EVENT_HUBS_PERMISSION_DENIED" => Some(Self::EventHubsPermissionDenied),
+                    "PUBLISH_PERMISSION_DENIED" => Some(Self::PublishPermissionDenied),
+                    "NAMESPACE_NOT_FOUND" => Some(Self::NamespaceNotFound),
+                    "EVENT_HUB_NOT_FOUND" => Some(Self::EventHubNotFound),
+                    "SUBSCRIPTION_NOT_FOUND" => Some(Self::SubscriptionNotFound),
+                    "RESOURCE_GROUP_NOT_FOUND" => Some(Self::ResourceGroupNotFound),
+                    _ => None,
+                }
+            }
+        }
+    }
+    /// Ingestion settings for Amazon MSK.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AwsMsk {
+        /// Output only. An output-only field that indicates the state of the Amazon
+        /// MSK ingestion source.
+        #[prost(enumeration = "aws_msk::State", tag = "1")]
+        pub state: i32,
+        /// Required. The Amazon Resource Name (ARN) that uniquely identifies the
+        /// cluster.
+        #[prost(string, tag = "2")]
+        pub cluster_arn: ::prost::alloc::string::String,
+        /// Required. The name of the topic in the Amazon MSK cluster that Pub/Sub
+        /// will import from.
+        #[prost(string, tag = "3")]
+        pub topic: ::prost::alloc::string::String,
+        /// Required. AWS role ARN to be used for Federated Identity authentication
+        /// with Amazon MSK. Check the Pub/Sub docs for how to set up this role and
+        /// the required permissions that need to be attached to it.
+        #[prost(string, tag = "4")]
+        pub aws_role_arn: ::prost::alloc::string::String,
+        /// Required. The GCP service account to be used for Federated Identity
+        /// authentication with Amazon MSK (via a `AssumeRoleWithWebIdentity` call
+        /// for the provided role). The `aws_role_arn` must be set up with
+        /// `accounts.google.com:sub` equals to this service account number.
+        #[prost(string, tag = "5")]
+        pub gcp_service_account: ::prost::alloc::string::String,
+    }
+    /// Nested message and enum types in `AwsMsk`.
+    pub mod aws_msk {
+        /// Possible states for managed ingestion from Amazon MSK.
+        #[derive(serde::Deserialize, serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        #[derive(
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+        )]
+        #[repr(i32)]
+        pub enum State {
+            /// Default value. This value is unused.
+            Unspecified = 0,
+            /// Ingestion is active.
+            Active = 1,
+            /// Permission denied encountered while consuming data from Amazon MSK.
+            MskPermissionDenied = 2,
+            /// Permission denied encountered while publishing to the topic.
+            PublishPermissionDenied = 3,
+            /// The provided MSK cluster wasn't found.
+            ClusterNotFound = 4,
+            /// The provided topic wasn't found.
+            TopicNotFound = 5,
+        }
+        impl State {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    Self::Unspecified => "STATE_UNSPECIFIED",
+                    Self::Active => "ACTIVE",
+                    Self::MskPermissionDenied => "MSK_PERMISSION_DENIED",
+                    Self::PublishPermissionDenied => "PUBLISH_PERMISSION_DENIED",
+                    Self::ClusterNotFound => "CLUSTER_NOT_FOUND",
+                    Self::TopicNotFound => "TOPIC_NOT_FOUND",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                    "ACTIVE" => Some(Self::Active),
+                    "MSK_PERMISSION_DENIED" => Some(Self::MskPermissionDenied),
+                    "PUBLISH_PERMISSION_DENIED" => Some(Self::PublishPermissionDenied),
+                    "CLUSTER_NOT_FOUND" => Some(Self::ClusterNotFound),
+                    "TOPIC_NOT_FOUND" => Some(Self::TopicNotFound),
+                    _ => None,
+                }
+            }
+        }
+    }
+    /// Ingestion settings for Confluent Cloud.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ConfluentCloud {
+        /// Output only. An output-only field that indicates the state of the
+        /// Confluent Cloud ingestion source.
+        #[prost(enumeration = "confluent_cloud::State", tag = "1")]
+        pub state: i32,
+        /// Required. The address of the bootstrap server. The format is url:port.
+        #[prost(string, tag = "2")]
+        pub bootstrap_server: ::prost::alloc::string::String,
+        /// Required. The id of the cluster.
+        #[prost(string, tag = "3")]
+        pub cluster_id: ::prost::alloc::string::String,
+        /// Required. The name of the topic in the Confluent Cloud cluster that
+        /// Pub/Sub will import from.
+        #[prost(string, tag = "4")]
+        pub topic: ::prost::alloc::string::String,
+        /// Required. The id of the identity pool to be used for Federated Identity
+        /// authentication with Confluent Cloud. See
+        /// <https://docs.confluent.io/cloud/current/security/authenticate/workload-identities/identity-providers/oauth/identity-pools.html#add-oauth-identity-pools.>
+        #[prost(string, tag = "5")]
+        pub identity_pool_id: ::prost::alloc::string::String,
+        /// Required. The GCP service account to be used for Federated Identity
+        /// authentication with `identity_pool_id`.
+        #[prost(string, tag = "6")]
+        pub gcp_service_account: ::prost::alloc::string::String,
+    }
+    /// Nested message and enum types in `ConfluentCloud`.
+    pub mod confluent_cloud {
+        /// Possible states for managed ingestion from Confluent Cloud.
+        #[derive(serde::Deserialize, serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        #[derive(
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+        )]
+        #[repr(i32)]
+        pub enum State {
+            /// Default value. This value is unused.
+            Unspecified = 0,
+            /// Ingestion is active.
+            Active = 1,
+            /// Permission denied encountered while consuming data from Confluent
+            /// Cloud.
+            ConfluentCloudPermissionDenied = 2,
+            /// Permission denied encountered while publishing to the topic.
+            PublishPermissionDenied = 3,
+            /// The provided bootstrap server address is unreachable.
+            UnreachableBootstrapServer = 4,
+            /// The provided cluster wasn't found.
+            ClusterNotFound = 5,
+            /// The provided topic wasn't found.
+            TopicNotFound = 6,
+        }
+        impl State {
+            /// String value of the enum field names used in the ProtoBuf definition.
+            ///
+            /// The values are not transformed in any way and thus are considered stable
+            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+            pub fn as_str_name(&self) -> &'static str {
+                match self {
+                    Self::Unspecified => "STATE_UNSPECIFIED",
+                    Self::Active => "ACTIVE",
+                    Self::ConfluentCloudPermissionDenied => "CONFLUENT_CLOUD_PERMISSION_DENIED",
+                    Self::PublishPermissionDenied => "PUBLISH_PERMISSION_DENIED",
+                    Self::UnreachableBootstrapServer => "UNREACHABLE_BOOTSTRAP_SERVER",
+                    Self::ClusterNotFound => "CLUSTER_NOT_FOUND",
+                    Self::TopicNotFound => "TOPIC_NOT_FOUND",
+                }
+            }
+            /// Creates an enum from field names used in the ProtoBuf definition.
+            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                match value {
+                    "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                    "ACTIVE" => Some(Self::Active),
+                    "CONFLUENT_CLOUD_PERMISSION_DENIED" => {
+                        Some(Self::ConfluentCloudPermissionDenied)
+                    }
+                    "PUBLISH_PERMISSION_DENIED" => Some(Self::PublishPermissionDenied),
+                    "UNREACHABLE_BOOTSTRAP_SERVER" => Some(Self::UnreachableBootstrapServer),
+                    "CLUSTER_NOT_FOUND" => Some(Self::ClusterNotFound),
+                    "TOPIC_NOT_FOUND" => Some(Self::TopicNotFound),
+                    _ => None,
+                }
+            }
+        }
+    }
     /// Only one source type can have settings set.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -1036,6 +1203,15 @@ pub mod ingestion_data_source_settings {
         /// Optional. Cloud Storage.
         #[prost(message, tag = "2")]
         CloudStorage(CloudStorage),
+        /// Optional. Azure Event Hubs.
+        #[prost(message, tag = "3")]
+        AzureEventHubs(AzureEventHubs),
+        /// Optional. Amazon MSK.
+        #[prost(message, tag = "5")]
+        AwsMsk(AwsMsk),
+        /// Optional. Confluent Cloud.
+        #[prost(message, tag = "6")]
+        ConfluentCloud(ConfluentCloud),
     }
 }
 /// Settings for Platform Logs produced by Pub/Sub.
@@ -1052,17 +1228,7 @@ pub mod platform_logs_settings {
     /// Severity levels of Platform Logs.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum Severity {
         /// Default value. Logs level is unspecified. Logs will be disabled.
@@ -1120,7 +1286,7 @@ pub struct IngestionFailureEvent {
     /// Required. Error details explaining why ingestion to Pub/Sub has failed.
     #[prost(string, tag = "2")]
     pub error_message: ::prost::alloc::string::String,
-    #[prost(oneof = "ingestion_failure_event::Failure", tags = "3")]
+    #[prost(oneof = "ingestion_failure_event::Failure", tags = "3, 4, 5, 6")]
     pub failure: ::core::option::Option<ingestion_failure_event::Failure>,
 }
 /// Nested message and enum types in `IngestionFailureEvent`.
@@ -1179,6 +1345,111 @@ pub mod ingestion_failure_event {
             ApiViolationReason(super::ApiViolationReason),
         }
     }
+    /// Failure when ingesting from an Amazon MSK source.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AwsMskFailureReason {
+        /// Optional. The ARN of the cluster of the topic being ingested from.
+        #[prost(string, tag = "1")]
+        pub cluster_arn: ::prost::alloc::string::String,
+        /// Optional. The name of the Kafka topic being ingested from.
+        #[prost(string, tag = "2")]
+        pub kafka_topic: ::prost::alloc::string::String,
+        /// Optional. The partition ID of the message that failed to be ingested.
+        #[prost(int64, tag = "3")]
+        pub partition_id: i64,
+        /// Optional. The offset within the partition of the message that failed to
+        /// be ingested.
+        #[prost(int64, tag = "4")]
+        pub offset: i64,
+        /// Reason why ingestion failed for the specified message.
+        #[prost(oneof = "aws_msk_failure_reason::Reason", tags = "5")]
+        pub reason: ::core::option::Option<aws_msk_failure_reason::Reason>,
+    }
+    /// Nested message and enum types in `AwsMskFailureReason`.
+    pub mod aws_msk_failure_reason {
+        /// Reason why ingestion failed for the specified message.
+        #[derive(serde::Deserialize, serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. The Pub/Sub API limits prevented the desired message from
+            /// being published.
+            #[prost(message, tag = "5")]
+            ApiViolationReason(super::ApiViolationReason),
+        }
+    }
+    /// Failure when ingesting from an Azure Event Hubs source.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct AzureEventHubsFailureReason {
+        /// Optional. The namespace containing the event hub being ingested from.
+        #[prost(string, tag = "1")]
+        pub namespace: ::prost::alloc::string::String,
+        /// Optional. The name of the event hub being ingested from.
+        #[prost(string, tag = "2")]
+        pub event_hub: ::prost::alloc::string::String,
+        /// Optional. The partition ID of the message that failed to be ingested.
+        #[prost(int64, tag = "3")]
+        pub partition_id: i64,
+        /// Optional. The offset within the partition of the message that failed to
+        /// be ingested.
+        #[prost(int64, tag = "4")]
+        pub offset: i64,
+        /// Reason why ingestion failed for the specified message.
+        #[prost(oneof = "azure_event_hubs_failure_reason::Reason", tags = "5")]
+        pub reason: ::core::option::Option<azure_event_hubs_failure_reason::Reason>,
+    }
+    /// Nested message and enum types in `AzureEventHubsFailureReason`.
+    pub mod azure_event_hubs_failure_reason {
+        /// Reason why ingestion failed for the specified message.
+        #[derive(serde::Deserialize, serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. The Pub/Sub API limits prevented the desired message from
+            /// being published.
+            #[prost(message, tag = "5")]
+            ApiViolationReason(super::ApiViolationReason),
+        }
+    }
+    /// Failure when ingesting from a Confluent Cloud source.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ConfluentCloudFailureReason {
+        /// Optional. The cluster ID containing the topic being ingested from.
+        #[prost(string, tag = "1")]
+        pub cluster_id: ::prost::alloc::string::String,
+        /// Optional. The name of the Kafka topic being ingested from.
+        #[prost(string, tag = "2")]
+        pub kafka_topic: ::prost::alloc::string::String,
+        /// Optional. The partition ID of the message that failed to be ingested.
+        #[prost(int64, tag = "3")]
+        pub partition_id: i64,
+        /// Optional. The offset within the partition of the message that failed to
+        /// be ingested.
+        #[prost(int64, tag = "4")]
+        pub offset: i64,
+        /// Reason why ingestion failed for the specified message.
+        #[prost(oneof = "confluent_cloud_failure_reason::Reason", tags = "5")]
+        pub reason: ::core::option::Option<confluent_cloud_failure_reason::Reason>,
+    }
+    /// Nested message and enum types in `ConfluentCloudFailureReason`.
+    pub mod confluent_cloud_failure_reason {
+        /// Reason why ingestion failed for the specified message.
+        #[derive(serde::Deserialize, serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        pub enum Reason {
+            /// Optional. The Pub/Sub API limits prevented the desired message from
+            /// being published.
+            #[prost(message, tag = "5")]
+            ApiViolationReason(super::ApiViolationReason),
+        }
+    }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
@@ -1186,6 +1457,89 @@ pub mod ingestion_failure_event {
         /// Optional. Failure when ingesting from Cloud Storage.
         #[prost(message, tag = "3")]
         CloudStorageFailure(CloudStorageFailure),
+        /// Optional. Failure when ingesting from Amazon MSK.
+        #[prost(message, tag = "4")]
+        AwsMskFailure(AwsMskFailureReason),
+        /// Optional. Failure when ingesting from Azure Event Hubs.
+        #[prost(message, tag = "5")]
+        AzureEventHubsFailure(AzureEventHubsFailureReason),
+        /// Optional. Failure when ingesting from Confluent Cloud.
+        #[prost(message, tag = "6")]
+        ConfluentCloudFailure(ConfluentCloudFailureReason),
+    }
+}
+/// User-defined JavaScript function that can transform or filter a Pub/Sub
+/// message.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct JavaScriptUdf {
+    /// Required. Name of the JavasScript function that should applied to Pub/Sub
+    /// messages.
+    #[prost(string, tag = "1")]
+    pub function_name: ::prost::alloc::string::String,
+    /// Required. JavaScript code that contains a function `function_name` with the
+    /// below signature:
+    ///
+    /// ```
+    ///    /**
+    ///    * Transforms a Pub/Sub message.
+    ///
+    ///    * @return {(Object<string, (string | Object<string, string>)>|null)} - To
+    ///    * filter a message, return `null`. To transform a message return a map
+    ///    * with the following keys:
+    ///    *   - (required) 'data' : {string}
+    ///    *   - (optional) 'attributes' : {Object<string, string>}
+    ///    * Returning empty `attributes` will remove all attributes from the
+    ///    * message.
+    ///    *
+    ///    * @param  {(Object<string, (string | Object<string, string>)>} Pub/Sub
+    ///    * message. Keys:
+    ///    *   - (required) 'data' : {string}
+    ///    *   - (required) 'attributes' : {Object<string, string>}
+    ///    *
+    ///    * @param  {Object<string, any>} metadata - Pub/Sub message metadata.
+    ///    * Keys:
+    ///    *   - (optional) 'message_id'  : {string}
+    ///    *   - (optional) 'publish_time': {string} YYYY-MM-DDTHH:MM:SSZ format
+    ///    *   - (optional) 'ordering_key': {string}
+    ///    */
+    ///
+    ///    function <function_name>(message, metadata) {
+    ///    }
+    /// ```
+    #[prost(string, tag = "2")]
+    pub code: ::prost::alloc::string::String,
+}
+/// All supported message transforms types.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MessageTransform {
+    /// Optional. This field is deprecated, use the `disabled` field to disable
+    /// transforms.
+    #[deprecated]
+    #[prost(bool, tag = "3")]
+    pub enabled: bool,
+    /// Optional. If true, the transform is disabled and will not be applied to
+    /// messages. Defaults to `false`.
+    #[prost(bool, tag = "4")]
+    pub disabled: bool,
+    /// The type of transform to apply to messages.
+    #[prost(oneof = "message_transform::Transform", tags = "2")]
+    pub transform: ::core::option::Option<message_transform::Transform>,
+}
+/// Nested message and enum types in `MessageTransform`.
+pub mod message_transform {
+    /// The type of transform to apply to messages.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Transform {
+        /// Optional. JavaScript User Defined Function. If multiple JavaScriptUDF's
+        /// are specified on a resource, each must have a unique `function_name`.
+        #[prost(message, tag = "2")]
+        JavascriptUdf(super::JavaScriptUdf),
     }
 }
 /// A topic resource.
@@ -1204,10 +1558,8 @@ pub struct Topic {
     /// Optional. See \[Creating and managing labels\]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "2")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Optional. Policy constraining the set of Google Cloud Platform regions
     /// where messages published to the topic may be stored. If not present, then
     /// no constraints are in effect.
@@ -1236,34 +1588,24 @@ pub struct Topic {
     /// not set, message retention is controlled by settings on individual
     /// subscriptions. Cannot be more than 31 days or less than 10 minutes.
     #[prost(message, optional, tag = "8")]
-    pub message_retention_duration: ::core::option::Option<
-        super::super::protobuf::Duration,
-    >,
+    pub message_retention_duration: ::core::option::Option<super::super::protobuf::Duration>,
     /// Output only. An output-only field indicating the state of the topic.
     #[prost(enumeration = "topic::State", tag = "9")]
     pub state: i32,
     /// Optional. Settings for ingestion from a data source into this topic.
     #[prost(message, optional, tag = "10")]
-    pub ingestion_data_source_settings: ::core::option::Option<
-        IngestionDataSourceSettings,
-    >,
+    pub ingestion_data_source_settings: ::core::option::Option<IngestionDataSourceSettings>,
+    /// Optional. Transforms to be applied to messages published to the topic.
+    /// Transforms are applied in the order specified.
+    #[prost(message, repeated, tag = "13")]
+    pub message_transforms: ::prost::alloc::vec::Vec<MessageTransform>,
 }
 /// Nested message and enum types in `Topic`.
 pub mod topic {
     /// The state of the topic.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// Default value. This value is unused.
@@ -1318,10 +1660,8 @@ pub struct PubsubMessage {
     /// must contain non-empty data. This can be used to filter messages on the
     /// subscription.
     #[prost(map = "string, string", tag = "2")]
-    pub attributes: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub attributes:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// ID of this message, assigned by the server when the message is published.
     /// Guaranteed to be unique within the topic. This value may be read by a
     /// subscriber that receives a `PubsubMessage` via a `Pull` call or a push
@@ -1584,16 +1924,12 @@ pub struct Subscription {
     /// and thus configures how far back in time a `Seek` can be done. Defaults to
     /// 7 days. Cannot be more than 31 days or less than 10 minutes.
     #[prost(message, optional, tag = "8")]
-    pub message_retention_duration: ::core::option::Option<
-        super::super::protobuf::Duration,
-    >,
+    pub message_retention_duration: ::core::option::Option<super::super::protobuf::Duration>,
     /// Optional. See [Creating and managing
     /// labels](<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "9")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// Optional. If true, messages published with the same `ordering_key` in
     /// `PubsubMessage` will be delivered to the subscribers in the order in which
     /// they are received by the Pub/Sub system. Otherwise, they may be delivered
@@ -1663,9 +1999,7 @@ pub struct Subscription {
     /// the `message_retention_duration` field in `Topic`. This field is set only
     /// in responses from the server; it is ignored if it is set in any requests.
     #[prost(message, optional, tag = "17")]
-    pub topic_message_retention_duration: ::core::option::Option<
-        super::super::protobuf::Duration,
-    >,
+    pub topic_message_retention_duration: ::core::option::Option<super::super::protobuf::Duration>,
     /// Output only. An output-only field indicating whether or not the
     /// subscription can receive messages.
     #[prost(enumeration = "subscription::State", tag = "19")]
@@ -1673,21 +2007,25 @@ pub struct Subscription {
     /// Output only. Information about the associated Analytics Hub subscription.
     /// Only set if the subscritpion is created by Analytics Hub.
     #[prost(message, optional, tag = "23")]
-    pub analytics_hub_subscription_info: ::core::option::Option<
-        subscription::AnalyticsHubSubscriptionInfo,
-    >,
+    pub analytics_hub_subscription_info:
+        ::core::option::Option<subscription::AnalyticsHubSubscriptionInfo>,
+    /// Optional. Transforms to be applied to messages before they are delivered to
+    /// subscribers. Transforms are applied in the order specified.
+    #[prost(message, repeated, tag = "25")]
+    pub message_transforms: ::prost::alloc::vec::Vec<MessageTransform>,
 }
 /// Nested message and enum types in `Subscription`.
 pub mod subscription {
-    /// Information about an associated Analytics Hub subscription
-    /// (<https://cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions>).
+    /// Information about an associated [Analytics Hub
+    /// subscription](<https://cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions>).
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct AnalyticsHubSubscriptionInfo {
         /// Optional. The name of the associated Analytics Hub listing resource.
         /// Pattern:
-        /// "projects/{project}/locations/{location}/dataExchanges/{data_exchange}/listings/{listing}"
+        /// "projects/{project}/locations/{location}/dataExchanges/{data_exchange}/listings/
+        /// {listing}"
         #[prost(string, tag = "1")]
         pub listing: ::prost::alloc::string::String,
         /// Optional. The name of the associated Analytics Hub subscription resource.
@@ -1699,17 +2037,7 @@ pub mod subscription {
     /// Possible states for a subscription.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// Default value. This value is unused.
@@ -1851,10 +2179,8 @@ pub struct PushConfig {
     /// For example:
     /// `attributes { "x-goog-version": "v1" }`
     #[prost(map = "string, string", tag = "2")]
-    pub attributes: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub attributes:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
     /// An authentication method used by push endpoints to verify the source of
     /// push requests. This can be used with push endpoints that are private by
     /// default to allow requests only from the Pub/Sub system, for example.
@@ -1993,17 +2319,7 @@ pub mod big_query_config {
     /// Possible states for a BigQuery subscription.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// Default value. This value is unused.
@@ -2048,9 +2364,7 @@ pub mod big_query_config {
                 "PERMISSION_DENIED" => Some(Self::PermissionDenied),
                 "NOT_FOUND" => Some(Self::NotFound),
                 "SCHEMA_MISMATCH" => Some(Self::SchemaMismatch),
-                "IN_TRANSIT_LOCATION_RESTRICTION" => {
-                    Some(Self::InTransitLocationRestriction)
-                }
+                "IN_TRANSIT_LOCATION_RESTRICTION" => Some(Self::InTransitLocationRestriction),
                 _ => None,
             }
         }
@@ -2142,17 +2456,7 @@ pub mod cloud_storage_config {
     /// Possible states for a Cloud Storage subscription.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// Default value. This value is unused.
@@ -2193,9 +2497,7 @@ pub mod cloud_storage_config {
                 "ACTIVE" => Some(Self::Active),
                 "PERMISSION_DENIED" => Some(Self::PermissionDenied),
                 "NOT_FOUND" => Some(Self::NotFound),
-                "IN_TRANSIT_LOCATION_RESTRICTION" => {
-                    Some(Self::InTransitLocationRestriction)
-                }
+                "IN_TRANSIT_LOCATION_RESTRICTION" => Some(Self::InTransitLocationRestriction),
                 "SCHEMA_MISMATCH" => Some(Self::SchemaMismatch),
                 _ => None,
             }
@@ -2446,9 +2748,7 @@ pub struct StreamingPullRequest {
     /// subscriber, or to make the message available for redelivery if the
     /// processing was interrupted.
     #[prost(string, repeated, tag = "4")]
-    pub modify_deadline_ack_ids: ::prost::alloc::vec::Vec<
-        ::prost::alloc::string::String,
-    >,
+    pub modify_deadline_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// Required. The ack deadline to use for the stream. This must be provided in
     /// the first request on the stream, but it can also be updated on subsequent
     /// requests from client to server. The minimum deadline you can specify is 10
@@ -2498,20 +2798,17 @@ pub struct StreamingPullResponse {
     /// Optional. This field will only be set if `enable_exactly_once_delivery` is
     /// set to `true`.
     #[prost(message, optional, tag = "5")]
-    pub acknowledge_confirmation: ::core::option::Option<
-        streaming_pull_response::AcknowledgeConfirmation,
-    >,
+    pub acknowledge_confirmation:
+        ::core::option::Option<streaming_pull_response::AcknowledgeConfirmation>,
     /// Optional. This field will only be set if `enable_exactly_once_delivery` is
     /// set to `true`.
     #[prost(message, optional, tag = "3")]
-    pub modify_ack_deadline_confirmation: ::core::option::Option<
-        streaming_pull_response::ModifyAckDeadlineConfirmation,
-    >,
+    pub modify_ack_deadline_confirmation:
+        ::core::option::Option<streaming_pull_response::ModifyAckDeadlineConfirmation>,
     /// Optional. Properties associated with this subscription.
     #[prost(message, optional, tag = "4")]
-    pub subscription_properties: ::core::option::Option<
-        streaming_pull_response::SubscriptionProperties,
-    >,
+    pub subscription_properties:
+        ::core::option::Option<streaming_pull_response::SubscriptionProperties>,
 }
 /// Nested message and enum types in `StreamingPullResponse`.
 pub mod streaming_pull_response {
@@ -2534,9 +2831,7 @@ pub mod streaming_pull_response {
         /// Optional. List of acknowledgement IDs that failed processing with
         /// temporary issues.
         #[prost(string, repeated, tag = "4")]
-        pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<
-            ::prost::alloc::string::String,
-        >,
+        pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
     /// Acknowledgement IDs sent in one or more previous requests to modify the
     /// deadline for a specific message.
@@ -2554,9 +2849,7 @@ pub mod streaming_pull_response {
         /// Optional. List of acknowledgement IDs that failed processing with
         /// temporary issues.
         #[prost(string, repeated, tag = "3")]
-        pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<
-            ::prost::alloc::string::String,
-        >,
+        pub temporary_failed_ack_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
     /// Subscription properties sent as part of the response.
     #[derive(serde::Deserialize, serde::Serialize)]
@@ -2599,10 +2892,8 @@ pub struct CreateSnapshotRequest {
     /// Optional. See [Creating and managing
     /// labels](<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "3")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the UpdateSnapshot method.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -2648,10 +2939,8 @@ pub struct Snapshot {
     /// Optional. See \[Creating and managing labels\]
     /// (<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "4")]
-    pub labels: ::std::collections::HashMap<
-        ::prost::alloc::string::String,
-        ::prost::alloc::string::String,
-    >,
+    pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the GetSnapshot method.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -2754,10 +3043,10 @@ pub mod publisher_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// The service that an application uses to manipulate topics, and to send
     /// messages to a topic.
     #[derive(Debug, Clone)]
@@ -2777,7 +3066,7 @@ pub mod publisher_client {
     }
     impl<T> PublisherClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -2798,14 +3087,13 @@ pub mod publisher_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             PublisherClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2846,18 +3134,12 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::Topic>,
         ) -> std::result::Result<tonic::Response<super::Topic>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/CreateTopic",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/CreateTopic");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Publisher", "CreateTopic"));
@@ -2869,18 +3151,12 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateTopicRequest>,
         ) -> std::result::Result<tonic::Response<super::Topic>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/UpdateTopic",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/UpdateTopic");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Publisher", "UpdateTopic"));
@@ -2891,22 +3167,12 @@ pub mod publisher_client {
         pub async fn publish(
             &mut self,
             request: impl tonic::IntoRequest<super::PublishRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::PublishResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::PublishResponse>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/Publish",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/Publish");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Publisher", "Publish"));
@@ -2917,18 +3183,11 @@ pub mod publisher_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetTopicRequest>,
         ) -> std::result::Result<tonic::Response<super::Topic>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/GetTopic",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/GetTopic");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Publisher", "GetTopic"));
@@ -2938,22 +3197,14 @@ pub mod publisher_client {
         pub async fn list_topics(
             &mut self,
             request: impl tonic::IntoRequest<super::ListTopicsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListTopicsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListTopicsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/ListTopics",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopics");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Publisher", "ListTopics"));
@@ -2967,26 +3218,18 @@ pub mod publisher_client {
             tonic::Response<super::ListTopicSubscriptionsResponse>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Publisher/ListTopicSubscriptions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.pubsub.v1.Publisher",
-                        "ListTopicSubscriptions",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Publisher",
+                "ListTopicSubscriptions",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists the names of the snapshots on this topic. Snapshots are used in
@@ -2997,27 +3240,20 @@ pub mod publisher_client {
         pub async fn list_topic_snapshots(
             &mut self,
             request: impl tonic::IntoRequest<super::ListTopicSnapshotsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListTopicSnapshotsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListTopicSnapshotsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Publisher/ListTopicSnapshots",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Publisher", "ListTopicSnapshots"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Publisher",
+                "ListTopicSnapshots",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes the topic with the given name. Returns `NOT_FOUND` if the topic
@@ -3028,22 +3264,14 @@ pub mod publisher_client {
         pub async fn delete_topic(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteTopicRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Publisher/DeleteTopic",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/DeleteTopic");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Publisher", "DeleteTopic"));
@@ -3056,27 +3284,20 @@ pub mod publisher_client {
         pub async fn detach_subscription(
             &mut self,
             request: impl tonic::IntoRequest<super::DetachSubscriptionRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::DetachSubscriptionResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::DetachSubscriptionResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Publisher/DetachSubscription",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Publisher", "DetachSubscription"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Publisher",
+                "DetachSubscription",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -3088,10 +3309,10 @@ pub mod subscriber_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// The service that an application uses to manipulate subscriptions and to
     /// consume messages from a subscription via the `Pull` method or by
     /// establishing a bi-directional stream using the `StreamingPull` method.
@@ -3112,7 +3333,7 @@ pub mod subscriber_client {
     }
     impl<T> SubscriberClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -3133,14 +3354,13 @@ pub mod subscriber_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             SubscriberClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -3190,23 +3410,18 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::Subscription>,
         ) -> std::result::Result<tonic::Response<super::Subscription>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/CreateSubscription",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "CreateSubscription"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "CreateSubscription",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the configuration details of a subscription.
@@ -3214,23 +3429,18 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSubscriptionRequest>,
         ) -> std::result::Result<tonic::Response<super::Subscription>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/GetSubscription",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "GetSubscription"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "GetSubscription",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates an existing subscription by updating the fields specified in the
@@ -3240,50 +3450,38 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateSubscriptionRequest>,
         ) -> std::result::Result<tonic::Response<super::Subscription>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/UpdateSubscription",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "UpdateSubscription"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "UpdateSubscription",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists matching subscriptions.
         pub async fn list_subscriptions(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSubscriptionsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListSubscriptionsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListSubscriptionsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/ListSubscriptions",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "ListSubscriptions"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "ListSubscriptions",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes an existing subscription. All messages retained in the subscription
@@ -3294,27 +3492,20 @@ pub mod subscriber_client {
         pub async fn delete_subscription(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSubscriptionRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/DeleteSubscription",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "DeleteSubscription"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "DeleteSubscription",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Modifies the ack deadline for a specific message. This method is useful
@@ -3325,27 +3516,20 @@ pub mod subscriber_client {
         pub async fn modify_ack_deadline(
             &mut self,
             request: impl tonic::IntoRequest<super::ModifyAckDeadlineRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/ModifyAckDeadline",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "ModifyAckDeadline"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "ModifyAckDeadline",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Acknowledges the messages associated with the `ack_ids` in the
@@ -3358,25 +3542,19 @@ pub mod subscriber_client {
         pub async fn acknowledge(
             &mut self,
             request: impl tonic::IntoRequest<super::AcknowledgeRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/Acknowledge",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Acknowledge");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.pubsub.v1.Subscriber", "Acknowledge"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "Acknowledge",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Pulls messages from the server.
@@ -3384,18 +3562,11 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::PullRequest>,
         ) -> std::result::Result<tonic::Response<super::PullResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/Pull",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Pull");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Subscriber", "Pull"));
@@ -3410,28 +3581,22 @@ pub mod subscriber_client {
         /// underlying RPC channel.
         pub async fn streaming_pull(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<
-                Message = super::StreamingPullRequest,
-            >,
+            request: impl tonic::IntoStreamingRequest<Message = super::StreamingPullRequest>,
         ) -> std::result::Result<
             tonic::Response<tonic::codec::Streaming<super::StreamingPullResponse>>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/StreamingPull",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/StreamingPull");
             let mut req = request.into_streaming_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.pubsub.v1.Subscriber", "StreamingPull"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "StreamingPull",
+            ));
             self.inner.streaming(req, path, codec).await
         }
         /// Modifies the `PushConfig` for a specified subscription.
@@ -3443,27 +3608,20 @@ pub mod subscriber_client {
         pub async fn modify_push_config(
             &mut self,
             request: impl tonic::IntoRequest<super::ModifyPushConfigRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/ModifyPushConfig",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "ModifyPushConfig"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "ModifyPushConfig",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the configuration details of a snapshot. Snapshots are used in
@@ -3475,21 +3633,17 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetSnapshotRequest>,
         ) -> std::result::Result<tonic::Response<super::Snapshot>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/GetSnapshot",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/GetSnapshot");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.pubsub.v1.Subscriber", "GetSnapshot"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "GetSnapshot",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists the existing snapshots. Snapshots are used in [Seek](
@@ -3500,25 +3654,19 @@ pub mod subscriber_client {
         pub async fn list_snapshots(
             &mut self,
             request: impl tonic::IntoRequest<super::ListSnapshotsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListSnapshotsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListSnapshotsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/ListSnapshots",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ListSnapshots");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.pubsub.v1.Subscriber", "ListSnapshots"));
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "ListSnapshots",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates a snapshot from the requested subscription. Snapshots are used in
@@ -3541,23 +3689,17 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateSnapshotRequest>,
         ) -> std::result::Result<tonic::Response<super::Snapshot>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/CreateSnapshot",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/CreateSnapshot");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "CreateSnapshot"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "CreateSnapshot",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates an existing snapshot by updating the fields specified in the update
@@ -3570,23 +3712,17 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateSnapshotRequest>,
         ) -> std::result::Result<tonic::Response<super::Snapshot>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/UpdateSnapshot",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/UpdateSnapshot");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "UpdateSnapshot"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "UpdateSnapshot",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Removes an existing snapshot. Snapshots are used in [Seek]
@@ -3601,27 +3737,19 @@ pub mod subscriber_client {
         pub async fn delete_snapshot(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteSnapshotRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::super::super::protobuf::Empty>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/DeleteSnapshot",
-            );
+            let path =
+                http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/DeleteSnapshot");
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new("google.pubsub.v1.Subscriber", "DeleteSnapshot"),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.pubsub.v1.Subscriber",
+                "DeleteSnapshot",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Seeks an existing subscription to a point in time or to a given snapshot,
@@ -3635,18 +3763,11 @@ pub mod subscriber_client {
             &mut self,
             request: impl tonic::IntoRequest<super::SeekRequest>,
         ) -> std::result::Result<tonic::Response<super::SeekResponse>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.pubsub.v1.Subscriber/Seek",
-            );
+            let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Seek");
             let mut req = request.into_request();
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.pubsub.v1.Subscriber", "Seek"));

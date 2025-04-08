@@ -12,7 +12,7 @@ use crate::batch::read::{BatchRead, BatchReadStream, Collection, RawBatchReadStr
 use crate::doc::{Doc, DocumentRef};
 use crate::query::QueryBuilder;
 use crate::ser::serialize_doc_fields;
-use crate::{Firestore, PathComponent};
+use crate::{Firestore, PathComponent, Reference};
 
 /// Reference to a firestore collection.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,7 +33,7 @@ impl<C: PathComponent> CollectionRef<C> {
     pub(crate) fn new_root(collection_name: C, parent: Firestore) -> Self {
         Self::new_nested(
             collection_name,
-            format!("{}/documents", parent.qualified_db_path()),
+            Reference::new_string(format!("{}/documents", parent.qualified_db_path())),
             parent,
         )
     }
@@ -41,9 +41,10 @@ impl<C: PathComponent> CollectionRef<C> {
     #[inline]
     pub(crate) fn new_nested(
         collection_name: C,
-        mut parent_path: String,
+        parent_path: Box<Reference>,
         parent: Firestore,
     ) -> Self {
+        let mut parent_path = parent_path.into_string();
         collection_name.append_to_path(&mut parent_path);
         Self {
             collection_name,
@@ -172,7 +173,7 @@ impl<C: PathComponent> CollectionRef<C> {
         {
             let grandparent = CollectionRef::new_nested(
                 collec_name.to_owned(),
-                collec_path.to_owned(),
+                Reference::new(collec_path).to_owned(),
                 self.parent.clone(),
             );
             CollectionParent::Document(grandparent.doc(doc_id.to_owned()))

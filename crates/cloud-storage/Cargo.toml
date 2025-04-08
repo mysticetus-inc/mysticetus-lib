@@ -13,12 +13,8 @@ tokio = { workspace = true, features = ["macros", "sync"] }
 protos = { path = "../protos", features = ["storage"] }
 bytes.workspace = true
 pin-project-lite.workspace = true
-tonic = { workspace = true, features = [
-    "transport",
-    "tls",
-    "tls-roots",
-    "tls-webpki-roots",
-] }
+net-utils = { path = "../net-utils", features = ["tonic"] }
+tonic = { workspace = true, features = ["transport", "tls-webpki-roots"] }
 gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
 tracing.workspace = true
 http.workspace = true
@@ -28,3 +24,7 @@ crc32c = "0.6.8"
 md5 = "0.7.0"
 num-traits.workspace = true
 tokio-util.workspace = true
+bitflags = "2.9.0"
+
+[dev-dependencies]
+rand.workspace = true

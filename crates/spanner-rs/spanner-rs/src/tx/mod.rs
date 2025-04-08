@@ -6,12 +6,13 @@ use std::marker::PhantomData;
 use bytes::Bytes;
 use protos::spanner::transaction_options::read_only::TimestampBound;
 use protos::spanner::transaction_options::read_write::ReadLockMode;
-use protos::spanner::transaction_options::{self, Mode};
+use protos::spanner::transaction_options::{self, IsolationLevel, Mode};
 use protos::spanner::transaction_selector::Selector;
 use protos::spanner::{self, TransactionOptions, TransactionSelector, commit_request};
 pub use transaction::{ShouldCommit, Transaction};
 
 pub(crate) const READ_WRITE: TransactionOptions = TransactionOptions {
+    isolation_level: IsolationLevel::Unspecified as i32,
     exclude_txn_from_change_streams: false,
     mode: Some(Mode::ReadWrite(transaction_options::ReadWrite {
         multiplexed_session_previous_transaction_id: Bytes::new(),
@@ -20,6 +21,7 @@ pub(crate) const READ_WRITE: TransactionOptions = TransactionOptions {
 };
 
 pub(crate) const READ_ONLY: TransactionOptions = TransactionOptions {
+    isolation_level: IsolationLevel::Unspecified as i32,
     exclude_txn_from_change_streams: false,
     mode: Some(Mode::ReadOnly(transaction_options::ReadOnly {
         return_read_timestamp: true,

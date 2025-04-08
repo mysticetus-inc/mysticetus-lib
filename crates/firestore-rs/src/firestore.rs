@@ -5,11 +5,13 @@ use std::sync::Arc;
 use futures::{Future, Stream};
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
 
+use crate::PathComponent;
 use crate::batch::read::{BatchRead, Document};
 use crate::batch::write::BatchWrite;
 use crate::client::FirestoreClient;
 use crate::collec::CollectionRef;
-use crate::PathComponent;
+
+const DEFAULT_DATABASE: &str = "(default)";
 
 /// Firestore client for a single database.
 #[derive(Clone, Debug)]
@@ -29,14 +31,19 @@ impl PartialEq for Firestore {
 impl Eq for Firestore {}
 
 impl Firestore {
+    #[inline]
+    pub fn builder() -> builder::FirestoreBuilder {
+        builder::FirestoreBuilder::new()
+    }
+
     /// Initializes a [`Firestore`] client with the default project database.
     pub async fn new(project_id: &'static str, scope: Scope) -> crate::Result<Self> {
-        Self::with_database(project_id, "(default)", scope).await
+        Self::with_database(project_id, DEFAULT_DATABASE, scope).await
     }
 
     pub fn from_auth_channel(auth_channel: AuthChannel) -> Self {
         let client = FirestoreClient::from_auth_channel(auth_channel);
-        Self::from_fs_client(client, None)
+        Self::from_fs_client(client, DEFAULT_DATABASE)
     }
 
     pub fn auth(&self) -> &Auth {
@@ -44,12 +51,9 @@ impl Firestore {
     }
 
     #[inline]
-    fn from_fs_client(client: FirestoreClient, db: Option<&str>) -> Self {
-        let qualified_db_path = Arc::from(format!(
-            "projects/{}/databases/{}",
-            client.project_id(),
-            db.unwrap_or("(default)")
-        ));
+    fn from_fs_client(client: FirestoreClient, db: &str) -> Self {
+        let qualified_db_path =
+            Arc::from(format!("projects/{}/databases/{db}", client.project_id(),));
 
         Self {
             client,
@@ -65,7 +69,7 @@ impl Firestore {
 
         let client = FirestoreClient::from_auth_manager(auth_manager).await?;
 
-        Ok(Self::from_fs_client(client, None))
+        Ok(Self::from_fs_client(client, DEFAULT_DATABASE))
     }
 
     pub async fn from_auth_manager_future<F>(auth_manager_fut: F) -> crate::Result<Self>
@@ -75,7 +79,7 @@ impl Firestore {
     {
         let client = FirestoreClient::from_auth_manager_future(auth_manager_fut).await?;
 
-        Ok(Self::from_fs_client(client, None))
+        Ok(Self::from_fs_client(client, DEFAULT_DATABASE))
     }
 
     pub async fn from_service_account_credentials<P>(
@@ -88,7 +92,7 @@ impl Firestore {
     {
         let client =
             FirestoreClient::from_service_account_credentials(project_id, path, scope).await?;
-        Ok(Self::from_fs_client(client, None))
+        Ok(Self::from_fs_client(client, DEFAULT_DATABASE))
     }
 
     pub(crate) fn qualified_db_path(&self) -> &str {
@@ -105,7 +109,7 @@ impl Firestore {
         D: AsRef<str>,
     {
         let client = FirestoreClient::new(project_id, scope).await?;
-        Ok(Self::from_fs_client(client, Some(database_id.as_ref())))
+        Ok(Self::from_fs_client(client, database_id.as_ref()))
     }
 
     pub fn batch_write(&self) -> BatchWrite {
@@ -148,5 +152,88 @@ impl Firestore {
     /// Returns the ID for the GCP Project this client is running under.
     pub fn project_id(&self) -> &str {
         self.client.project_id()
+    }
+}
+
+pub mod builder {
+    use std::borrow::Cow;
+    use std::path::Path;
+
+    use gcp_auth_channel::{Auth, Scope};
+
+    use super::Firestore;
+    use crate::client::FirestoreClient;
+
+    pub struct FirestoreBuilder {
+        database: Cow<'static, str>,
+        scope: Scope,
+    }
+
+    impl FirestoreBuilder {
+        pub fn new() -> Self {
+            Self {
+                database: Cow::Borrowed(super::DEFAULT_DATABASE),
+                scope: Scope::Firestore,
+            }
+        }
+
+        pub fn database(&mut self, database: impl Into<Cow<'static, str>>) -> &mut Self {
+            self.database = database.into();
+            self
+        }
+
+        pub fn scope(&mut self, scope: Scope) -> &mut Self {
+            self.scope = scope;
+            self
+        }
+
+        pub async fn from_service_account_credentials(
+            &self,
+            project_id: &'static str,
+            path: impl AsRef<Path>,
+        ) -> crate::Result<Firestore> {
+            let client = FirestoreClient::from_service_account_credentials(
+                project_id,
+                path.as_ref(),
+                self.scope,
+            )
+            .await?;
+
+            Ok(Firestore::from_fs_client(client, &self.database))
+        }
+
+        pub async fn build(&mut self, project_id: &'static str) -> crate::Result<Firestore> {
+            let client = FirestoreClient::new(project_id, self.scope).await?;
+            Ok(Firestore::from_fs_client(client, &self.database))
+        }
+
+        pub async fn from_auth_manager(&mut self, auth: Auth) -> crate::Result<Firestore> {
+            let client = FirestoreClient::from_auth_manager(auth).await?;
+            Ok(Firestore::from_fs_client(client, &self.database))
+        }
+
+        pub async fn from_auth_manager_future<F>(
+            &mut self,
+            auth_future: F,
+        ) -> crate::Result<Firestore>
+        where
+            F: Future,
+            F::Output: Into<Auth>,
+        {
+            let client = FirestoreClient::from_auth_manager_future(auth_future).await?;
+            Ok(Firestore::from_fs_client(client, &self.database))
+        }
+
+        pub async fn from_try_auth_manager_future<F, Error>(
+            &mut self,
+            auth_future: F,
+        ) -> crate::Result<Firestore>
+        where
+            F: Future<Output = Result<Auth, Error>>,
+            crate::Error: From<Error>,
+        {
+            let client = FirestoreClient::from_try_auth_manager_future(auth_future).await?;
+            Ok(Firestore::from_fs_client(client, &self.database))
+        }
     }
 }

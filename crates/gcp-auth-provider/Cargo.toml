@@ -8,12 +8,15 @@ bytes.workspace = true
 http.workspace = true
 http-body.workspace = true
 hyper = { workspace = true, features = ["client", "http1", "nightly"] }
-path-aware-serde = { path = "../path-aware-serde" }
+path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
 pin-project-lite.workspace = true
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "rc"] }
 serde_json.workspace = true
+serde-helpers = { path = "../serde-helpers" }
 thiserror.workspace = true
+net-utils = { path = "../net-utils" }
 timestamp = { path = "../timestamp" }
+tower.workspace = true
 memchr.workspace = true
 tokio = { workspace = true, features = [
     "sync",
@@ -21,13 +24,32 @@ tokio = { workspace = true, features = [
     "time",
     "bytes",
     "net",
-    "socket2",
-    "rt-multi-thread",
+    "rt",
     "process",
     "macros",
     "signal",
     "fs",
 ] }
+hyper-util = { version = "0.1.10", features = [
+    "http1",
+    "http2",
+    "client",
+    "client-legacy",
+    "tokio",
+    "service",
+] }
+hyper-rustls = { version = "0.27.5", features = ["http2"] }
+tracing.workspace = true
+bstr = "1.11.3"
+aws-lc-rs = "1.12.6"
+bitflags = "2.9.0"
+rustls-pemfile = "2.2.0"
+rustls-pki-types = "1.11.0"
+form_urlencoded = "1.2.1"
+base64.workspace = true
+dirs = "6.0.0"
+
 
 [features]
 gcloud = []
+webpki-roots = ["hyper-rustls/webpki-roots"]

@@ -74,13 +74,16 @@ impl<'a, D, T> TableClient<'a, D, T> {
         D: AsRef<str>,
         T: AsRef<str>,
     {
-        let url = crate::util::append_to_path(self.client.base_url(), &[
-            "datasets",
-            self.dataset_name.as_ref(),
-            "tables",
-            self.table_name.as_ref(),
-            "insertAll",
-        ]);
+        let url = crate::util::append_to_path(
+            self.client.base_url(),
+            &[
+                "datasets",
+                self.dataset_name.as_ref(),
+                "tables",
+                self.table_name.as_ref(),
+                "insertAll",
+            ],
+        );
 
         let payload = insert_rows::InsertRows::new(options, rows);
 
@@ -94,12 +97,15 @@ impl<'a, D, T> TableClient<'a, D, T> {
         D: AsRef<str>,
         T: AsRef<str>,
     {
-        let url = crate::util::append_to_path(self.client.base_url(), &[
-            "datasets",
-            self.dataset_name.as_ref(),
-            "tables",
-            self.table_name.as_ref(),
-        ]);
+        let url = crate::util::append_to_path(
+            self.client.base_url(),
+            &[
+                "datasets",
+                self.dataset_name.as_ref(),
+                "tables",
+                self.table_name.as_ref(),
+            ],
+        );
 
         let resp = self.client.get(url).await?;
         super::client::deserialize_json(resp).await
@@ -110,12 +116,15 @@ impl<'a, D, T> TableClient<'a, D, T> {
         D: AsRef<str>,
         T: AsRef<str>,
     {
-        let url = crate::util::append_to_path(self.client.base_url(), &[
-            "datasets",
-            self.dataset_name.as_ref(),
-            "tables",
-            self.table_name.as_ref(),
-        ]);
+        let url = crate::util::append_to_path(
+            self.client.base_url(),
+            &[
+                "datasets",
+                self.dataset_name.as_ref(),
+                "tables",
+                self.table_name.as_ref(),
+            ],
+        );
 
         self.client.delete(url).await?;
         Ok(())

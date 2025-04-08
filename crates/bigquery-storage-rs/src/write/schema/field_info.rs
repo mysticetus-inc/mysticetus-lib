@@ -2,13 +2,12 @@ use std::fmt;
 
 use bytes::BufMut;
 use protos::bigquery_storage::table_field_schema::{Mode, Type as TableFieldType};
-use protos::protobuf::field_descriptor_proto::{Label, Type as FieldProtoType};
 use protos::protobuf::FieldDescriptorProto;
+use protos::protobuf::field_descriptor_proto::{Label, Type as FieldProtoType};
 
-use crate::proto::{EncodeError, Field, WireType};
-
-use super::table_schema::proto_type_to_field_type;
 use super::FieldSchema;
+use super::table_schema::proto_type_to_field_type;
+use crate::proto::{EncodeError, Field, WireType};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct FieldInfo {

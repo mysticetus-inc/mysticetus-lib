@@ -3,10 +3,10 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use gcp_auth_channel::channel::AuthChannel;
-use protos::pubsub::{self, publisher_client, PubsubMessage, Topic};
+use protos::pubsub::{self, PubsubMessage, Topic, publisher_client};
 
-use super::util::make_default_topic;
 use super::Error;
+use super::util::make_default_topic;
 
 const MAX_PER_REQUEST: usize = 1000;
 

@@ -96,11 +96,10 @@ impl<'a, D: AsRef<str>> DatasetClient<'a, D> {
     where
         D: AsRef<str>,
     {
-        let url = crate::util::append_to_path(self.client.base_url(), &[
-            "datasets",
-            self.dataset_name.as_ref(),
-            "tables",
-        ]);
+        let url = crate::util::append_to_path(
+            self.client.base_url(),
+            &["datasets", self.dataset_name.as_ref(), "tables"],
+        );
 
         let resp = self.client.post(url, table).await?;
         super::client::deserialize_json(resp).await

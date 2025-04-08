@@ -874,9 +874,12 @@ impl<'a, 'de> de::EnumAccess<'de> for AvroDeserializer<'a> {
     {
         let value = seed.deserialize(self)?;
 
-        Ok((value, VariantAccess {
-            _marker: PhantomData,
-        }))
+        Ok((
+            value,
+            VariantAccess {
+                _marker: PhantomData,
+            },
+        ))
     }
 }
 

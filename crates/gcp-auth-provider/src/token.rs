@@ -1,15 +1,68 @@
 use std::fmt;
 
+use hyper::body::Incoming;
 use timestamp::{Duration, Timestamp};
 
-// By default most tokens live for an hour.
-const DEFAULT_TOKEN_LIFETIME: Duration = Duration::from_seconds(3600);
+use crate::Error;
+
+// By default most tokens live for an hour, and subtract 10 seconds as a buffer
+const DEFAULT_TOKEN_LIFETIME: Duration = Duration::from_seconds(3600 - 10);
 
 #[derive(serde::Deserialize)]
-pub struct Token {
+pub struct Token<T = ()> {
     access_token: Box<str>,
     #[serde(rename = "expires_at", deserialize_with = "deserialize_expires_at")]
     expires_at: Timestamp,
+    /// used when deserializing tokens from the metadata server,
+    /// to ensure that `"token_type": "Bearer"`
+    token_type: T,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub(crate) struct Bearer;
+
+impl Token<Bearer> {
+    #[inline]
+    pub(crate) fn into_unit_token_type(self) -> Token {
+        Token {
+            access_token: self.access_token,
+            expires_at: self.expires_at,
+            token_type: (),
+        }
+    }
+}
+
+impl<T: serde::de::DeserializeOwned> Token<T> {
+    pub(crate) async fn deserialize_from_response(
+        uri: &http::Uri,
+        resp: http::Response<Incoming>,
+    ) -> Result<Self, Error> {
+        if resp.status().is_success() {
+            Self::deserialize_from_body(uri, resp.into_body()).await
+        } else {
+            Err(
+                crate::error::ResponseError::from_response(uri.clone(), resp)
+                    .await?
+                    .into(),
+            )
+        }
+    }
+
+    pub(crate) async fn deserialize_from_body(
+        uri: &http::Uri,
+        body: Incoming,
+    ) -> Result<Self, Error> {
+        let bytes = crate::util::collect_body(body).await?;
+
+        if bytes.is_empty() {
+            return Err(Error::Io(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!("empty body recieved from '{uri:?}'"),
+            )));
+        }
+
+        path_aware_serde::json::deserialize_slice(&bytes).map_err(Error::Json)
+    }
 }
 
 impl Token {
@@ -17,14 +70,15 @@ impl Token {
         Self {
             access_token,
             expires_at: Timestamp::now().add_duration(DEFAULT_TOKEN_LIFETIME),
+            token_type: (),
         }
     }
 }
 
-impl fmt::Debug for Token {
+impl<T> fmt::Debug for Token<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Token")
-            .field("access_token", &"...")
+            .field("access_token", &"...") // dont log tokens
             .field("expires_at", &self.expires_at)
             .finish()
     }

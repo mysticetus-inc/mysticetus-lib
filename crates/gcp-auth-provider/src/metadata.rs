@@ -1,135 +1,88 @@
 use std::io;
 use std::pin::Pin;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::task::{Context, Poll};
 
 use http::{HeaderName, HeaderValue, Uri};
-use hyper::client::conn::http1::SendRequest;
 use tokio::io::{AsyncRead, AsyncWrite};
-use tokio::task::JoinHandle;
-
-use crate::error::Error;
 
 static TOKEN_URI: LazyLock<Uri> = LazyLock::new(|| {
-    Uri::from_static("/computeMetadata/v1/instance/service-accounts/default/token")
+    Uri::from_static("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token")
 });
 
-static PROJECT_ID_URI: LazyLock<Uri> =
-    LazyLock::new(|| Uri::from_static("/computeMetadata/v1/project/project-id"));
+static PROJECT_ID_URI: LazyLock<Uri> = LazyLock::new(|| {
+    Uri::from_static("http://metadata.google.internal/computeMetadata/v1/project/project-id")
+});
 
 const METADATA_FLAVOR_NAME: HeaderName = HeaderName::from_static("metadata-flavor");
 const METADATA_FLAVOR_VALUE: HeaderValue = HeaderValue::from_static("google");
 
+#[derive(Debug, Clone)]
 pub struct MetadataServer {
-    driver: JoinHandle<hyper::Result<()>>,
-    send_req: SendRequest<Empty>,
+    client: crate::client::HttpClient,
 }
 
-impl MetadataServer {
-    pub async fn new() -> Result<Self, Error> {
-        let host = tokio::net::lookup_host("metadata.google.internal:80")
-            .await?
-            .next()
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::AddrNotAvailable,
-                    "no hosts found for the internal metadata server",
-                )
-            })?;
-        let stream = tokio::net::TcpStream::connect(host).await?;
+impl crate::RawTokenProvider for MetadataServer {
+    const NAME: &'static str = "metadata server";
 
-        let (send_req, conn) = hyper::client::conn::http1::handshake(TokioIo { stream }).await?;
+    fn try_load(
+        ctx: &mut crate::InitContext,
+    ) -> impl Future<Output = crate::Result<Option<(Self, crate::ProjectId)>>> + Send + '_ {
+        async move {
+            let client = ctx.http.get_or_insert_with(crate::client::Client::new_http);
 
-        Ok(Self {
-            send_req,
-            driver: tokio::spawn(conn),
-        })
+            match client.request(make_request(&PROJECT_ID_URI)).await {
+                Ok(project_id_bytes) => {
+                    let project_id_bytes = project_id_bytes.as_ref().trim_ascii();
+                    let project_id_str = std::str::from_utf8(project_id_bytes).map_err(|_| {
+                        crate::Error::Io(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!(
+                                "project id is invalid UTF8: {}",
+                                bstr::BStr::new(project_id_bytes)
+                            ),
+                        ))
+                    })?;
+
+                    Ok(Some((
+                        Self {
+                            client: ctx.http.take().unwrap(),
+                        },
+                        crate::ProjectId(Arc::from(project_id_str)),
+                    )))
+                }
+                // if the metadata server doesnt exist, we expect to get a connection error.
+                Err(crate::Error::Hyper(crate::error::HyperError::HyperUtil(err)))
+                    if err.is_connect() =>
+                {
+                    Ok(None)
+                }
+                Err(other_err) => Err(other_err),
+            }
+        }
     }
-}
 
-pin_project_lite::pin_project! {
-    struct TokioIo {
-        #[pin]
-        stream: tokio::net::TcpStream,
-    }
-}
-impl hyper::rt::Read for TokioIo {
-    #[inline]
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        mut buf: hyper::rt::ReadBufCursor<'_>,
-    ) -> Poll<io::Result<()>> {
-        unsafe {
-            let mut tokio_buf = tokio::io::ReadBuf::uninit(buf.as_mut());
-            std::task::ready!(self.project().stream.poll_read(cx, &mut tokio_buf))?;
-            let written = tokio_buf.filled().len();
-            buf.advance(written);
-            Poll::Ready(Ok(()))
+    fn get_token(
+        &self,
+        _scope: crate::Scopes,
+    ) -> impl Future<Output = crate::Result<crate::Token>> + Send + 'static {
+        let this = self.clone();
+        async move {
+            let token = this
+                .client
+                .request_json::<crate::Token<crate::token::Bearer>>(make_request(&TOKEN_URI))
+                .await?;
+
+            Ok(token.into_unit_token_type())
         }
     }
 }
 
-impl hyper::rt::Write for TokioIo {
-    #[inline]
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
-        AsyncWrite::poll_write(self.project().stream, cx, buf)
-    }
-
-    #[inline]
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        AsyncWrite::poll_flush(self.project().stream, cx)
-    }
-
-    #[inline]
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        AsyncWrite::poll_shutdown(self.project().stream, cx)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        AsyncWrite::is_write_vectored(&self.stream)
-    }
-
-    #[inline]
-    fn poll_write_vectored(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        bufs: &[io::IoSlice<'_>],
-    ) -> Poll<io::Result<usize>> {
-        AsyncWrite::poll_write_vectored(self.project().stream, cx, bufs)
-    }
-}
-
-pub struct Empty;
-
-impl http_body::Body for Empty {
-    type Data = bytes::Bytes;
-    type Error = std::convert::Infallible;
-
-    fn size_hint(&self) -> http_body::SizeHint {
-        http_body::SizeHint::with_exact(0)
-    }
-
-    fn poll_frame(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>> {
-        std::task::Poll::Ready(None)
-    }
-
-    fn is_end_stream(&self) -> bool {
-        true
-    }
-}
-
-#[tokio::test]
-async fn test_metadata() -> crate::Result<()> {
-    let server = MetadataServer::new().await?;
-
-    Ok(())
+fn make_request(uri: &Uri) -> http::Request<crate::client::BytesBody> {
+    http::Request::builder()
+        .method(http::Method::GET)
+        .uri(uri)
+        .header(METADATA_FLAVOR_NAME, METADATA_FLAVOR_VALUE)
+        .body(crate::client::BytesBody::empty())
+        .expect("header/uri values are valid")
 }

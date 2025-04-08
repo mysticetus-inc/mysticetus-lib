@@ -18,7 +18,7 @@ pub mod list;
 pub mod read;
 pub mod util;
 // TODO: writes
-// pub mod write;
+pub mod write;
 
 const GOOG_PROJ_ID_HEADER: HeaderName = HeaderName::from_static("x-goog-project-id");
 const GOOG_REQUEST_PARAMS_HEADER: HeaderName = HeaderName::from_static("x-goog-request-params");
@@ -30,6 +30,9 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[cfg(test)]
 mod tests {
+    use bytes::Bytes;
+    use rand::RngCore;
+
     use super::*;
 
     async fn get_client() -> Result<BucketClient> {
@@ -77,6 +80,53 @@ mod tests {
         println!("{object:#?}");
 
         assert_eq!(bytes.len(), 3000);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_write() -> Result<()> {
+        const PATH: &str = "__test-read-write-object";
+        const CONTENT_LEN: usize = 128;
+        const BUCKET: &str = "staging.mysticetus-oncloud.appspot.com";
+
+        let mut buf = vec![0; CONTENT_LEN];
+
+        let mut rng = rand::rng();
+        rng.fill_bytes(&mut buf);
+
+        let content = Bytes::from(buf);
+
+        let mut client =
+            StorageClient::new("mysticetus-oncloud", gcp_auth_channel::Scope::GcsReadWrite)
+                .await?
+                .into_bucket(BUCKET);
+
+        let object = client.write(PATH).write_bytes(content.clone()).await?;
+
+        println!("{object:#?}");
+        assert_eq!(object.size as usize, CONTENT_LEN);
+
+        let (read_obj, read_bytes) = client
+            .read(PATH)
+            .generation(object.generation as u64)
+            .stream()
+            .await?
+            .collect_to_vec()
+            .await?;
+
+        // we cant compare all fields in both objects, since google inserts extra values when
+        // reading, so just compare a bunch of obvious ones that should be identical.
+        assert_eq!(read_obj.name, object.name);
+        assert_eq!(read_obj.bucket, object.bucket);
+        assert_eq!(read_obj.generation, object.generation);
+        assert_eq!(read_obj.metadata, object.metadata);
+        assert_eq!(read_obj.size, object.size);
+        assert_eq!(read_obj.checksums, object.checksums);
+        assert_eq!(read_obj.finalize_time, object.finalize_time);
+        assert_eq!(read_obj.etag, object.etag);
+
+        assert_eq!(content.as_ref(), read_bytes.as_slice());
 
         Ok(())
     }

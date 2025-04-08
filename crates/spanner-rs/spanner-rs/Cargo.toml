@@ -14,7 +14,7 @@ protos = { path = "../../protos", features = ["spanner"] }
 serde = { workspace = true, features = ["derive"] }
 timestamp = { path = "../../timestamp" }
 prost = { workspace = true }
-tonic = { workspace = true, features = ["transport", "tls"] }
+tonic = { workspace = true, features = ["transport"] }
 futures.workspace = true
 thiserror.workspace = true
 pin-project-lite.workspace = true

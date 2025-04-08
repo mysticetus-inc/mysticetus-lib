@@ -2,7 +2,7 @@ const ROOT: &[&str] = &["../../googleapis"];
 
 const FILES: &[&str] = &[
     // BigQuery
-    // "../../googleapis/google/cloud/bigquery/v2/model.proto",
+    "../../googleapis/google/cloud/bigquery/v2/model.proto",
     "../../googleapis/google/cloud/bigquery/storage/v1/storage.proto",
     // Firestore
     "../../googleapis/google/firestore/v1/firestore.proto",
@@ -117,6 +117,8 @@ macro_rules! serde_enum_str {
 }
 
 fn main() -> std::io::Result<()> {
+    // println!("cargo::rerun-if-env-changed=FORCE_BUILD_PROTOS");
+
     for file in FILES {
         println!("cargo:rerun-if-changed={file}");
     }
@@ -133,6 +135,5 @@ fn main() -> std::io::Result<()> {
         cfg = cfg.type_attribute(ty, derive);
     }
 
-    #[allow(deprecated)]
-    cfg.out_dir("src/protos").compile(FILES, ROOT)
+    cfg.out_dir("src/protos").compile_protos(FILES, ROOT)
 }

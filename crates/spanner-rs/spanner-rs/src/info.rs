@@ -339,11 +339,10 @@ impl<'a> Database<&'a str> {
                 None => return Err("expected a path separator '/'"),
             };
 
-        if let Err(error) =
-            util::check_ident(util::slice(bytes, instance_id_start, instance_id_end), &[
-                b'-',
-            ])
-        {
+        if let Err(error) = util::check_ident(
+            util::slice(bytes, instance_id_start, instance_id_end),
+            &[b'-'],
+        ) {
             return Err(error);
         }
 
@@ -356,9 +355,10 @@ impl<'a> Database<&'a str> {
             return Err("expected an intermediate '/databases/' component");
         }
 
-        if let Err(error) = util::check_ident(util::slice(bytes, database_start, bytes.len()), &[
-            b'-', b'\\', b'_',
-        ]) {
+        if let Err(error) = util::check_ident(
+            util::slice(bytes, database_start, bytes.len()),
+            &[b'-', b'\\', b'_'],
+        ) {
             return Err(error);
         }
 

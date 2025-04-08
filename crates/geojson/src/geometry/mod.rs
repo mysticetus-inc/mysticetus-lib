@@ -8,7 +8,7 @@ pub use geo::util::IndexVisitor;
 pub mod any;
 pub use any::AnyCoordinate;
 use serde::{Deserialize, Serialize, de, ser};
-use serde_helpers::from_str_visitor::FromStrVisitor;
+use serde_helpers::from_str::FromStrVisitor;
 
 /// Trait implemented by any valid GeoJson coordinate.
 pub trait Coordinate {

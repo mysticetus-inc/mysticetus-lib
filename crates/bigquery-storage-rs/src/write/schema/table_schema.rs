@@ -1,5 +1,4 @@
 use bigquery_resources_rs::table::{self as rest_table, FieldMode, FieldType};
-
 use protos::bigquery_storage as proto_table;
 use protos::bigquery_storage::table_field_schema::{Mode, Type};
 

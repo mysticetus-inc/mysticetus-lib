@@ -124,12 +124,15 @@ where
                     return Err(de::Error::missing_field("schema"));
                 };
 
-                serde::Deserializer::deserialize_seq(raw_rows, RowsVisitor {
-                    schema,
-                    request_limit: self.request_limit,
-                    total_rows,
-                    _marker: PhantomData,
-                })
+                serde::Deserializer::deserialize_seq(
+                    raw_rows,
+                    RowsVisitor {
+                        schema,
+                        request_limit: self.request_limit,
+                        total_rows,
+                        _marker: PhantomData,
+                    },
+                )
                 .map_err(de::Error::custom)?
             }
         };

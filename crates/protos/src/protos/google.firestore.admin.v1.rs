@@ -59,17 +59,7 @@ pub mod backup {
     /// Indicate the current state of the backup.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// The state is unspecified.
@@ -155,9 +145,7 @@ pub struct Database {
     /// If the PITR feature is enabled, the retention period is 7 days. Otherwise,
     /// the retention period is 1 hour.
     #[prost(message, optional, tag = "17")]
-    pub version_retention_period: ::core::option::Option<
-        super::super::super::protobuf::Duration,
-    >,
+    pub version_retention_period: ::core::option::Option<super::super::super::protobuf::Duration>,
     /// Output only. The earliest timestamp at which older versions of the data can
     /// be read from the database. See \[version_retention_period\] above; this field
     /// is populated with `now - version_retention_period`.
@@ -167,9 +155,7 @@ pub struct Database {
     /// for the time from the moment when the value is queried to the moment when
     /// you initiate the recovery.
     #[prost(message, optional, tag = "18")]
-    pub earliest_version_time: ::core::option::Option<
-        super::super::super::protobuf::Timestamp,
-    >,
+    pub earliest_version_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// Whether to enable the PITR feature on this database.
     #[prost(enumeration = "database::PointInTimeRecoveryEnablement", tag = "21")]
     pub point_in_time_recovery_enablement: i32,
@@ -222,7 +208,8 @@ pub mod database {
         /// <https://cloud.google.com/kms/docs/locations.>
         ///
         /// The expected format is
-        /// `projects/{project_id}/locations/{kms_location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}`.
+        /// `projects/{project_id}/locations/{kms_location}/keyRings/{key_ring}/cryptoKeys/
+        /// {crypto_key}`.
         #[prost(string, tag = "1")]
         pub kms_key_name: ::prost::alloc::string::String,
         /// Output only. Currently in-use [KMS key
@@ -231,7 +218,8 @@ pub mod database {
         /// there can be multiple in-use key versions.
         ///
         /// The expected format is
-        /// `projects/{project_id}/locations/{kms_location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}/cryptoKeyVersions/{key_version}`.
+        /// `projects/{project_id}/locations/{kms_location}/keyRings/{key_ring}/cryptoKeys/
+        /// {crypto_key}/cryptoKeyVersions/{key_version}`.
         #[prost(string, repeated, tag = "2")]
         pub active_key_version: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
@@ -313,7 +301,8 @@ pub mod database {
             /// <https://cloud.google.com/kms/docs/locations.>
             ///
             /// The expected format is
-            /// `projects/{project_id}/locations/{kms_location}/keyRings/{key_ring}/cryptoKeys/{crypto_key}`.
+            /// `projects/{project_id}/locations/{kms_location}/keyRings/{key_ring}/cryptoKeys/
+            /// {crypto_key}`.
             #[prost(string, tag = "1")]
             pub kms_key_name: ::prost::alloc::string::String,
         }
@@ -340,17 +329,7 @@ pub mod database {
     /// Mode changes are only allowed if the database is empty.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum DatabaseType {
         /// Not used.
@@ -385,17 +364,7 @@ pub mod database {
     /// The type of concurrency control mode for transactions.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum ConcurrencyMode {
         /// Not used.
@@ -443,17 +412,7 @@ pub mod database {
     /// Point In Time Recovery feature enablement.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum PointInTimeRecoveryEnablement {
         /// Not used.
@@ -486,15 +445,9 @@ pub mod database {
         /// Creates an enum from field names used in the ProtoBuf definition.
         pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
             match value {
-                "POINT_IN_TIME_RECOVERY_ENABLEMENT_UNSPECIFIED" => {
-                    Some(Self::Unspecified)
-                }
-                "POINT_IN_TIME_RECOVERY_ENABLED" => {
-                    Some(Self::PointInTimeRecoveryEnabled)
-                }
-                "POINT_IN_TIME_RECOVERY_DISABLED" => {
-                    Some(Self::PointInTimeRecoveryDisabled)
-                }
+                "POINT_IN_TIME_RECOVERY_ENABLEMENT_UNSPECIFIED" => Some(Self::Unspecified),
+                "POINT_IN_TIME_RECOVERY_ENABLED" => Some(Self::PointInTimeRecoveryEnabled),
+                "POINT_IN_TIME_RECOVERY_DISABLED" => Some(Self::PointInTimeRecoveryDisabled),
                 _ => None,
             }
         }
@@ -502,17 +455,7 @@ pub mod database {
     /// The type of App Engine integration mode.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum AppEngineIntegrationMode {
         /// Not used.
@@ -553,17 +496,7 @@ pub mod database {
     /// The delete protection state of the database.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum DeleteProtectionState {
         /// The default value. Delete protection type is not specified
@@ -604,8 +537,8 @@ pub mod database {
 pub struct Index {
     /// Output only. A server defined name for this index.
     /// The form of this name for composite indexes will be:
-    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/{composite_index_id}`
-    /// For single field indexes, this field will be empty.
+    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/
+    /// {composite_index_id}` For single field indexes, this field will be empty.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Indexes with a collection query scope specified allow queries
@@ -694,15 +627,7 @@ pub mod index {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum Order {
@@ -739,15 +664,7 @@ pub mod index {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum ArrayConfig {
@@ -798,17 +715,7 @@ pub mod index {
     /// a StructuredQuery's `from` field.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum QueryScope {
         /// The query scope is unspecified. Not a valid option.
@@ -853,17 +760,7 @@ pub mod index {
     /// Datastore Mode) that are supported for queries.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum ApiScope {
         /// The index can only be used by the Firestore Native query API.
@@ -898,17 +795,7 @@ pub mod index {
     /// will transition to the `NEEDS_REPAIR` state.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(
-        Clone,
-        Copy,
-        Debug,
-        PartialEq,
-        Eq,
-        Hash,
-        PartialOrd,
-        Ord,
-        ::prost::Enumeration
-    )]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
     #[repr(i32)]
     pub enum State {
         /// The state is unspecified.
@@ -966,7 +853,8 @@ pub mod index {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Field {
     /// Required. A field name of the form:
-    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/fields/{field_path}`
+    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/fields/
+    /// {field_path}`
     ///
     /// A field path can be a simple field name, e.g. `address` or a path to fields
     /// within `map_value` , e.g. `address.city`,
@@ -1054,15 +942,7 @@ pub mod field {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum State {
@@ -1123,7 +1003,8 @@ pub struct IndexOperationMetadata {
     #[prost(message, optional, tag = "2")]
     pub end_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// The index resource that this operation is acting on. For example:
-    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/{index_id}`
+    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/
+    /// {index_id}`
     #[prost(string, tag = "3")]
     pub index: ::prost::alloc::string::String,
     /// The state of the operation.
@@ -1151,16 +1032,15 @@ pub struct FieldOperationMetadata {
     #[prost(message, optional, tag = "2")]
     pub end_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// The field resource that this operation is acting on. For example:
-    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/fields/{field_path}`
+    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/fields/
+    /// {field_path}`
     #[prost(string, tag = "3")]
     pub field: ::prost::alloc::string::String,
     /// A list of
     /// [IndexConfigDelta][google.firestore.admin.v1.FieldOperationMetadata.IndexConfigDelta],
     /// which describe the intent of this operation.
     #[prost(message, repeated, tag = "4")]
-    pub index_config_deltas: ::prost::alloc::vec::Vec<
-        field_operation_metadata::IndexConfigDelta,
-    >,
+    pub index_config_deltas: ::prost::alloc::vec::Vec<field_operation_metadata::IndexConfigDelta>,
     /// The state of the operation.
     #[prost(enumeration = "OperationState", tag = "5")]
     pub state: i32,
@@ -1172,9 +1052,7 @@ pub struct FieldOperationMetadata {
     pub progress_bytes: ::core::option::Option<Progress>,
     /// Describes the deltas of TTL configuration.
     #[prost(message, optional, tag = "8")]
-    pub ttl_config_delta: ::core::option::Option<
-        field_operation_metadata::TtlConfigDelta,
-    >,
+    pub ttl_config_delta: ::core::option::Option<field_operation_metadata::TtlConfigDelta>,
 }
 /// Nested message and enum types in `FieldOperationMetadata`.
 pub mod field_operation_metadata {
@@ -1196,15 +1074,7 @@ pub mod field_operation_metadata {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum ChangeType {
@@ -1253,15 +1123,7 @@ pub mod field_operation_metadata {
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         #[derive(
-            Clone,
-            Copy,
-            Debug,
-            PartialEq,
-            Eq,
-            Hash,
-            PartialOrd,
-            Ord,
-            ::prost::Enumeration
+            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
         )]
         #[repr(i32)]
         pub enum ChangeType {
@@ -1369,7 +1231,8 @@ pub struct ImportDocumentsMetadata {
 }
 /// Metadata for [google.longrunning.Operation][google.longrunning.Operation]
 /// results from
-/// [FirestoreAdmin.BulkDeleteDocuments][google.firestore.admin.v1.FirestoreAdmin.BulkDeleteDocuments].
+/// [FirestoreAdmin.BulkDeleteDocuments][google.firestore.admin.v1.FirestoreAdmin.
+/// BulkDeleteDocuments].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1584,6 +1447,91 @@ pub struct WeeklyRecurrence {
     #[prost(enumeration = "super::super::super::r#type::DayOfWeek", tag = "2")]
     pub day: i32,
 }
+/// A Cloud Firestore User Creds.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UserCreds {
+    /// Identifier. The resource name of the UserCreds.
+    /// Format:
+    /// `projects/{project}/databases/{database}/userCreds/{user_creds}`
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// Output only. The time the user creds were created.
+    #[prost(message, optional, tag = "2")]
+    pub create_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
+    /// Output only. The time the user creds were last updated.
+    #[prost(message, optional, tag = "3")]
+    pub update_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
+    /// Output only. Whether the user creds are enabled or disabled. Defaults to
+    /// ENABLED on creation.
+    #[prost(enumeration = "user_creds::State", tag = "4")]
+    pub state: i32,
+    /// Output only. The plaintext server-generated password for the user creds.
+    /// Only populated in responses for CreateUserCreds and ResetUserPassword.
+    #[prost(string, tag = "5")]
+    pub secure_password: ::prost::alloc::string::String,
+    /// Identity associated with this User Creds.
+    #[prost(oneof = "user_creds::UserCredsIdentity", tags = "6")]
+    pub user_creds_identity: ::core::option::Option<user_creds::UserCredsIdentity>,
+}
+/// Nested message and enum types in `UserCreds`.
+pub mod user_creds {
+    /// Describes a Resource Identity principal.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Message)]
+    pub struct ResourceIdentity {
+        /// Output only. Principal identifier string.
+        /// See: <https://cloud.google.com/iam/docs/principal-identifiers>
+        #[prost(string, tag = "1")]
+        pub principal: ::prost::alloc::string::String,
+    }
+    /// The state of the user creds (ENABLED or DISABLED).
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum State {
+        /// The default value. Should not be used.
+        Unspecified = 0,
+        /// The user creds are enabled.
+        Enabled = 1,
+        /// The user creds are disabled.
+        Disabled = 2,
+    }
+    impl State {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "STATE_UNSPECIFIED",
+                Self::Enabled => "ENABLED",
+                Self::Disabled => "DISABLED",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                "ENABLED" => Some(Self::Enabled),
+                "DISABLED" => Some(Self::Disabled),
+                _ => None,
+            }
+        }
+    }
+    /// Identity associated with this User Creds.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum UserCredsIdentity {
+        /// Resource Identity descriptor.
+        #[prost(message, tag = "6")]
+        ResourceIdentity(ResourceIdentity),
+    }
+}
 /// A request to list the Firestore Databases in all locations for a project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1697,7 +1645,106 @@ pub struct DeleteDatabaseRequest {
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DeleteDatabaseMetadata {}
 /// The request for
-/// [FirestoreAdmin.CreateBackupSchedule][google.firestore.admin.v1.FirestoreAdmin.CreateBackupSchedule].
+/// [FirestoreAdmin.CreateUserCreds][google.firestore.admin.v1.FirestoreAdmin.CreateUserCreds].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CreateUserCredsRequest {
+    /// Required. A parent name of the form
+    /// `projects/{project_id}/databases/{database_id}`
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+    /// Required. The user creds to create.
+    #[prost(message, optional, tag = "2")]
+    pub user_creds: ::core::option::Option<UserCreds>,
+    /// Required. The ID to use for the user creds, which will become the final
+    /// component of the user creds's resource name.
+    ///
+    /// This value should be 4-63 characters. Valid characters are /[a-z][0-9]-/
+    /// with first character a letter and the last a letter or a number. Must not
+    /// be UUID-like /\[0-9a-f\]{8}(-\[0-9a-f\]{4}){3}-\[0-9a-f\]{12}/.
+    #[prost(string, tag = "3")]
+    pub user_creds_id: ::prost::alloc::string::String,
+}
+/// The request for
+/// [FirestoreAdmin.GetUserCreds][google.firestore.admin.v1.FirestoreAdmin.GetUserCreds].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetUserCredsRequest {
+    /// Required. A name of the form
+    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// The request for
+/// [FirestoreAdmin.ListUserCreds][google.firestore.admin.v1.FirestoreAdmin.ListUserCreds].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUserCredsRequest {
+    /// Required. A parent database name of the form
+    /// `projects/{project_id}/databases/{database_id}`
+    #[prost(string, tag = "1")]
+    pub parent: ::prost::alloc::string::String,
+}
+/// The response for
+/// [FirestoreAdmin.ListUserCreds][google.firestore.admin.v1.FirestoreAdmin.ListUserCreds].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListUserCredsResponse {
+    /// The user creds for the database.
+    #[prost(message, repeated, tag = "1")]
+    pub user_creds: ::prost::alloc::vec::Vec<UserCreds>,
+}
+/// The request for
+/// [FirestoreAdmin.EnableUserCreds][google.firestore.admin.v1.FirestoreAdmin.EnableUserCreds].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EnableUserCredsRequest {
+    /// Required. A name of the form
+    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// The request for
+/// [FirestoreAdmin.DisableUserCreds][google.firestore.admin.v1.FirestoreAdmin.DisableUserCreds].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DisableUserCredsRequest {
+    /// Required. A name of the form
+    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// The request for
+/// [FirestoreAdmin.ResetUserPassword][google.firestore.admin.v1.FirestoreAdmin.ResetUserPassword].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ResetUserPasswordRequest {
+    /// Required. A name of the form
+    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// The request for
+/// [FirestoreAdmin.DeleteUserCreds][google.firestore.admin.v1.FirestoreAdmin.DeleteUserCreds].
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeleteUserCredsRequest {
+    /// Required. A name of the form
+    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
+/// The request for
+/// [FirestoreAdmin.CreateBackupSchedule][google.firestore.admin.v1.FirestoreAdmin.
+/// CreateBackupSchedule].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1725,7 +1772,8 @@ pub struct GetBackupScheduleRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for
-/// [FirestoreAdmin.UpdateBackupSchedule][google.firestore.admin.v1.FirestoreAdmin.UpdateBackupSchedule].
+/// [FirestoreAdmin.UpdateBackupSchedule][google.firestore.admin.v1.FirestoreAdmin.
+/// UpdateBackupSchedule].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1738,7 +1786,8 @@ pub struct UpdateBackupScheduleRequest {
     pub update_mask: ::core::option::Option<super::super::super::protobuf::FieldMask>,
 }
 /// The request for
-/// [FirestoreAdmin.ListBackupSchedules][google.firestore.admin.v1.FirestoreAdmin.ListBackupSchedules].
+/// [FirestoreAdmin.ListBackupSchedules][google.firestore.admin.v1.FirestoreAdmin.
+/// ListBackupSchedules].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1750,7 +1799,8 @@ pub struct ListBackupSchedulesRequest {
     pub parent: ::prost::alloc::string::String,
 }
 /// The response for
-/// [FirestoreAdmin.ListBackupSchedules][google.firestore.admin.v1.FirestoreAdmin.ListBackupSchedules].
+/// [FirestoreAdmin.ListBackupSchedules][google.firestore.admin.v1.FirestoreAdmin.
+/// ListBackupSchedules].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1828,7 +1878,8 @@ pub struct ListIndexesResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetIndexRequest {
     /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/{index_id}`
+    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/
+    /// {index_id}`
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -1839,7 +1890,8 @@ pub struct GetIndexRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteIndexRequest {
     /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/{index_id}`
+    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/indexes/
+    /// {index_id}`
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -1864,7 +1916,8 @@ pub struct UpdateFieldRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetFieldRequest {
     /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/fields/{field_id}`
+    /// `projects/{project_id}/databases/{database_id}/collectionGroups/{collection_id}/fields/
+    /// {field_id}`
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
@@ -1970,7 +2023,8 @@ pub struct ImportDocumentsRequest {
     /// This must match the output_uri_prefix of an ExportDocumentsResponse from
     /// an export that has completed successfully.
     /// See:
-    /// [google.firestore.admin.v1.ExportDocumentsResponse.output_uri_prefix][google.firestore.admin.v1.ExportDocumentsResponse.output_uri_prefix].
+    /// [google.firestore.admin.v1.ExportDocumentsResponse.output_uri_prefix][google.firestore.
+    /// admin.v1.ExportDocumentsResponse.output_uri_prefix].
     #[prost(string, tag = "3")]
     pub input_uri_prefix: ::prost::alloc::string::String,
     /// An empty list represents all namespaces. This is the preferred
@@ -1983,7 +2037,8 @@ pub struct ImportDocumentsRequest {
     pub namespace_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// The request for
-/// [FirestoreAdmin.BulkDeleteDocuments][google.firestore.admin.v1.FirestoreAdmin.BulkDeleteDocuments].
+/// [FirestoreAdmin.BulkDeleteDocuments][google.firestore.admin.v1.FirestoreAdmin.
+/// BulkDeleteDocuments].
 ///
 /// When both collection_ids and namespace_ids are set, only documents satisfying
 /// both conditions will be deleted.
@@ -2020,7 +2075,8 @@ pub struct BulkDeleteDocumentsRequest {
     pub namespace_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// The response for
-/// [FirestoreAdmin.BulkDeleteDocuments][google.firestore.admin.v1.FirestoreAdmin.BulkDeleteDocuments].
+/// [FirestoreAdmin.BulkDeleteDocuments][google.firestore.admin.v1.FirestoreAdmin.
+/// BulkDeleteDocuments].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -2051,6 +2107,20 @@ pub struct ListBackupsRequest {
     /// locations.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
+    /// An expression that filters the list of returned backups.
+    ///
+    /// A filter expression consists of a field name, a comparison operator, and a
+    /// value for filtering.
+    /// The value must be a string, a number, or a boolean. The comparison operator
+    /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
+    /// Colon `:` is the contains operator. Filter rules are not case sensitive.
+    ///
+    /// The following fields in the [Backup][google.firestore.admin.v1.Backup] are
+    /// eligible for filtering:
+    ///
+    ///    * `database_uid` (supports `=` only)
+    #[prost(string, tag = "2")]
+    pub filter: ::prost::alloc::string::String,
 }
 /// The response for
 /// [FirestoreAdmin.ListBackups][google.firestore.admin.v1.FirestoreAdmin.ListBackups].
@@ -2116,7 +2186,8 @@ pub struct RestoreDatabaseRequest {
     ///
     /// If this field is not specified, the restored database will use
     /// the same encryption configuration as the backup, namely
-    /// [use_source_encryption][google.firestore.admin.v1.Database.EncryptionConfig.use_source_encryption].
+    /// [use_source_encryption][google.firestore.admin.v1.Database.EncryptionConfig.
+    /// use_source_encryption].
     #[prost(message, optional, tag = "9")]
     pub encryption_config: ::core::option::Option<database::EncryptionConfig>,
 }
@@ -2127,10 +2198,10 @@ pub mod firestore_admin_client {
         dead_code,
         missing_docs,
         clippy::wildcard_imports,
-        clippy::let_unit_value,
+        clippy::let_unit_value
     )]
-    use tonic::codegen::*;
     use tonic::codegen::http::Uri;
+    use tonic::codegen::*;
     /// The Cloud Firestore Admin API.
     ///
     /// This API provides several administrative services for Cloud Firestore.
@@ -2176,7 +2247,7 @@ pub mod firestore_admin_client {
     }
     impl<T> FirestoreAdminClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T: tonic::client::GrpcService<tonic::body::Body>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
@@ -2197,14 +2268,13 @@ pub mod firestore_admin_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-                Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                    http::Request<tonic::body::Body>,
+                    Response = http::Response<
+                        <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    >,
                 >,
-            >,
-            <T as tonic::codegen::Service<
-                http::Request<tonic::body::BoxBody>,
-            >>::Error: Into<StdError> + std::marker::Send + std::marker::Sync,
+            <T as tonic::codegen::Service<http::Request<tonic::body::Body>>>::Error:
+                Into<StdError> + std::marker::Send + std::marker::Sync,
         {
             FirestoreAdminClient::new(InterceptedService::new(inner, interceptor))
         }
@@ -2251,56 +2321,38 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/CreateIndex",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "CreateIndex",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "CreateIndex",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists composite indexes.
         pub async fn list_indexes(
             &mut self,
             request: impl tonic::IntoRequest<super::ListIndexesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListIndexesResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListIndexesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/ListIndexes",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "ListIndexes",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ListIndexes",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets a composite index.
@@ -2308,26 +2360,18 @@ pub mod firestore_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetIndexRequest>,
         ) -> std::result::Result<tonic::Response<super::Index>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/GetIndex",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "GetIndex",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "GetIndex",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a composite index.
@@ -2338,26 +2382,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::protobuf::Empty>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/DeleteIndex",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "DeleteIndex",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "DeleteIndex",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets the metadata and configuration for a Field.
@@ -2365,26 +2401,18 @@ pub mod firestore_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetFieldRequest>,
         ) -> std::result::Result<tonic::Response<super::Field>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/GetField",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "GetField",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "GetField",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a field configuration. Currently, field updates apply only to
@@ -2410,26 +2438,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/UpdateField",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "UpdateField",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "UpdateField",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists the field configuration and metadata for this database.
@@ -2444,30 +2464,20 @@ pub mod firestore_admin_client {
         pub async fn list_fields(
             &mut self,
             request: impl tonic::IntoRequest<super::ListFieldsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListFieldsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListFieldsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/ListFields",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "ListFields",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ListFields",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Exports a copy of all or a subset of documents from Google Cloud Firestore
@@ -2488,26 +2498,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/ExportDocuments",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "ExportDocuments",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ExportDocuments",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Imports documents into Google Cloud Firestore. Existing documents with the
@@ -2522,26 +2524,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/ImportDocuments",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "ImportDocuments",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ImportDocuments",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Bulk deletes a subset of documents from Google Cloud Firestore.
@@ -2559,26 +2553,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/BulkDeleteDocuments",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "BulkDeleteDocuments",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "BulkDeleteDocuments",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Create a database.
@@ -2589,26 +2575,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/CreateDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "CreateDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "CreateDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets information about a database.
@@ -2616,56 +2594,38 @@ pub mod firestore_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetDatabaseRequest>,
         ) -> std::result::Result<tonic::Response<super::Database>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/GetDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "GetDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "GetDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// List all the databases in the project.
         pub async fn list_databases(
             &mut self,
             request: impl tonic::IntoRequest<super::ListDatabasesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListDatabasesResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListDatabasesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/ListDatabases",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "ListDatabases",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ListDatabases",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a database.
@@ -2676,26 +2636,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/UpdateDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "UpdateDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "UpdateDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a database.
@@ -2706,26 +2658,157 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/DeleteDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "DeleteDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "DeleteDatabase",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Create a user creds.
+        pub async fn create_user_creds(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CreateUserCredsRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.firestore.admin.v1.FirestoreAdmin/CreateUserCreds",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "CreateUserCreds",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Gets a user creds resource. Note that the returned resource does not
+        /// contain the secret value itself.
+        pub async fn get_user_creds(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetUserCredsRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.firestore.admin.v1.FirestoreAdmin/GetUserCreds",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "GetUserCreds",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// List all user creds in the database. Note that the returned resource
+        /// does not contain the secret value itself.
+        pub async fn list_user_creds(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ListUserCredsRequest>,
+        ) -> std::result::Result<tonic::Response<super::ListUserCredsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.firestore.admin.v1.FirestoreAdmin/ListUserCreds",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ListUserCreds",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Enables a user creds. No-op if the user creds are already enabled.
+        pub async fn enable_user_creds(
+            &mut self,
+            request: impl tonic::IntoRequest<super::EnableUserCredsRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.firestore.admin.v1.FirestoreAdmin/EnableUserCreds",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "EnableUserCreds",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Disables a user creds. No-op if the user creds are already disabled.
+        pub async fn disable_user_creds(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DisableUserCredsRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.firestore.admin.v1.FirestoreAdmin/DisableUserCreds",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "DisableUserCreds",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Resets the password of a user creds.
+        pub async fn reset_user_password(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ResetUserPasswordRequest>,
+        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.firestore.admin.v1.FirestoreAdmin/ResetUserPassword",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ResetUserPassword",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Deletes a user creds.
+        pub async fn delete_user_creds(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteUserCredsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::super::super::super::protobuf::Empty>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/google.firestore.admin.v1.FirestoreAdmin/DeleteUserCreds",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "DeleteUserCreds",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets information about a backup.
@@ -2733,56 +2816,38 @@ pub mod firestore_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetBackupRequest>,
         ) -> std::result::Result<tonic::Response<super::Backup>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/GetBackup",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "GetBackup",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "GetBackup",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Lists all the backups.
         pub async fn list_backups(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBackupsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListBackupsResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListBackupsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/ListBackups",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "ListBackups",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ListBackups",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a backup.
@@ -2793,26 +2858,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::protobuf::Empty>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/DeleteBackup",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "DeleteBackup",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "DeleteBackup",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates a new database by restoring from an existing backup.
@@ -2839,26 +2896,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::longrunning::Operation>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/RestoreDatabase",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "RestoreDatabase",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "RestoreDatabase",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Creates a backup schedule on a database.
@@ -2868,26 +2917,18 @@ pub mod firestore_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::CreateBackupScheduleRequest>,
         ) -> std::result::Result<tonic::Response<super::BackupSchedule>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/CreateBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "CreateBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "CreateBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Gets information about a backup schedule.
@@ -2895,56 +2936,38 @@ pub mod firestore_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetBackupScheduleRequest>,
         ) -> std::result::Result<tonic::Response<super::BackupSchedule>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/GetBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "GetBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "GetBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// List backup schedules.
         pub async fn list_backup_schedules(
             &mut self,
             request: impl tonic::IntoRequest<super::ListBackupSchedulesRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::ListBackupSchedulesResponse>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+        ) -> std::result::Result<tonic::Response<super::ListBackupSchedulesResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/ListBackupSchedules",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "ListBackupSchedules",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "ListBackupSchedules",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Updates a backup schedule.
@@ -2952,26 +2975,18 @@ pub mod firestore_admin_client {
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateBackupScheduleRequest>,
         ) -> std::result::Result<tonic::Response<super::BackupSchedule>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/UpdateBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "UpdateBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "UpdateBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
         /// Deletes a backup schedule.
@@ -2982,26 +2997,18 @@ pub mod firestore_admin_client {
             tonic::Response<super::super::super::super::protobuf::Empty>,
             tonic::Status,
         > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::unknown(
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.firestore.admin.v1.FirestoreAdmin/DeleteBackupSchedule",
             );
             let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(
-                    GrpcMethod::new(
-                        "google.firestore.admin.v1.FirestoreAdmin",
-                        "DeleteBackupSchedule",
-                    ),
-                );
+            req.extensions_mut().insert(GrpcMethod::new(
+                "google.firestore.admin.v1.FirestoreAdmin",
+                "DeleteBackupSchedule",
+            ));
             self.inner.unary(req, path, codec).await
         }
     }

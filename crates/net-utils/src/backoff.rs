@@ -69,6 +69,18 @@ impl<C: Default> Backoff<C> {
     }
 }
 
+impl Backoff<u32> {
+    pub const fn reset(&mut self) {
+        self.retries = 0;
+    }
+}
+
+impl Backoff<AtomicU32> {
+    pub fn reset(&self, order: Ordering) {
+        self.retries.store(0, order);
+    }
+}
+
 impl<C> Backoff<C> {
     const fn new_inner(
         retries: C,
@@ -88,6 +100,14 @@ impl<C> Backoff<C> {
             base_delay_ms: max_duration(base_delay, 25),
             max_timeout_ms: max_duration(max_timeout, 25),
         }
+    }
+
+    #[inline]
+    pub const fn retries(&self) -> C
+    where
+        C: Copy,
+    {
+        self.retries
     }
 
     /// Returns 'true' if we've hit the maximum retry count.
@@ -193,6 +213,11 @@ mod builder {
 
         pub const fn max_retries(&mut self, max_retries: u32) -> &mut Self {
             self.max_retries = max_retries;
+            self
+        }
+
+        pub const fn max_timeout(&mut self, max_timeout: timestamp::Duration) -> &mut Self {
+            self.max_timeout = max_timeout;
             self
         }
 

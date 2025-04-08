@@ -5,16 +5,37 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct GCloudProvider {
-    cmd_path: Box<Path>,
+    cmd_path: Arc<Path>,
+    project_id: Arc<str>,
 }
 
 impl GCloudProvider {
     pub fn new(cmd_path: impl Into<PathBuf>) -> Self {
         Self {
-            cmd_path: PathBuf::into_boxed_path(cmd_path.into()),
+            cmd_path: Arc::from(PathBuf::into_boxed_path(cmd_path.into())),
         }
+    }
+}
+
+// spawning async processes for simple tasks is significantly slower than the std/blocking
+// variants, so run them in a blocking task to avoid the overhead
+#[inline]
+async fn spawn_blocking<T>(
+    blocking_op: impl FnOnce() -> crate::Result<T> + Send + 'static,
+) -> crate::Result<T>
+where
+    T: Send + 'static,
+{
+    use std::io::{Error, ErrorKind};
+
+    match tokio::task::spawn_blocking(blocking_op).await {
+        Ok(result) => result,
+        Err(err) if err.is_cancelled() => {
+            Err(crate::Error::Io(Error::from(ErrorKind::Interrupted)))
+        }
+        Err(err) => Err(crate::Error::Io(Error::new(ErrorKind::Other, err))),
     }
 }
 
@@ -22,62 +43,63 @@ impl super::RawTokenProvider for GCloudProvider {
     const NAME: &'static str = "gcloud";
 
     fn try_load() -> impl Future<Output = crate::Result<Option<Self>>> + Send + 'static {
-        async move {
-            match find_gcloud().await? {
-                Some(cmd_path) => Ok(Some(Self::new(cmd_path))),
-                None => Ok(None),
-            }
-        }
+        spawn_blocking(|| {
+            let cmd_path = match find_gcloud()? {
+                Some(cmd_path) => cmd_path,
+                None => return Ok(None),
+            };
+
+            let output = std::process::Command::new(&cmd_path)
+                .arg("config")
+                .arg("get-value")
+                .arg("project")
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
+                .output()?;
+
+            let project_id = get_relevant_gcloud_output(output)?;
+
+            Ok(Self {
+                project_id: Arc::from(project_id),
+                cmd_path: Arc::from(cmd_path),
+            })
+        })
     }
 
-    fn get_token(&self) -> impl Future<Output = crate::Result<crate::Token>> + Send + 'static {
-        let child_res = tokio::process::Command::new(&*self.cmd_path)
-            .arg("auth")
-            .arg("print-access-token")
-            .arg("--quiet") // not that this actually does anything
-            .stderr(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn();
+    fn get_token(
+        &self,
+        _scope: crate::Scopes,
+    ) -> impl Future<Output = crate::Result<crate::Token>> + Send + 'static {
+        let mut cmd = std::process::Command::new(&*self.cmd_path);
 
-        async move {
-            let output = child_res?.wait_with_output().await?;
+        spawn_blocking(move || {
+            let output = cmd
+                .arg("auth")
+                .arg("print-access-token")
+                .arg("--quiet") // not that this actually does anything
+                .stderr(Stdio::piped())
+                .stdout(Stdio::piped())
+                .output()?;
 
             let access_token = get_relevant_gcloud_output(output)?.into_boxed_str();
 
             Ok(crate::Token::new_with_default_expiry_time(access_token))
-        }
+        })
     }
 
-    fn project_id(&self) -> impl Future<Output = crate::Result<Arc<str>>> + Send + 'static {
-        let child_res = tokio::process::Command::new(&*self.cmd_path)
-            .arg("config")
-            .arg("get-value")
-            .arg("project")
-            .stderr(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn();
-
-        async move {
-            let output = child_res?.wait_with_output().await?;
-
-            let project_id = get_relevant_gcloud_output(output)?;
-
-            Ok(Arc::from(project_id))
-        }
+    fn project_id(&self) -> &Arc<str> {
+        &self.project_id
     }
 }
 
-async fn find_gcloud() -> std::io::Result<Option<PathBuf>> {
+fn find_gcloud() -> std::io::Result<Option<PathBuf>> {
     fn truncate_ascii_whitespace_end(buf: &mut Vec<u8>) {
         while buf.last().is_some_and(|byte| !byte.is_ascii_alphanumeric()) {
             buf.pop();
         }
     }
 
-    let mut output = tokio::process::Command::new("which")
-        .arg("gcloud")
-        .output()
-        .await?;
+    let mut output = std::process::Command::new("which").arg("gcloud").output()?;
 
     // get rid of any trailing whitespace/ctrl chars, (there
     // shouldn't be any leading whitespace, so we only need

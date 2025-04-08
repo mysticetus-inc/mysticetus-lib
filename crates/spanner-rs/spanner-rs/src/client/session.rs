@@ -142,6 +142,7 @@ impl SessionClient {
             statements,
             seqno: 0,
             request_options: None,
+            last_statements: false,
         };
 
         let resp = protos::spanner::spanner_client::SpannerClient::new(self.parts.channel.clone())

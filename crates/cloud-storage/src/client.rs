@@ -19,7 +19,7 @@ async fn build_channel() -> crate::Result<Channel> {
         .tls_config(
             ClientTlsConfig::new()
                 .domain_name(STORAGE_DOMAIN)
-                .with_native_roots(),
+                .with_enabled_roots(),
         )?
         .connect()
         .await

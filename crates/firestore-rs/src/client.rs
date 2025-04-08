@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use futures::Future;
+use futures::{Future, TryFutureExt};
 use gcp_auth_channel::channel::AuthChannel;
 use gcp_auth_channel::{Auth, Scope};
 use protos::firestore::firestore_client;
@@ -122,11 +122,25 @@ impl FirestoreClient {
         F: Future,
         F::Output: Into<gcp_auth_channel::Auth>,
     {
-        // initialize the channel/auth manager
-        let (channel, auth_manager) =
-            tokio::try_join!(build_channel(), async move { Ok(auth_manager_fut.await) })?;
+        let infallible_fut = async move {
+            Ok(auth_manager_fut.await.into()) as Result<Auth, std::convert::Infallible>
+        };
 
-        Ok(Self::new_inner(auth_manager.into(), channel))
+        Self::from_try_auth_manager_future(infallible_fut).await
+    }
+
+    pub async fn from_try_auth_manager_future<F, Error>(auth_manager_fut: F) -> crate::Result<Self>
+    where
+        F: Future<Output = Result<Auth, Error>>,
+        crate::Error: From<Error>,
+    {
+        // initialize the channel/auth manager
+        let (channel, auth_manager) = tokio::try_join!(
+            build_channel(),
+            auth_manager_fut.map_err(crate::Error::from)
+        )?;
+
+        Ok(Self::new_inner(auth_manager, channel))
     }
 
     pub async fn from_auth_manager<A>(auth_manager: A) -> crate::Result<Self>

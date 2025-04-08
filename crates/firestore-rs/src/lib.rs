@@ -58,7 +58,7 @@ pub mod de;
 pub mod doc;
 pub mod error;
 pub mod firestore;
-pub mod listen;
+// pub mod listen;
 mod query;
 mod ser;
 mod transaction;
@@ -83,6 +83,7 @@ pub use protos::r#type::LatLng;
 pub use ser::{DocFields, escape_field_path_into, serialize_set_doc, serialize_update_doc};
 use timestamp::Timestamp;
 pub use value::{Reference, Value};
+
 /// Shared trait to represent collection names and document ids.
 ///
 /// Used to allow for [`str`]/[`String`] based types + others in one impl.
@@ -204,7 +205,7 @@ impl_noop_to_value! {
     f64 => Double,
     bool => Bool,
     Timestamp => Timestamp,
-    Reference => Reference,
+    Box<Reference> => Reference,
     String => String,
     bytes::Bytes => Bytes,
     LatLng => GeoPoint,

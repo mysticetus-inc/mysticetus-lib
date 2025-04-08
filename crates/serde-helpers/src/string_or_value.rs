@@ -1,10 +1,10 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::string_dst::{ParsableDst, StringDst};
 use serde::de::{self, Deserialize, IntoDeserializer};
 
 use super::never_visitor::NeverVisitor;
+use crate::string_dst::{ParsableDst, StringDst};
 
 #[derive(Debug)]
 pub struct StringOrValue<T, Dst, S = NeverVisitor<T>> {

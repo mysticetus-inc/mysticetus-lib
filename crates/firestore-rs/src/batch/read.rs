@@ -11,6 +11,7 @@ use protos::firestore::{
 use serde::de::DeserializeOwned;
 use tonic::Streaming;
 
+use crate::Reference;
 use crate::client::FirestoreClient;
 use crate::de::deserialize_doc_fields;
 use crate::error::Error;
@@ -313,24 +314,19 @@ impl From<batch_get_documents_response::Result> for RawReadResult {
 }
 
 impl RawReadResult {
-    fn path(&self) -> &str {
+    fn path(&self) -> &Reference {
         match self {
-            Self::Found(doc) => doc.path(),
-            Self::Missing(missing) => missing.as_str(),
+            Self::Found(doc) => doc.reference(),
+            Self::Missing(missing) => Reference::new(missing.as_str()),
         }
     }
 
     pub fn doc_id(&self) -> &str {
-        let full_path = self.path();
-
-        full_path
-            .rsplit_once('/')
-            .map(|(_leading, id)| id)
-            .unwrap_or(full_path)
+        self.path().id()
     }
 
     pub fn parent(&self) -> Option<&str> {
-        let parent = self.path().rsplit_once('/')?.0;
+        let parent = self.path().as_str().rsplit_once('/')?.0;
         Some(parent.rsplit_once('/')?.1)
     }
 

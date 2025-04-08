@@ -18,7 +18,7 @@ pub struct TestDoc {
     geo: firestore_rs::LatLng,
     boolean: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    reference: Option<firestore_rs::Reference>,
+    reference: Option<Box<firestore_rs::Reference>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     nested: Option<Box<TestDoc>>,
 }

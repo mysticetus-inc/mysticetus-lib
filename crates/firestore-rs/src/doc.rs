@@ -4,8 +4,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 
 use futures::Stream;
-use protos::firestore::document_transform::field_transform::{ServerValue, TransformType};
 use protos::firestore::document_transform::FieldTransform;
+use protos::firestore::document_transform::field_transform::{ServerValue, TransformType};
 use protos::firestore::get_document_request::ConsistencySelector;
 use protos::firestore::precondition::ConditionType;
 use protos::firestore::transaction_options::{Mode, ReadWrite};
@@ -23,14 +23,13 @@ use crate::batch::read;
 use crate::client::ResponseExt;
 use crate::collec::CollectionRef;
 use crate::de::deserialize_doc_fields;
-use crate::listen::Listener;
 use crate::ser::DocFields;
-use crate::{ser, Error, PathComponent};
+use crate::{Error, PathComponent, Reference, ser};
 
 /// Deserialized document from Firestore.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Doc<O> {
-    doc_id: String,
+    reference: Box<Reference>,
     doc_fields: O,
     create_time: Option<Timestamp>,
     update_time: Option<Timestamp>,
@@ -38,16 +37,17 @@ pub struct Doc<O> {
 
 impl<O> Doc<O> {
     #[inline]
-    pub fn path(&self) -> &str {
-        self.doc_id.as_str()
+    pub fn reference(&self) -> &Reference {
+        &self.reference
     }
 
     #[inline]
     pub fn id(&self) -> &str {
-        self.doc_id
+        self.reference
+            .as_str()
             .rsplit_once('/')
             .map(|(_leading, id)| id)
-            .unwrap_or(self.doc_id.as_str())
+            .unwrap_or(self.reference.as_str())
     }
 
     #[inline]
@@ -74,7 +74,7 @@ impl RawDoc {
         let doc_fields = deserialize_doc_fields(self.doc_fields)?;
 
         Ok(Doc {
-            doc_id: self.doc_id,
+            reference: self.reference,
             doc_fields,
             create_time: self.create_time,
             update_time: self.update_time,
@@ -88,7 +88,7 @@ impl<O> Doc<O> {
         O: serde::Deserialize<'de>,
     {
         Ok(Self {
-            doc_id: document.name,
+            reference: Reference::new_string(document.name),
             doc_fields: deserialize_doc_fields(document.fields)?,
             create_time: document.create_time.map(|ts| ts.into()),
             update_time: document.update_time.map(|ts| ts.into()),
@@ -103,7 +103,7 @@ pub type RawDoc = Doc<HashMap<String, firestore::Value>>;
 impl From<Document> for RawDoc {
     fn from(document: Document) -> Self {
         Self {
-            doc_id: document.name,
+            reference: Reference::new_string(document.name),
             doc_fields: document.fields,
             create_time: document.create_time.map(|ts| ts.into()),
             update_time: document.update_time.map(|ts| ts.into()),
@@ -115,7 +115,7 @@ impl From<Document> for RawDoc {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocumentRef<C: PathComponent, D: PathComponent> {
     doc_id: D,
-    qualified_path: String,
+    reference: Box<Reference>,
     pub(super) collec_ref: CollectionRef<C>,
 }
 
@@ -128,7 +128,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
         Self {
             doc_id,
             collec_ref,
-            qualified_path,
+            reference: Reference::new_string(qualified_path),
         }
     }
 
@@ -136,25 +136,13 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
         &self.doc_id
     }
 
-    pub fn reference(&self) -> crate::Reference {
-        crate::Reference(self.qualified_path.clone())
-    }
-
-    pub fn qualified_path(&self) -> &str {
-        self.qualified_path.as_str()
+    pub fn reference(&self) -> &crate::Reference {
+        &self.reference
     }
 
     /// Gets a subcollection underneath this document.
     pub fn collection<S: PathComponent>(self, collection: S) -> CollectionRef<S> {
-        CollectionRef::new_nested(collection, self.qualified_path, self.collec_ref.parent)
-    }
-
-    // does not work yet, needs another pass.
-    #[allow(dead_code)]
-    pub(crate) async fn listen(&mut self) -> crate::Result<Listener> {
-        let database = crate::common::database_path_from_resource_path(&self.qualified_path)?;
-        let doc = vec![self.qualified_path.clone()];
-        Listener::init_docs(&mut self.collec_ref.parent.client, database, doc).await
+        CollectionRef::new_nested(collection, self.reference, self.collec_ref.parent)
     }
 
     pub async fn update_transaction_raw<F, T>(
@@ -186,7 +174,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
 
         let consistency = Some(ConsistencySelector::Transaction(transaction_bytes.clone()));
 
-        let document = self.get_doc_inner(consistency).await?;
+        let document = self.get_doc_inner(consistency, None).await?;
 
         let init_doc = document.map(RawDoc::from_document).transpose()?;
 
@@ -197,7 +185,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
 
                 let document = Document {
                     fields,
-                    name: self.qualified_path.clone(),
+                    name: self.reference.to_string(),
                     create_time: None,
                     update_time: None,
                 };
@@ -246,19 +234,22 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     }
 
     pub fn list_collection_ids(&mut self) -> impl Stream<Item = crate::Result<Vec<String>>> + '_ {
-        crate::common::list_collection_ids(&mut self.collec_ref.parent.client, &self.qualified_path)
+        crate::common::list_collection_ids(
+            &mut self.collec_ref.parent.client,
+            self.reference.as_str(),
+        )
     }
 
     pub fn subcollection_batch_read(&self) -> read::BatchRead<read::Document> {
         read::BatchRead::new(
             self.collec_ref.parent.client.clone(),
-            self.qualified_path.clone().into(),
+            self.reference.to_string().into(),
             None,
         )
     }
 
     async fn write(&mut self, write: Write) -> crate::Result<Option<firestore::WriteResult>> {
-        let database = crate::try_extract_database_path(self.qualified_path.as_str())
+        let database = crate::try_extract_database_path(self.reference.as_str())
             .expect("document has an invalid ID")
             .to_owned();
 
@@ -373,7 +364,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
         let field: String = field.into();
 
         let req = GetDocumentRequest {
-            name: self.qualified_path.clone(),
+            name: self.reference.to_string(),
             consistency_selector: None,
             mask: Some(DocumentMask {
                 field_paths: vec![field.clone()],
@@ -485,10 +476,11 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     async fn get_doc_inner(
         &mut self,
         consistency_selector: Option<ConsistencySelector>,
+        mask: Option<DocumentMask>,
     ) -> crate::Result<Option<Document>> {
         let request = firestore::GetDocumentRequest {
-            name: self.qualified_path.clone(),
-            mask: None,
+            name: self.reference.to_string(),
+            mask,
             consistency_selector,
         };
 
@@ -503,7 +495,17 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     }
 
     pub async fn get_raw(&mut self) -> crate::Result<Option<RawDoc>> {
-        match self.get_doc_inner(None).await? {
+        match self.get_doc_inner(None, None).await? {
+            Some(inner) => Ok(Some(inner.into())),
+            None => Ok(None),
+        }
+    }
+
+    pub async fn get_raw_masked(
+        &mut self,
+        fields: impl IntoIterator<Item: AsRef<str>>,
+    ) -> crate::Result<Option<RawDoc>> {
+        match self.get_doc_inner(None, encode_mask(fields)).await? {
             Some(inner) => Ok(Some(inner.into())),
             None => Ok(None),
         }
@@ -513,7 +515,20 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     where
         O: serde::Deserialize<'de>,
     {
-        match self.get_doc_inner(None).await? {
+        match self.get_doc_inner(None, None).await? {
+            Some(document) => Doc::from_document(document).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    pub async fn get_masked<'de, O>(
+        &mut self,
+        fields: impl IntoIterator<Item: AsRef<str>>,
+    ) -> crate::Result<Option<Doc<O>>>
+    where
+        O: serde::Deserialize<'de>,
+    {
+        match self.get_doc_inner(None, encode_mask(fields)).await? {
             Some(document) => Doc::from_document(document).map(Some),
             None => Ok(None),
         }
@@ -522,7 +537,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     /// Deletes the document.
     pub async fn delete(&mut self) -> crate::Result<()> {
         let request = DeleteDocumentRequest {
-            name: self.qualified_path.clone(),
+            name: self.reference.to_string(),
             current_document: None,
         };
 
@@ -545,7 +560,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     ) -> crate::Result<RawDoc> {
         let request = UpdateDocumentRequest {
             document: Some(Document {
-                name: self.qualified_path.clone(),
+                name: self.reference.to_string(),
                 fields: doc_fields.fields,
                 update_time: None,
                 create_time: None,
@@ -652,6 +667,19 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     }
 }
 
+fn encode_mask(fields: impl IntoIterator<Item: AsRef<str>>) -> Option<DocumentMask> {
+    let field_paths = fields
+        .into_iter()
+        .map(|field| crate::ser::escape_field_path(field.as_ref()))
+        .collect::<Vec<String>>();
+
+    if field_paths.is_empty() {
+        None
+    } else {
+        Some(DocumentMask { field_paths })
+    }
+}
+
 pub mod write_type {
     use super::firestore::write::Operation;
 
@@ -730,7 +758,7 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
             current_document: self.precondition,
             operation: Some(firestore::write::Operation::Transform(
                 firestore::DocumentTransform {
-                    document: self.doc_ref.qualified_path.clone(),
+                    document: self.doc_ref.reference.to_string(),
                     field_transforms: self.transforms.unwrap_or_default(),
                 },
             )),
@@ -740,7 +768,7 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
     }
 
     pub fn delete(self) -> WriteBuilder<'a, C, D, write_type::Delete> {
-        let delete = write_type::Delete(self.doc_ref.qualified_path.clone());
+        let delete = write_type::Delete(self.doc_ref.reference.to_string());
 
         WriteBuilder {
             write: delete,
@@ -759,7 +787,7 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         let doc_fields = ser::serialize_set_doc(doc)?;
 
         let doc = Document {
-            name: self.doc_ref.qualified_path.clone(),
+            name: self.doc_ref.reference.to_string(),
             fields: doc_fields.fields,
             create_time: None,
             update_time: None,
@@ -804,7 +832,7 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         }
 
         let doc = Document {
-            name: self.doc_ref.qualified_path.clone(),
+            name: self.doc_ref.reference.to_string(),
             fields: doc_fields.fields,
             create_time: None,
             update_time: None,

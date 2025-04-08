@@ -14,6 +14,14 @@ pub mod open_close;
 #[cfg(feature = "tower")]
 pub mod retry;
 
+#[cfg(all(feature = "tonic", feature = "tower"))]
+pub mod retry_bidi;
+
+#[cfg(any(feature = "tonic", feature = "tower"))]
+pub mod transient;
+
+// pub mod json_stream;
+
 /// Common builder methods for creating tonic channels
 #[cfg(feature = "tonic")]
 pub mod tonic_channel {

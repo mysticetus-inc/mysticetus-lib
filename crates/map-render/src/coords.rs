@@ -440,20 +440,23 @@ fn test_pairs() {
 
     let pairs = test.into_iter().collect::<Vec<_>>();
 
-    assert_eq!(pairs.as_slice(), &[
-        // row 1
-        Tile { x: 0, y: 1 },
-        Tile { x: 1, y: 1 },
-        Tile { x: 2, y: 1 },
-        // row 2
-        Tile { x: 0, y: 2 },
-        Tile { x: 1, y: 2 },
-        Tile { x: 2, y: 2 },
-        // row 3
-        Tile { x: 0, y: 3 },
-        Tile { x: 1, y: 3 },
-        Tile { x: 2, y: 3 },
-    ]);
+    assert_eq!(
+        pairs.as_slice(),
+        &[
+            // row 1
+            Tile { x: 0, y: 1 },
+            Tile { x: 1, y: 1 },
+            Tile { x: 2, y: 1 },
+            // row 2
+            Tile { x: 0, y: 2 },
+            Tile { x: 1, y: 2 },
+            Tile { x: 2, y: 2 },
+            // row 3
+            Tile { x: 0, y: 3 },
+            Tile { x: 1, y: 3 },
+            Tile { x: 2, y: 3 },
+        ]
+    );
 
     let iter_len = test.into_iter().len();
     assert_eq!(pairs.len(), iter_len);

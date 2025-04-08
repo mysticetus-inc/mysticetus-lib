@@ -59,8 +59,7 @@ tracing-subscriber = { workspace = true, features = [
 [features]
 default = ["full"]
 
-tls = ["tonic/tls"]
-tls-webpki-roots = ["tls", "tonic/tls-webpki-roots"]
+tls-webpki-roots = ["tonic/tls-webpki-roots"]
 
 read = []
 write = []

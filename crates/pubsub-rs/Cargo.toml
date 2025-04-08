@@ -23,8 +23,6 @@ tokio = { workspace = true, features = [
 ] }
 tonic = { workspace = true, features = [
     "transport",
-    "tls",
-    "tls-roots",
     "tls-webpki-roots",
 ] }
 net-utils = { path = "../net-utils", features = ["tonic"] }

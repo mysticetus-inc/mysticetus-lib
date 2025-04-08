@@ -22,7 +22,6 @@ use protos::protobuf::Int32Value;
 
 use crate::client::FirestoreClient;
 use crate::de::deserialize_doc_fields;
-use crate::listen::Listener;
 use crate::ser::{NullOverwrite, OmitNulls, ValueSerializer};
 
 pub struct FieldFilterBuilder<'a> {
@@ -103,9 +102,12 @@ fn json_to_value_type(json: serde_json::Value) -> ValueType {
             let fields = map
                 .into_iter()
                 .map(|(key, value)| {
-                    (key, Value {
-                        value_type: Some(json_to_value_type(value)),
-                    })
+                    (
+                        key,
+                        Value {
+                            value_type: Some(json_to_value_type(value)),
+                        },
+                    )
                 })
                 .collect::<HashMap<String, Value>>();
 
@@ -407,13 +409,6 @@ impl<'a> QueryBuilder<'a> {
         (self.client, self.parent, query)
     }
 
-    pub async fn listen(self) -> crate::Result<Listener> {
-        let (client, parent, query) = self.into_query();
-        let database = crate::common::database_path_from_resource_path(&parent)?;
-
-        Listener::init_query(client, database, parent, query).await
-    }
-
     pub async fn first<D>(mut self) -> crate::Result<Option<D>>
     where
         D: serde::de::DeserializeOwned,
@@ -446,9 +441,8 @@ impl<'a> QueryBuilder<'a> {
         let stream = client.get().run_query(request).await?.into_inner();
 
         Ok(RawQueryStream {
-            stream,
+            stream: Some(stream),
             limit,
-            completed: false,
         })
     }
 
@@ -490,21 +484,31 @@ impl<'a> QueryBuilder<'a> {
 #[pin_project::pin_project]
 pub struct RawQueryStream {
     limit: Option<usize>,
-    completed: bool,
     #[pin]
-    stream: tonic::Streaming<RunQueryResponse>,
+    stream: Option<tonic::Streaming<RunQueryResponse>>,
 }
 
 impl RawQueryStream {
     pub fn is_completed(&self) -> bool {
-        self.completed
+        self.stream.is_none()
     }
 
-    pub async fn run_to_completion(mut self) -> crate::Result<Vec<Document>> {
-        let (low, high) = self.stream.size_hint();
-        let mut buf = Vec::with_capacity(high.unwrap_or(low));
+    pub async fn run_to_completion(self) -> crate::Result<Vec<Document>> {
+        let Some(mut stream) = self.stream else {
+            return Ok(vec![]);
+        };
 
-        while let Some(result) = self.stream.next().await {
+        let (low, high) = stream.size_hint();
+
+        let cap = match (high, self.limit) {
+            (Some(high), Some(limit)) => limit.min(high),
+            (None, Some(cap)) | (Some(cap), None) => cap,
+            (None, None) => low,
+        };
+
+        let mut buf = Vec::with_capacity(cap);
+
+        while let Some(result) = stream.next().await {
             if let Some(doc) = result?.document {
                 buf.push(doc);
             }
@@ -518,38 +522,37 @@ impl Stream for RawQueryStream {
     type Item = crate::Result<Document>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = self.project();
+        let mut this = self.project();
 
-        // if firestore returns 'done' incorrectly this will stop polling, so leaving
-        // commented out until testing shows that to be true
-        // if *this.completed {
-        //    return Poll::Ready(None);
-        // }
+        loop {
+            let Some(stream) = this.stream.as_mut().as_pin_mut() else {
+                return Poll::Ready(None);
+            };
 
-        match ready!(this.stream.poll_next(cx)) {
-            Some(Ok(chunk)) => {
-                if let Some(ContinuationSelector::Done(true)) = chunk.continuation_selector {
-                    *this.completed = true;
+            let chunk = match ready!(stream.poll_next(cx)) {
+                Some(result) => result?,
+                None => {
+                    this.stream.set(None);
+                    return Poll::Ready(None);
                 }
+            };
 
-                match chunk.document {
-                    Some(doc) => Poll::Ready(Some(Ok(doc))),
-                    // leaving commented out, as explained above.
-                    // _ if *this.completed => Poll::Ready(None),
-                    _ => Poll::Pending,
-                }
+            // register another wake up right away, since the stream should be done at this point.
+            // Dont stream.set(None) here to make sure the actual stream shuts down cleanly.
+            if chunk.continuation_selector == Some(ContinuationSelector::Done(true)) {
+                cx.waker().wake_by_ref();
             }
-            Some(Err(status)) => Poll::Ready(Some(Err(status.into()))),
-            None => {
-                // if the stream
-                // debug_assert!(*this.completed);
-                Poll::Ready(None)
+
+            if let Some(doc) = chunk.document {
+                return Poll::Ready(Some(Ok(doc)));
             }
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (low, stream_high) = self.stream.size_hint();
+        let Some((low, stream_high)) = self.stream.as_ref().map(|stream| stream.size_hint()) else {
+            return (0, Some(0));
+        };
 
         match (stream_high, self.limit) {
             (Some(high), Some(limit)) => (low, Some(high.min(limit))),
@@ -569,7 +572,7 @@ pub struct QueryStream<D> {
 
 impl<D> QueryStream<D> {
     pub fn is_completed(&self) -> bool {
-        self.stream.completed
+        self.stream.is_completed()
     }
 }
 

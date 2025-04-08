@@ -2,10 +2,10 @@ use std::fmt;
 use std::sync::Arc;
 
 use gcp_auth_channel::Auth;
-use reqwest::header::{self, HeaderValue};
 use reqwest::Response;
-// use parking_lot::RwLock;
+use reqwest::header::{self, HeaderValue};
 
+// use parking_lot::RwLock;
 use crate::error::{Error, RealtimeDbError};
 use crate::event::EventStream;
 use crate::path::RtDbPath;

@@ -3,7 +3,7 @@
 //! [Service] retry utilities for sessions/transactions
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::task::{Context, Poll};
 
 use bytes::{Buf, Bytes};
