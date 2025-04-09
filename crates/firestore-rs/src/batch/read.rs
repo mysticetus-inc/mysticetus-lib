@@ -316,7 +316,7 @@ impl From<batch_get_documents_response::Result> for RawReadResult {
 impl RawReadResult {
     fn path(&self) -> &Reference {
         match self {
-            Self::Found(doc) => doc.reference(),
+            Self::Found(doc) => &doc.reference,
             Self::Missing(missing) => Reference::new(missing.as_str()),
         }
     }

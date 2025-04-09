@@ -29,18 +29,13 @@ use crate::{Error, PathComponent, Reference, ser};
 /// Deserialized document from Firestore.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Doc<O> {
-    reference: Box<Reference>,
     doc_fields: O,
-    create_time: Option<Timestamp>,
-    update_time: Option<Timestamp>,
+    pub reference: Box<Reference>,
+    pub create_time: Option<Timestamp>,
+    pub update_time: Option<Timestamp>,
 }
 
 impl<O> Doc<O> {
-    #[inline]
-    pub fn reference(&self) -> &Reference {
-        &self.reference
-    }
-
     #[inline]
     pub fn id(&self) -> &str {
         self.reference
