@@ -36,6 +36,8 @@ pub use protos::google::cloud::bigquery::storage::v1 as bigquery_storage;
 pub use protos::google::cloud::bigquery::v2 as bigquery_v2;
 #[cfg(feature = "cloud-run")]
 pub use protos::google::cloud::run::v2 as cloud_run;
+#[cfg(feature = "tasks")]
+pub use protos::google::cloud::tasks::v2 as tasks;
 #[cfg(feature = "artifact-registry")]
 pub use protos::google::devtools::artifactregistry::v1 as artifact_registry;
 #[cfg(feature = "firestore-admin")]

@@ -1,0 +1,25 @@
+[package]
+name = "cloud-tasks"
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+protos = { path = "../protos", features = ["tasks"] }
+tokio = { workspace = true, features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "parking_lot",
+] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+futures.workspace = true
+timestamp = { path = "../timestamp" }
+path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
+thiserror.workspace = true
+net-utils = { path = "../net-utils", features = ["tonic"] }
+prost.workspace = true
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+tonic = { workspace = true, features = ["transport", "tls-webpki-roots"] }
+http.workspace = true
+bytes.workspace = true

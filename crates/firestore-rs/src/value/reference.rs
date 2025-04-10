@@ -59,10 +59,6 @@ impl Reference {
         s.rsplit_once('/').map(|(_, id)| id).unwrap_or(s)
     }
 
-    pub(crate) fn to_string(&self) -> String {
-        self.as_str().to_owned()
-    }
-
     pub fn new_string(s: String) -> Box<Self> {
         Self::new_owned(s.into_boxed_str())
     }

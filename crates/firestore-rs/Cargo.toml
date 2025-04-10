@@ -27,15 +27,10 @@ tokio = { workspace = true, features = [
 ] }
 serde = { workspace = true, features = ["derive"] }
 
-gcp_auth.workspace = true
-
-# data-structures = { path = "../data-structures" }
-lazy_static = "1.4.0"
 futures.workspace = true
 
-protos = { path = "../protos", features = ["firestore", "mysticetus"] }
+protos = { path = "../protos", features = ["firestore"] }
 timestamp = { path = "../timestamp" }
-
 path-aware-serde = { path = "../path-aware-serde" }
 
 chrono = { version = "0.4.19", features = ["serde"] }
@@ -47,20 +42,16 @@ serde_json.workspace = true
 serde-helpers = { path = "../serde-helpers" }
 uuid = { workspace = true, features = ["serde"] }
 thiserror.workspace = true
-tonic = { workspace = true, features = [
-    "transport",
-    "tls-webpki-roots",
-] }
+tonic = { workspace = true, features = ["transport", "tls-webpki-roots"] }
 base64 = "0.13.0"
 parking_lot = "0.12.0"
 async-recursion = "1.0.0"
 net-utils = { path = "../net-utils", features = ["tonic"] }
 
 gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
-pin-project = "1.0.10"
-pin-project-lite = "0.2.9"
+pin-project-lite.workspace = true
 rand.workspace = true
-slab = "0.4.7"
+
 bytes.workspace = true
 prost.workspace = true
 fxhash.workspace = true

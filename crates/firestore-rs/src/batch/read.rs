@@ -251,11 +251,12 @@ where
     }
 }
 
-#[pin_project::pin_project]
-pub struct RawBatchReadStream {
-    #[pin]
-    stream: tonic::Streaming<BatchGetDocumentsResponse>,
-    max: usize,
+pin_project_lite::pin_project! {
+    pub struct RawBatchReadStream {
+        #[pin]
+        stream: tonic::Streaming<BatchGetDocumentsResponse>,
+        max: usize,
+    }
 }
 
 impl RawBatchReadStream {
@@ -365,12 +366,13 @@ impl RawReadResult {
     }
 }
 
-#[pin_project::pin_project]
-pub struct BatchReadStream<O> {
-    #[pin]
-    stream: tonic::Streaming<BatchGetDocumentsResponse>,
-    max: usize,
-    _marker: std::marker::PhantomData<O>,
+pin_project_lite::pin_project! {
+    pub struct BatchReadStream<O> {
+        #[pin]
+        stream: tonic::Streaming<BatchGetDocumentsResponse>,
+        max: usize,
+        _marker: std::marker::PhantomData<O>,
+    }
 }
 
 impl<O> Stream for BatchReadStream<O>

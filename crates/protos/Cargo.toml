@@ -63,7 +63,7 @@ artifact-registry = ["longrunning", "iam", "rpc"]
 spanner = ["rpc"]
 spanner-admin-database = ["rpc", "longrunning", "iam"]
 spanner-admin-instance = ["rpc", "longrunning", "iam"]
-
+tasks = ["rpc", "iam"]
 
 # Mostly used for generating all proto -> rust files at a time with:
 # 'cargo check --features full'

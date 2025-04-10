@@ -358,13 +358,14 @@ impl<C: PathComponent> CollectionRef<C> {
     }
 }
 
-#[derive(Debug)]
-#[pin_project::pin_project]
-pub struct GetAllStream<D> {
-    rx: tokio::sync::mpsc::UnboundedReceiver<D>,
-    joined: bool,
-    #[pin]
-    handle: Option<tokio::task::JoinHandle<crate::Result<()>>>,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    pub struct GetAllStream<D> {
+        rx: tokio::sync::mpsc::UnboundedReceiver<D>,
+        joined: bool,
+        #[pin]
+        handle: Option<tokio::task::JoinHandle<crate::Result<()>>>,
+    }
 }
 
 type RawGetAllStream = GetAllStream<Vec<Document>>;

@@ -480,12 +480,13 @@ impl<'a> QueryBuilder<'a> {
     }
 }
 
-#[derive(Debug)]
-#[pin_project::pin_project]
-pub struct RawQueryStream {
-    limit: Option<usize>,
-    #[pin]
-    stream: Option<tonic::Streaming<RunQueryResponse>>,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    pub struct RawQueryStream {
+        limit: Option<usize>,
+        #[pin]
+        stream: Option<tonic::Streaming<RunQueryResponse>>,
+    }
 }
 
 impl RawQueryStream {
@@ -562,12 +563,13 @@ impl Stream for RawQueryStream {
     }
 }
 
-#[derive(Debug)]
-#[pin_project::pin_project]
-pub struct QueryStream<D> {
-    #[pin]
-    stream: RawQueryStream,
-    _marker: std::marker::PhantomData<D>,
+pin_project_lite::pin_project! {
+    #[derive(Debug)]
+    pub struct QueryStream<D> {
+        #[pin]
+        stream: RawQueryStream,
+        _marker: std::marker::PhantomData<D>,
+    }
 }
 
 impl<D> QueryStream<D> {

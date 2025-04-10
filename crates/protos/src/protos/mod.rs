@@ -73,9 +73,16 @@ pub(super) mod google {
         }
     }
 
-    #[cfg(any(feature = "bigquery", feature = "cloud-run"))]
+    #[cfg(any(feature = "bigquery", feature = "cloud-run", feature = "tasks"))]
     #[path = ""]
     pub mod cloud {
+
+        #[cfg(feature = "tasks")]
+        #[path = ""]
+        pub mod tasks {
+            #[path = "google.cloud.tasks.v2.rs"]
+            pub mod v2;
+        }
 
         #[cfg(feature = "cloud-run")]
         #[path = ""]

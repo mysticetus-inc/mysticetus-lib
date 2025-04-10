@@ -34,6 +34,11 @@ const FILES: &[&str] = &[
     "../../googleapis/google/spanner/v1/spanner.proto",
     "../../googleapis/google/spanner/admin/database/v1/spanner_database_admin.proto",
     "../../googleapis/google/spanner/admin/instance/v1/spanner_instance_admin.proto",
+    // Cloud Tasks
+    "../../googleapis/google/cloud/tasks/v2/cloudtasks.proto",
+    "../../googleapis/google/cloud/tasks/v2/queue.proto",
+    "../../googleapis/google/cloud/tasks/v2/target.proto",
+    "../../googleapis/google/cloud/tasks/v2/task.proto",
 ];
 
 macro_rules! derive {
@@ -135,5 +140,13 @@ fn main() -> std::io::Result<()> {
         cfg = cfg.type_attribute(ty, derive);
     }
 
-    cfg.out_dir("src/protos").compile_protos(FILES, ROOT)
+    cfg.out_dir("src/protos").compile_protos(FILES, ROOT)?;
+
+    let status = std::process::Command::new("cargo").arg("fmt").status()?;
+
+    if !status.success() {
+        eprintln!("protos build script failed to format generated code");
+    }
+
+    Ok(())
 }
