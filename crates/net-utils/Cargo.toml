@@ -16,12 +16,14 @@ serde_json.workspace = true
 serde.workspace = true
 rand.workspace = true
 tracing.workspace = true
+thiserror.workspace = true
 timestamp = { path = "../timestamp" }
 http.workspace = true
 axum.workspace = true
 num-traits.workspace = true
 tokio-util.workspace = true
 phf = { version = "0.11.3", features = ["macros"] }
+path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
 
 [features]
 tower = ["dep:tower"]

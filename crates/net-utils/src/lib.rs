@@ -14,6 +14,8 @@ pub mod open_close;
 #[cfg(feature = "tower")]
 pub mod retry;
 
+pub mod cloud_task_payload;
+
 #[cfg(all(feature = "tonic", feature = "tower"))]
 pub mod retry_bidi;
 

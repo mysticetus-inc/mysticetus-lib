@@ -14,7 +14,7 @@ pub struct DynamicSheet<'xlsx, C> {
 }
 
 impl<C> super::private::SealedIntoSheet for DynamicSheet<'static, C> {
-    fn into_sheet(self) -> rust_xlsxwriter::Worksheet {
+    fn into_sheet(self) -> Box<rust_xlsxwriter::Worksheet> {
         self.base.into_sheet()
     }
 }

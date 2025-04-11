@@ -17,7 +17,7 @@ pub(crate) struct BaseSheet<'xlsx> {
 
 pub(crate) enum MaybeOwnedSheet<'xlsx> {
     Ref(&'xlsx mut rust_xlsxwriter::Worksheet),
-    Owned(rust_xlsxwriter::Worksheet),
+    Owned(Box<rust_xlsxwriter::Worksheet>),
 }
 
 impl MaybeOwnedSheet<'_> {
@@ -50,7 +50,7 @@ impl BaseSheet<'static> {
 
             BaseSheet {
                 row: 0,
-                sheet: MaybeOwnedSheet::Owned(sheet),
+                sheet: MaybeOwnedSheet::Owned(Box::new(sheet)),
                 buf: String::new(),
                 col_sums: Vec::new(),
             }
@@ -93,7 +93,7 @@ impl<'xlsx> BaseSheet<'xlsx> {
 }
 
 impl private::SealedIntoSheet for BaseSheet<'static> {
-    fn into_sheet(self) -> rust_xlsxwriter::Worksheet {
+    fn into_sheet(self) -> Box<rust_xlsxwriter::Worksheet> {
         match self.sheet {
             MaybeOwnedSheet::Owned(owned) => owned,
             _ => panic!("'static BaseSheet shouldn't have a mutable reference"),
@@ -107,6 +107,6 @@ impl<T> IntoSheet for T where T: private::SealedIntoSheet {}
 
 pub(super) mod private {
     pub trait SealedIntoSheet {
-        fn into_sheet(self) -> rust_xlsxwriter::Worksheet;
+        fn into_sheet(self) -> Box<rust_xlsxwriter::Worksheet>;
     }
 }

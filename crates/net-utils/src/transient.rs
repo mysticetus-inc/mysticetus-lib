@@ -17,14 +17,17 @@ pub struct DefaultTransientErrors;
 
 impl IsTransient for DefaultTransientErrors {
     fn is_transient(&self, error: &tonic::Status) -> bool {
-        use tonic::Code::{
-            Aborted, Cancelled, DeadlineExceeded, Internal, ResourceExhausted, Unauthenticated,
-            Unavailable, Unknown,
-        };
+        use tonic::Code;
 
         match error.code() {
-            Aborted | Cancelled | Unknown | DeadlineExceeded | ResourceExhausted | Internal
-            | Unavailable | Unauthenticated => true,
+            Code::Aborted
+            | Code::Cancelled
+            | Code::Unknown
+            | Code::DeadlineExceeded
+            | Code::ResourceExhausted
+            | Code::Internal
+            | Code::Unavailable
+            | Code::Unauthenticated => true,
             _ => false,
         }
     }

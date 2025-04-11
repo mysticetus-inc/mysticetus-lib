@@ -8,7 +8,7 @@ use crate::sheets;
 /// Thin wrapper around an [`xlsxwriter::Workbook`].
 #[must_use = "must be written to a file/buffer"]
 pub struct ExcelFile {
-    book: rust_xlsxwriter::Workbook,
+    book: Box<rust_xlsxwriter::Workbook>,
     index: HashMap<Box<str>, usize>,
 }
 
@@ -24,7 +24,7 @@ impl fmt::Debug for ExcelFile {
 impl ExcelFile {
     pub fn new() -> Self {
         Self {
-            book: rust_xlsxwriter::Workbook::new(),
+            book: Box::new(rust_xlsxwriter::Workbook::new()),
             index: HashMap::new(),
         }
     }
@@ -46,7 +46,7 @@ impl ExcelFile {
     #[inline]
     pub fn write_to_file<P: AsRef<Path>>(self, path: P) -> Result<(), Error> {
         fn inner(
-            mut book: rust_xlsxwriter::Workbook,
+            mut book: Box<rust_xlsxwriter::Workbook>,
             path: &Path,
         ) -> Result<(), rust_xlsxwriter::XlsxError> {
             book.save(path)
@@ -64,7 +64,7 @@ impl ExcelFile {
             sheet.name().into_boxed_str(),
             self.book.worksheets_mut().len(),
         );
-        self.book.worksheets_mut().push(sheet);
+        self.book.worksheets_mut().push(*sheet);
     }
 
     fn get_or_insert_sheet(&mut self, sheet_name: &str) -> &mut rust_xlsxwriter::Worksheet {

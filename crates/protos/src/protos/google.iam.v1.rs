@@ -206,6 +206,7 @@ pub struct Binding {
     ///
     /// * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that
     ///   domain. For example, `google.com` or `example.com`.
+    ///
     #[prost(string, repeated, tag = "2")]
     pub members: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The condition that is associated with this binding.
