@@ -1,8 +1,12 @@
+use bytes::Bytes;
 use gcp_auth_channel::AuthChannel;
 use protos::tasks;
 use timestamp::Timestamp;
 
 use crate::http::HttpRequestBuilder;
+
+const GOOG_REQUEST_PARAMS: http::HeaderName =
+    http::HeaderName::from_static("x-goog-request-params");
 
 #[derive(Debug)]
 pub struct TaskQueueClient {
@@ -29,7 +33,15 @@ impl TaskQueueClient {
             response_view: view as i32,
         };
 
-        let mut client = tasks::cloud_tasks_client::CloudTasksClient::new(self.channel.clone());
+        let header_bytes = Bytes::from(format!("parent={}", self.queue));
+        let metadata = http::HeaderValue::from_maybe_shared(header_bytes)
+            .expect("this should always be valid");
+
+        let mut client = tasks::cloud_tasks_client::CloudTasksClient::new(
+            self.channel
+                .clone()
+                .attach_header(GOOG_REQUEST_PARAMS, metadata),
+        );
 
         let task = client.create_task(request).await?.into_inner();
         Ok(task)

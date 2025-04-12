@@ -11,6 +11,34 @@ pub use kvp::{Grpc, Http, InsertHeaders, KeyValuePair};
 
 use super::AuthChannel;
 
+pub struct AddHeaderService<Svc> {
+    pub(super) svc: Svc,
+    pub(super) name: http::HeaderName,
+    pub(super) value: http::HeaderValue,
+}
+
+impl<Svc, Body> Service<http::Request<Body>> for AddHeaderService<Svc>
+where
+    Svc: Service<http::Request<Body>>,
+{
+    type Error = Svc::Error;
+    type Future = Svc::Future;
+    type Response = Svc::Response;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.svc.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, mut req: http::Request<Body>) -> Self::Future {
+        req.headers_mut()
+            .insert(self.name.clone(), self.value.clone());
+
+        self.svc.call(req)
+    }
+}
+
 /// Holds a generic [`KeyValuePair`] pair.
 ///
 /// [`WithHeader`] is the associated [`Service`] that this generates via [`Layer`].

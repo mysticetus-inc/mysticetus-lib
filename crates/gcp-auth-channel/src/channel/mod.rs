@@ -133,6 +133,20 @@ impl<Svc> AuthChannel<Svc> {
         headers::WithHeaders::new(self, headers)
     }
 
+    /// Returns a builder that'll wrap [`Svc`] with a new layer, inserting a single header key-value
+    /// pair into each request.
+    pub fn attach_header(
+        self,
+        name: http::HeaderName,
+        value: http::HeaderValue,
+    ) -> headers::AddHeaderService<Self> {
+        headers::AddHeaderService {
+            svc: self,
+            name,
+            value,
+        }
+    }
+
     /// Wraps the inner [`Svc`], replacing it with the returned value of 'f'.
     ///
     /// Similar to [`apply_layer`], but is a bit more flexible.
