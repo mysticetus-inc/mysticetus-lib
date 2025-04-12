@@ -1,3 +1,4 @@
+#![feature(range_into_bounds)]
 spanner_rs::row! {
     #[derive(Debug, Clone, PartialEq)]
     #[spanner(table = "SharedSgts")]

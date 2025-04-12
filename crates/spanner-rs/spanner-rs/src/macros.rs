@@ -37,6 +37,16 @@ crate::row! {
     }
 }
 
+pub mod scope_values {
+    crate::row! {
+        #[derive(Debug, serde::Serialize, serde::Deserialize)]
+        pub struct ScopeValues {
+            pub scope: Box<str>,
+            pub values: Vec<Box<str>>,
+        }
+    }
+}
+
 const _: () = {
     #[allow(unused)]
     const fn assert_insertable<T: crate::Table>(_: &T) {}
@@ -50,11 +60,13 @@ const _: () = {
 #[doc(hidden)]
 macro_rules! __invalid_row_syntax {
     ($inside:literal $(,)? $($tokens:tt)+) => {
-        // debug_macro::debug_macro! {
-        //    const INSIDE: &str = $inside;
-        //    $($tokens)+
-        // }
-        // #[cfg(feature = "debug-table-macro")]
+        /*
+        debug_macro::debug_macro! {
+           const INSIDE: &str = $inside;
+           $($tokens)+
+        }
+        */
+        #[cfg(feature = "debug-table-macro")]
         compile_error!(concat!(
             "Invalid `row!` syntax inside ",
             $inside,
@@ -62,6 +74,7 @@ macro_rules! __invalid_row_syntax {
             $(stringify!($tokens),)+
             "'"
         ));
+
         // #[cfg(not(feature = "debug-table-macro"))]
         // $crate::__invalid_row_syntax!($inside)
     };
@@ -1122,7 +1135,7 @@ macro_rules! __impl_row_builder {
             meta = [$($meta:tt)*],
             row = $row:ident,
             row_vis = $row_vis:vis,
-            table_name = [$table_name:expr],
+            table_name = [$($table_name:expr)?],
         },
         columns = [$(
             {
@@ -1171,7 +1184,7 @@ macro_rules! __impl_row_builder {
                 meta = [$($meta)*],
                 row = $row,
                 row_vis = $row_vis,
-                table_name = [$table_name],
+                table_name = [$($table_name)?],
             },
             pks = [$(($pk_field, ($($pk_type)*), $pk_index, $pk_generic)),*],
             pk_name = [$pk_name],
@@ -1221,7 +1234,7 @@ macro_rules! __impl_row_builder_methods {
             [$($meta:tt)*],row =
             $row:ident,row_vis =
             $row_vis:vis,table_name =
-            [$table_name:expr],
+            [$($table_name:expr)?],
         },pks =
         [$(($pk_field:ident,($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],pk_name =
         [$pk_name:ident],generics =
@@ -1286,7 +1299,7 @@ macro_rules! __impl_row_builder_methods {
             [$($meta:tt)*],row =
             $row:ident,row_vis =
             $row_vis:vis,table_name =
-            [$table_name:expr],
+            [$($table_name:expr)?],
         },pks =
         [$(($pk_field:ident,($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],pk_name =
         [$pk_name:ident],generics =
@@ -1354,7 +1367,7 @@ macro_rules! __impl_row_builder_methods {
             [$($meta:tt)*],row =
             $row:ident,row_vis =
             $row_vis:vis,table_name =
-            [$table_name:expr],
+            [$($table_name:expr)?],
         },pks =
         [$(($pk_field:ident,($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],pk_name =
         [$pk_name:ident],generics =
@@ -1430,7 +1443,7 @@ macro_rules! __impl_row_builder_methods {
                 [$($meta)*],row =
                 $row,row_vis =
                 $row_vis,table_name =
-                [$table_name],
+                    [$($table_name)?],
             },pks =
             [$(($pk_field,($($pk_type)*), $pk_index, $pk_generic)),* $(,)?],pk_name =
             [$pk_name],generics =
@@ -1488,7 +1501,7 @@ macro_rules! __impl_row_builder_methods {
             [$($meta:tt)*],row =
             $row:ident,row_vis =
             $row_vis:vis,table_name =
-            [$table_name:expr],
+            [$($table_name:expr)?],
         },pks =
         [$(($pk_field:ident,($($pk_type:tt)*), $pk_index:literal, $pk_generic:tt)),* $(,)?],pk_name =
         [$pk_name:ident],generics =
@@ -1555,7 +1568,7 @@ macro_rules! __impl_row_builder_methods {
                 [$($meta)*],row =
                 $row,row_vis =
                 $row_vis,table_name =
-                [$table_name],
+                    [$($table_name)?],
             },pks =
             [$(($pk_field,($($pk_type)*), $pk_index, $pk_generic)),* $(,)?],pk_name =
             [$pk_name],generics =
