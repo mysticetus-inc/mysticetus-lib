@@ -258,7 +258,7 @@ where
     type Future = future::AuthFuture<Svc, Body>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Service::poll_ready(&mut self.svc, cx).map_err(|e| Error::Transport(e.into()))
+        Service::poll_ready(&mut self.svc, cx).map_err(Error::channel)
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
@@ -283,7 +283,7 @@ where
     type Future = future::AuthFuture<&'a Svc, Body>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        Service::poll_ready(&mut &self.svc, cx).map_err(|e| Error::Transport(e.into()))
+        Service::poll_ready(&mut &self.svc, cx).map_err(Error::channel)
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {

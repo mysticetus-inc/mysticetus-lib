@@ -49,7 +49,7 @@ where
     Svc: Service<Request<Body>>,
     Svc::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
-    fut.poll(cx).map_err(|e| Error::Transport(e.into()))
+    fut.poll(cx).map_err(Error::channel)
 }
 
 impl<Svc, Body> Future for AuthFuture<Svc, Body>

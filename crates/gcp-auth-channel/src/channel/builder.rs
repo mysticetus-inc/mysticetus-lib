@@ -83,3 +83,15 @@ impl<S> AuthChannelBuilder<Channel, S, Auth> {
         }
     }
 }
+
+pub trait ClientBuilder: Sized {
+    type Error: From<crate::Error>;
+
+    type ChannelOptions: Send + 'static;
+
+    fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error>;
+
+    fn build_channel(
+        channel_opts: Self::ChannelOptions,
+    ) -> impl Future<Output = Result<Channel, tonic::transport::Error>> + Send + 'static;
+}

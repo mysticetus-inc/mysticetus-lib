@@ -11,6 +11,7 @@ pub mod scope;
 
 pub use auth::Auth;
 pub use scope::Scope;
+// pub mod future;
 
 #[cfg(feature = "channel")]
 pub mod channel;
@@ -21,18 +22,21 @@ pub use channel::AuthChannel;
 pub enum Error {
     #[error(transparent)]
     Auth(#[from] gcp_auth::Error),
-    #[error(transparent)]
     #[cfg(feature = "channel")]
-    Transport(#[from] Box<dyn std::error::Error + Send + Sync>),
+    #[error(transparent)]
+    Transport(#[from] tonic::transport::Error),
+    #[cfg(feature = "channel")]
+    #[error(transparent)]
+    Channel(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error(transparent)]
     InvalidHeaderName(http::header::InvalidHeaderName),
     #[error(transparent)]
     InvalidHeaderValue(http::header::InvalidHeaderValue),
 }
 
-#[cfg(feature = "channel")]
-impl From<tonic::transport::Error> for Error {
-    fn from(err: tonic::transport::Error) -> Self {
-        Self::Transport(err.into())
+impl Error {
+    #[cfg(feature = "channel")]
+    pub(crate) fn channel(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
+        Self::Channel(error.into())
     }
 }
