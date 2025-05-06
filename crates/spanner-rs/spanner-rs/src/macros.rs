@@ -56,17 +56,11 @@ const _: () = {
     });
 };
 
+#[cfg(feature = "debug-table-macro")]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __invalid_row_syntax {
     ($inside:literal $(,)? $($tokens:tt)+) => {
-        /*
-        debug_macro::debug_macro! {
-           const INSIDE: &str = $inside;
-           $($tokens)+
-        }
-        */
-        #[cfg(feature = "debug-table-macro")]
         compile_error!(concat!(
             "Invalid `row!` syntax inside ",
             $inside,
@@ -74,11 +68,14 @@ macro_rules! __invalid_row_syntax {
             $(stringify!($tokens),)+
             "'"
         ));
-
-        // #[cfg(not(feature = "debug-table-macro"))]
-        // $crate::__invalid_row_syntax!($inside)
     };
-    ($inside:literal  $(,)?) => {
+}
+
+#[cfg(not(feature = "debug-table-macro"))]
+#[macro_export]
+#[doc(hidden)]
+macro_rules! __invalid_row_syntax {
+    ($($t:tt)+) => {
         compile_error!("Invalid `row!` syntax")
     };
 }
