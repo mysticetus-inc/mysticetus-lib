@@ -357,6 +357,56 @@ fn build_mask(fields: &HashMap<String, firestore::Value>) -> Vec<String> {
     dst
 }
 
+/// Serde compat for serializing as a firestore timestamp type.
+pub mod timestamp {
+
+    pub(crate) const NEWTYPE_MARKER: &str = "__timestamp__";
+
+    /// Concrete new-type
+    pub(crate) struct FirestoreTimestamp(pub(crate) protos::protobuf::Timestamp);
+
+    impl serde::Serialize for FirestoreTimestamp {
+        #[inline]
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            serializer.serialize_newtype_struct(NEWTYPE_MARKER, &self.0)
+        }
+    }
+
+    pub trait AsTimestamp: Sized {
+        type Error: std::error::Error;
+
+        fn into_timestamp(&self) -> protos::protobuf::Timestamp;
+
+        fn from_timestamp(proto: protos::protobuf::Timestamp) -> Result<Self, Self::Error>;
+    }
+
+    impl AsTimestamp for timestamp::Timestamp {
+        type Error = std::convert::Infallible;
+
+        #[inline]
+        fn into_timestamp(&self) -> protos::protobuf::Timestamp {
+            (*self).into()
+        }
+
+        #[inline]
+        fn from_timestamp(proto: protos::protobuf::Timestamp) -> Result<Self, Self::Error> {
+            Self::try_from(proto)
+        }
+    }
+
+    #[inline]
+    pub fn serialize<T, S>(timestamp: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: AsTimestamp,
+        S: serde::Serializer,
+    {
+        serde::Serialize::serialize(&FirestoreTimestamp(timestamp.into_timestamp()), serializer)
+    }
+}
+
 #[test]
 fn test_escape_field_path() {
     const TEST_CASES: &[(&str, &str)] = &[

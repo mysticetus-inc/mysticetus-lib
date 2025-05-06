@@ -61,6 +61,27 @@ impl StorageClient {
         Ok(Self { channel })
     }
 
+    pub async fn from_auth_future<E>(
+        auth_future: impl Future<Output = Result<Auth, E>>,
+    ) -> crate::Result<Self>
+    where
+        E: Into<crate::Error>,
+    {
+        let (channel, auth) = tokio::try_join!(
+            build_channel(),
+            
+        )?;
+        
+        let channel = .await?;
+
+        let channel = AuthChannel::builder()
+            .with_channel(channel)
+            .with_auth(auth)
+            .build();
+
+        Ok(Self { channel })
+    }
+
     #[inline]
     pub fn auth(&self) -> &Auth {
         self.channel.auth()

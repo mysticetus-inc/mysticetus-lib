@@ -1,8 +1,20 @@
 use std::fmt;
 
-#[derive(Debug, PartialEq, Eq, Hash, serde::Serialize)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Reference(str);
+
+impl serde::Serialize for Reference {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        // Serialize with a specific name, so the serializer can attempt to coerce this
+        // to a firestore reference type instead of just a string
+        serializer.serialize_newtype_struct(Self::NEWTYPE_MARKER, self.as_str())
+    }
+}
 
 impl<'de> serde::Deserialize<'de> for Box<Reference> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -49,6 +61,8 @@ impl fmt::Display for Reference {
 }
 
 impl Reference {
+    pub(crate) const NEWTYPE_MARKER: &str = "__reference__";
+
     pub fn new(s: &str) -> &Self {
         // SAFETY: We're repr(transparent)
         unsafe { std::mem::transmute::<&str, &Self>(s) }

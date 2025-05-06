@@ -506,7 +506,8 @@ impl From<gcp_auth_channel::Error> for Error {
     fn from(err: gcp_auth_channel::Error) -> Self {
         match err {
             gcp_auth_channel::Error::Auth(auth) => Self::Auth(auth),
-            gcp_auth_channel::Error::Transport(transport) => Self::Transport(transport),
+            gcp_auth_channel::Error::Channel(misc) => Self::Transport(misc),
+            gcp_auth_channel::Error::Transport(transport) => Self::Transport(transport.into()),
             gcp_auth_channel::Error::InvalidHeaderName(name) => Self::InvalidHeaderName(name),
             gcp_auth_channel::Error::InvalidHeaderValue(value) => Self::InvalidHeaderValue(value),
         }

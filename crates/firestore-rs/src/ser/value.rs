@@ -1,26 +1,28 @@
 //! A serializer to create [`firestore::Value`] from [`Serialize`]-able types.
+use std::any::Any;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
 use protos::firestore::value::ValueType;
 use protos::firestore::{self, ArrayValue, MapValue};
+use protos::r#type::LatLng;
 use serde::ser::{self, Serialize, Serializer};
 use serde_helpers::key_capture::KeyCapture;
 
+mod newtype;
+
 use super::NullStrategy;
-use crate::ConvertError;
+use crate::{ConvertError, Reference};
 
 /// Handles serializing [`Serialize`]-able types into a [`firestore::Value`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ValueSerializer<N = super::OmitNulls> {
-    is_reference: bool,
-    _marker: PhantomData<N>,
+    _marker: PhantomData<fn(N)>,
 }
 
 impl Default for ValueSerializer<super::OmitNulls> {
     fn default() -> Self {
         Self {
-            is_reference: false,
             _marker: PhantomData,
         }
     }
@@ -31,7 +33,6 @@ where
     N: NullStrategy,
 {
     pub(crate) const NEW: Self = Self {
-        is_reference: false,
         _marker: PhantomData,
     };
 
@@ -156,9 +157,8 @@ where
         }
     }
 
-    fn serialize_map(mut self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         let fields = len.map(HashMap::with_capacity).unwrap_or_default();
-        self.is_reference = false;
         Ok(ValueMapSerializer {
             inner: self,
             fields,
@@ -167,14 +167,16 @@ where
     }
 
     fn serialize_newtype_struct<T>(
-        mut self,
-        name: &'static str,
+        self,
+        _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: Serialize + ?Sized,
     {
-        self.is_reference = name.eq_ignore_ascii_case("reference");
+        // TODO: try to downcast to one of the known newtype markers
+        // so we can serialize data types that arent in serdes model
+        // (timestamps, geopoints and document references)
         value.serialize(self)
     }
 
@@ -202,10 +204,8 @@ where
         value.serialize(self)
     }
 
-    fn serialize_seq(mut self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         let values = len.map(Vec::with_capacity).unwrap_or_default();
-        self.is_reference = false;
-
         Ok(ValueSeqSerializer {
             inner: self,
             values,
@@ -213,15 +213,9 @@ where
     }
 
     fn serialize_str(self, s: &str) -> Result<Self::Ok, Self::Error> {
-        if self.is_reference {
-            Ok(Some(firestore::Value {
-                value_type: Some(ValueType::ReferenceValue(s.to_owned())),
-            }))
-        } else {
-            Ok(Some(firestore::Value {
-                value_type: Some(ValueType::StringValue(s.to_owned())),
-            }))
-        }
+        Ok(Some(firestore::Value {
+            value_type: Some(ValueType::StringValue(s.to_owned())),
+        }))
     }
 
     fn serialize_struct(
