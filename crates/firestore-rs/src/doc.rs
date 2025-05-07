@@ -638,6 +638,19 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
             .deserialize_fields()
     }
 
+    pub async fn set_serialized_with_condition<'de, T>(
+        &self,
+        doc_fields: DocFields,
+        cond: Precondition,
+    ) -> crate::Result<Doc<T>>
+    where
+        T: serde::Deserialize<'de>,
+    {
+        self.update_inner(doc_fields, Some(cond), true)
+            .await?
+            .deserialize_fields()
+    }
+
     pub async fn set_with_condition<T>(
         &self,
         doc: &T,
@@ -780,7 +793,13 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         T: serde::Serialize,
     {
         let doc_fields = ser::serialize_set_doc(doc)?;
+        self.set_serialized(doc_fields)
+    }
 
+    pub fn set_serialized(
+        self,
+        doc_fields: DocFields,
+    ) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>> {
         let doc = Document {
             name: self.doc_ref.reference.to_string(),
             fields: doc_fields.fields,
@@ -814,7 +833,13 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         T: serde::Serialize,
     {
         let doc_fields = ser::serialize_update_doc(doc)?;
+        self.update_serialized(doc_fields)
+    }
 
+    pub fn update_serialized(
+        mut self,
+        doc_fields: DocFields,
+    ) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>> {
         if !doc_fields.field_mask.field_paths.is_empty() {
             match self.mask {
                 Some(ref mut mask) => mask.field_paths.extend(doc_fields.field_mask.field_paths),
@@ -885,16 +910,20 @@ impl<'a, C: PathComponent, D: PathComponent, T> WriteBuilder<'a, C, D, T> {
     }
 
     pub fn must_already_exist(self) -> Self {
-        self.precondition(true)
+        self.precondition(ConditionType::Exists(true))
+    }
+
+    pub fn update_time(self, timestamp: Timestamp) -> Self {
+        self.precondition(ConditionType::UpdateTime(timestamp.into()))
     }
 
     pub fn must_not_exist(self) -> Self {
-        self.precondition(false)
+        self.precondition(ConditionType::Exists(false))
     }
 
-    pub fn precondition(mut self, document_exists: bool) -> Self {
+    pub fn precondition(mut self, condition_type: ConditionType) -> Self {
         self.precondition = Some(Precondition {
-            condition_type: Some(ConditionType::Exists(document_exists)),
+            condition_type: Some(condition_type),
         });
 
         self
