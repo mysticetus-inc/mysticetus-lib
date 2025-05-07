@@ -206,7 +206,7 @@ impl<S> serde::Serializer for QueryParameterSerializer<S> {
     }
 
     #[inline]
-    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         /*
         Ok(QueryParameterMapSerializer {
             map: len.map(serde_json::Map::with_capacity).unwrap_or_default(),
@@ -367,7 +367,7 @@ impl<S> serde::ser::SerializeMap for QueryParameterMapSerializer<S> {
     type Ok = QueryParameter<S>;
     type Error = SerializeError;
 
-    fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
+    fn serialize_key<T>(&mut self, _key: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + serde::Serialize,
     {
@@ -413,7 +413,7 @@ impl<S> serde::ser::SerializeMap for QueryParameterMapSerializer<S> {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        let value = QueryParameterValue::Struct(self.map);
+        let _value = QueryParameterValue::Struct(self.map);
         todo!()
     }
 }

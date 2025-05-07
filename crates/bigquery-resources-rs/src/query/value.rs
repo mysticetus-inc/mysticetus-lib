@@ -1,6 +1,3 @@
-use std::borrow::Cow;
-use std::marker::PhantomData;
-
 use serde::de::{self, IntoDeserializer};
 
 use crate::table::{FieldMode, FieldType, TableFieldSchema};
@@ -151,8 +148,8 @@ where
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             formatter,
-            "a {:?} {:?} encoded via the BigQuery REST API",
-            self.mode, self.ty
+            "a {:?} {:?} encoded via the BigQuery REST API (field name '{}')",
+            self.mode, self.ty, self.field_name
         )
     }
 

@@ -6,6 +6,7 @@ pub(crate) fn make_qualified_topic_name(project_id: &str, topic_name: &str) -> S
     format!("projects/{project_id}/topics/{topic_name}")
 }
 
+#[cfg(feature = "subscriber")]
 pub(crate) fn make_qualified_subscription_name(
     project_id: &str,
     subscription_name: &str,

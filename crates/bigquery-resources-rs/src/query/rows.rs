@@ -93,6 +93,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    #![allow(dead_code)]
     use std::collections::BTreeMap;
 
     use path_aware_serde::DeserializeSeedExt;

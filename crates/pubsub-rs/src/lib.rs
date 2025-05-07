@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use futures::{Future, Stream};
 use gcp_auth_channel::{Auth, AuthChannel, Scope};
-use protos::pubsub::{self, GetSubscriptionRequest, Topic, publisher_client, subscriber_client};
+use protos::pubsub::{self, Topic, publisher_client};
 use tokio::sync::mpsc::{self, Receiver};
 use tokio::task::JoinHandle;
 use tonic::transport::Channel;
@@ -16,6 +16,7 @@ extern crate tracing;
 
 pub mod error;
 pub mod publisher;
+#[cfg(feature = "subscriber")]
 pub mod subscriber;
 pub mod topic;
 mod util;
@@ -149,6 +150,7 @@ impl PubSubClient {
         )
     }
 
+    #[cfg(feature = "subscriber")]
     pub async fn get_subscriber(
         &self,
         subscription: impl AsRef<str>,
@@ -160,9 +162,9 @@ impl PubSubClient {
 
         let mut chan = self.channel.clone().with_scope(Scope::PubSub);
 
-        let req = GetSubscriptionRequest { subscription };
+        let req = pubsub::GetSubscriptionRequest { subscription };
 
-        let resp = subscriber_client::SubscriberClient::new(&mut chan)
+        let resp = pubsub::subscriber_client::SubscriberClient::new(&mut chan)
             .get_subscription(req)
             .await?;
 

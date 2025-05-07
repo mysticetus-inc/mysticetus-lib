@@ -29,3 +29,6 @@ net-utils = { path = "../net-utils", features = ["tonic"] }
 tracing.workspace = true
 pin-project-lite = "0.2.13"
 uuid = { workspace = true, features = ["v4"] }
+
+[features]
+subscriber = []

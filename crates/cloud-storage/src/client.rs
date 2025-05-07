@@ -67,12 +67,9 @@ impl StorageClient {
     where
         E: Into<crate::Error>,
     {
-        let (channel, auth) = tokio::try_join!(
-            build_channel(),
-            
-        )?;
-        
-        let channel = .await?;
+        let (channel, auth) = tokio::try_join!(build_channel(), async move {
+            auth_future.await.map_err(Into::into)
+        },)?;
 
         let channel = AuthChannel::builder()
             .with_channel(channel)
