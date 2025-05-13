@@ -1,5 +1,6 @@
 //! A serializer to create [`firestore::Value`] from [`Serialize`]-able types.
 use std::any::Any;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -168,16 +169,19 @@ where
 
     fn serialize_newtype_struct<T>(
         self,
-        _name: &'static str,
+        name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: Serialize + ?Sized,
     {
-        // TODO: try to downcast to one of the known newtype markers
-        // so we can serialize data types that arent in serdes model
-        // (timestamps, geopoints and document references)
-        value.serialize(self)
+        if name == super::timestamp::NEWTYPE_MARKER {
+            value.serialize(newtype::MaybeTimestampSerializer::new(self))
+        } else if name == Reference::NEWTYPE_MARKER {
+            value.serialize(newtype::MaybeReferenceSerializer::new(self))
+        } else {
+            value.serialize(self)
+        }
     }
 
     fn serialize_newtype_variant<T>(
@@ -273,6 +277,21 @@ where
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
         self.serialize_seq(Some(len))
+    }
+
+    fn collect_str<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + std::fmt::Display,
+    {
+        thread_local! {
+            static COLLECT_STR_BUF: RefCell<String> = RefCell::new(String::with_capacity(256));
+        }
+
+        COLLECT_STR_BUF.with_borrow_mut(|str_buf| {
+            str_buf.clear();
+            std::fmt::write(str_buf, format_args!("{value}")).map_err(ConvertError::ser)?;
+            self.serialize_str(str_buf.as_str())
+        })
     }
 }
 

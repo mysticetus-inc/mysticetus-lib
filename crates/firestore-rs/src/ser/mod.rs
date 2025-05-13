@@ -359,11 +359,24 @@ fn build_mask(fields: &HashMap<String, firestore::Value>) -> Vec<String> {
 
 /// Serde compat for serializing as a firestore timestamp type.
 pub mod timestamp {
+    use serde::Deserialize;
 
     pub(crate) const NEWTYPE_MARKER: &str = "__timestamp__";
 
-    /// Concrete new-type
+    /// Concrete new-type that a serializer can use to enforce serialization as a
+    /// firestore timestamp.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub(crate) struct FirestoreTimestamp(pub(crate) protos::protobuf::Timestamp);
+
+    impl FirestoreTimestamp {
+        pub(crate) fn to_nanos(&self) -> i128 {
+            ::timestamp::Timestamp::from(self.0).as_nanos()
+        }
+
+        pub(crate) fn from_nanos(nanos: i128) -> Self {
+            Self(::timestamp::Timestamp::from_nanos_i128(nanos).into())
+        }
+    }
 
     impl serde::Serialize for FirestoreTimestamp {
         #[inline]
@@ -371,7 +384,40 @@ pub mod timestamp {
         where
             S: serde::Serializer,
         {
-            serializer.serialize_newtype_struct(NEWTYPE_MARKER, &self.0)
+            // convert to nanos to simplify the logic in MaybeTimestampSerializer (i.e no need to
+            // deserialize and verify a 'seconds' and 'nanos' field, we'd just need to override
+            // the serialize_i128 method)
+            let nanos = self.to_nanos();
+
+            serializer.serialize_newtype_struct(NEWTYPE_MARKER, &nanos)
+        }
+    }
+
+    impl<'de> serde::Deserialize<'de> for FirestoreTimestamp {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+        {
+            struct I128Visitor;
+
+            impl<'vde> serde::de::Visitor<'vde> for I128Visitor {
+                type Value = i128;
+
+                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    formatter.write_str("an i128 encoded timestamp in nanoseconds")
+                }
+
+                fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error,
+                {
+                    Ok(v)
+                }
+            }
+
+            deserializer
+                .deserialize_newtype_struct(NEWTYPE_MARKER, I128Visitor)
+                .map(Self::from_nanos)
         }
     }
 
@@ -404,6 +450,48 @@ pub mod timestamp {
         S: serde::Serializer,
     {
         serde::Serialize::serialize(&FirestoreTimestamp(timestamp.into_timestamp()), serializer)
+    }
+
+    #[inline]
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        T: AsTimestamp,
+        D: serde::Deserializer<'de>,
+    {
+        let FirestoreTimestamp(ts) = FirestoreTimestamp::deserialize(deserializer)?;
+        T::from_timestamp(ts).map_err(serde::de::Error::custom)
+    }
+
+    pub mod optional {
+        use serde::Deserialize;
+
+        use super::{AsTimestamp, FirestoreTimestamp};
+
+        #[inline]
+        pub fn serialize<T, S>(timestamp: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            T: AsTimestamp,
+            S: serde::Serializer,
+        {
+            match timestamp {
+                Some(ts) => serializer.serialize_some(&FirestoreTimestamp(ts.into_timestamp())),
+                None => serializer.serialize_none(),
+            }
+        }
+
+        #[inline]
+        pub fn deserialize<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+        where
+            T: AsTimestamp,
+            D: serde::Deserializer<'de>,
+        {
+            match Option::<FirestoreTimestamp>::deserialize(deserializer)? {
+                None => Ok(None),
+                Some(FirestoreTimestamp(ts)) => T::from_timestamp(ts)
+                    .map(Some)
+                    .map_err(serde::de::Error::custom),
+            }
+        }
     }
 }
 
@@ -443,4 +531,68 @@ fn test_component_escape_test() {
     for (comp, needs_escaping) in TEST_CASES {
         assert_eq!(*needs_escaping, component_needs_escaping(comp), "{comp}");
     }
+}
+
+#[test]
+fn test_firestore_timestamp_conversions() {
+    use rand::Rng;
+
+    fn test_value(ts: ::timestamp::Timestamp) {
+        let fs_ts = timestamp::FirestoreTimestamp(ts.into());
+
+        let nanos = fs_ts.to_nanos();
+        let from_nanos = timestamp::FirestoreTimestamp::from_nanos(nanos);
+
+        assert_eq!(fs_ts, from_nanos);
+    }
+
+    // test some known timestamps
+    test_value(::timestamp::Timestamp::now());
+    test_value(::timestamp::Timestamp::UNIX_EPOCH);
+    test_value(::timestamp::Timestamp::MIN);
+    test_value(::timestamp::Timestamp::MAX);
+
+    // then for good measure test some random ones.
+    let mut rng = rand::rng();
+
+    for _ in 0..32 {
+        test_value(rng.random());
+    }
+}
+
+#[test]
+fn test_firestore_timestamp_serialization() {
+    #[derive(serde::Serialize)]
+    struct TestDocument {
+        #[serde(with = "timestamp")]
+        value: ::timestamp::Timestamp,
+        #[serde(with = "timestamp::optional")]
+        optional_value: Option<::timestamp::Timestamp>,
+    }
+
+    fn get_timestamp(value: Option<&firestore::Value>) -> protos::protobuf::Timestamp {
+        match value {
+            Some(firestore::Value {
+                value_type: Some(firestore::value::ValueType::TimestampValue(ts)),
+            }) => *ts,
+            other => panic!("not a timestamp: {other:#?}"),
+        }
+    }
+
+    let now = ::timestamp::Timestamp::now();
+
+    let doc_fields = serialize_doc_fields::<_, OmitNulls>(&TestDocument {
+        value: now,
+        optional_value: Some(::timestamp::Timestamp::UNIX_EPOCH),
+    })
+    .unwrap();
+
+    let value = get_timestamp(doc_fields.fields.get("value"));
+    let optional_value = get_timestamp(doc_fields.fields.get("optional_value"));
+
+    assert_eq!(::timestamp::Timestamp::from(value), now);
+    assert_eq!(
+        ::timestamp::Timestamp::from(optional_value),
+        ::timestamp::Timestamp::UNIX_EPOCH
+    );
 }

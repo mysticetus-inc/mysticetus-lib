@@ -58,6 +58,7 @@ pub mod de;
 pub mod doc;
 pub mod error;
 pub mod firestore;
+// pub mod write_stream;
 // pub mod listen;
 mod query;
 mod ser;
@@ -76,12 +77,14 @@ pub type Result<O> = std::result::Result<O, Error>;
 #[macro_use]
 extern crate tracing;
 
+use ::timestamp::Timestamp;
 pub use collec::CollectionRef;
 pub use doc::{Doc, DocumentRef, RawDoc};
 pub use firestore::Firestore;
 pub use protos::r#type::LatLng;
-pub use ser::{DocFields, escape_field_path_into, serialize_set_doc, serialize_update_doc};
-use timestamp::Timestamp;
+pub use ser::{
+    DocFields, escape_field_path_into, serialize_set_doc, serialize_update_doc, timestamp,
+};
 pub use value::{Reference, Value};
 
 /// Shared trait to represent collection names and document ids.

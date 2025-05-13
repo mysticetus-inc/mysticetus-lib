@@ -26,7 +26,7 @@ impl<'de> Deserializer<'de> for ValueDeserializer {
 
     forward_to_deserialize_any! {
         bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf unit unit_struct newtype_struct seq tuple
+        bytes byte_buf unit unit_struct seq tuple
         tuple_struct map struct identifier ignored_any
     }
 
@@ -87,6 +87,23 @@ impl<'de> Deserializer<'de> for ValueDeserializer {
                 "found {:?}, which cannot be serialized into an enum",
                 self.value.value_type,
             ))),
+        }
+    }
+
+    fn deserialize_newtype_struct<V>(
+        self,
+        name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        match (name, self.value.value_type) {
+            (crate::timestamp::NEWTYPE_MARKER, Some(ValueType::TimestampValue(ts))) => {
+                let nanos = Timestamp::from(ts).as_nanos();
+                visitor.visit_i128(nanos)
+            }
+            (_, value_type) => Self::from(firestore::Value { value_type }).deserialize_any(visitor),
         }
     }
 }

@@ -32,7 +32,7 @@ impl Eq for Firestore {}
 
 impl Firestore {
     #[inline]
-    pub fn builder() -> builder::FirestoreBuilder {
+    pub fn builder<'a>() -> builder::FirestoreBuilder<'a> {
         builder::FirestoreBuilder::new()
     }
 
@@ -53,7 +53,7 @@ impl Firestore {
     #[inline]
     fn from_fs_client(client: FirestoreClient, db: &str) -> Self {
         let qualified_db_path =
-            Arc::from(format!("projects/{}/databases/{db}", client.project_id(),));
+            Arc::from(format!("projects/{}/databases/{db}", client.project_id()));
 
         Self {
             client,
@@ -164,12 +164,12 @@ pub mod builder {
     use super::Firestore;
     use crate::client::FirestoreClient;
 
-    pub struct FirestoreBuilder {
-        database: Cow<'static, str>,
+    pub struct FirestoreBuilder<'a> {
+        database: Cow<'a, str>,
         scope: Scope,
     }
 
-    impl FirestoreBuilder {
+    impl<'a> FirestoreBuilder<'a> {
         pub fn new() -> Self {
             Self {
                 database: Cow::Borrowed(super::DEFAULT_DATABASE),
@@ -177,7 +177,7 @@ pub mod builder {
             }
         }
 
-        pub fn database(&mut self, database: impl Into<Cow<'static, str>>) -> &mut Self {
+        pub fn database(&mut self, database: impl Into<Cow<'a, str>>) -> &mut Self {
             self.database = database.into();
             self
         }

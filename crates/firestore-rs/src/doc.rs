@@ -689,6 +689,8 @@ fn encode_mask(fields: impl IntoIterator<Item: AsRef<str>>) -> Option<DocumentMa
 }
 
 pub mod write_type {
+    pub(crate) use private::WriteType;
+
     use super::firestore::write::Operation;
 
     pub(super) mod private {
@@ -828,7 +830,7 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         })
     }
 
-    pub fn update<T>(mut self, doc: &T) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>>
+    pub fn update<T>(self, doc: &T) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>>
     where
         T: serde::Serialize,
     {
@@ -997,7 +999,7 @@ impl<'a, C: PathComponent, D: PathComponent, T> WriteBuilder<'a, C, D, T>
 where
     T: write_type::private::WriteType,
 {
-    pub async fn commit(self) -> crate::Result<Option<firestore::WriteResult>> {
+    pub(crate) fn into_parts(self) -> (&'a mut DocumentRef<C, D>, Write) {
         let write = Write {
             update_mask: self.mask,
             update_transforms: self.transforms.unwrap_or_default(),
@@ -1005,7 +1007,12 @@ where
             operation: Some(self.write.to_operation()),
         };
 
-        self.doc_ref.write(write).await
+        (self.doc_ref, write)
+    }
+
+    pub async fn commit(self) -> crate::Result<Option<firestore::WriteResult>> {
+        let (doc_ref, write) = self.into_parts();
+        doc_ref.write(write).await
     }
 }
 

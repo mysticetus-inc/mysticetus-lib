@@ -61,8 +61,7 @@ impl BatchWrite {
         }
 
         let request = protos::firestore::BatchWriteRequest {
-            // we need to clone the string, not the arc, so we explicitely call deref first.
-            database: qualified_db_path.to_string(),
+            database: qualified_db_path.as_ref().to_owned(),
             writes,
             labels: Default::default(),
         };
