@@ -20,6 +20,7 @@ members = [
     "crates/path-aware-serde",
     "crates/protos",
     "crates/pubsub-rs",
+    "crates/progress-report",
     "crates/realtime-database",
     "crates/rest-discovery",
     "crates/serde-helpers",
@@ -30,7 +31,8 @@ members = [
     "crates/spanner-rs/spanner-rs-inspect",
     "crates/timestamp",
     "crates/firebase-admin",
-    "crates/csv-stream", "crates/cloud-tasks",
+    "crates/csv-stream",
+    "crates/cloud-tasks",
 ]
 
 

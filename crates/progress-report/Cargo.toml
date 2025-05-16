@@ -1,14 +1,13 @@
 [package]
 name = "progress-report"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 firestore-rs = { path = "../firestore-rs" }
 itoa.workspace = true
-data-structures = { path = "../data-structures" }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = [
     "sync",
@@ -17,7 +16,9 @@ tokio = { workspace = true, features = [
     "macros",
     "time",
 ] }
+tokio-util.workspace = true
 tracing.workspace = true
 uuid = { workspace = true, features = ["serde"] }
 timestamp = { path = "../timestamp" }
 net-utils = { path = "../net-utils" }
+pin-project-lite.workspace = true
