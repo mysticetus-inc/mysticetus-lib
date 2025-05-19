@@ -50,7 +50,7 @@ impl Range<Timestamp> {
 
 /// Dedicated, private types for serializing as the expected protobuf types
 
-#[derive(Debug, prost::Message)]
+#[derive(prost::Message)]
 struct DateRange {
     #[prost(int32, optional)]
     start: Option<i32>,
@@ -58,7 +58,7 @@ struct DateRange {
     end: Option<i32>,
 }
 
-#[derive(Debug, prost::Message)]
+#[derive(prost::Message)]
 struct TimestampRange {
     #[prost(message, optional)]
     start: Option<protos::protobuf::Timestamp>,

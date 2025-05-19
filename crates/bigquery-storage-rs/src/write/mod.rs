@@ -1,20 +1,14 @@
-use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, PoisonError, RwLock};
 
-use bytes::BytesMut;
 use gcp_auth_channel::channel::headers::{Http, WithHeaders};
 use gcp_auth_channel::{AuthChannel, Scope};
 use http::HeaderValue;
 use net_utils::bidirec::{self, Bidirec};
-use protos::bigquery_storage::append_rows_request::{MissingValueInterpretation, ProtoData, Rows};
 use protos::bigquery_storage::append_rows_response::{AppendResult, Response};
 use protos::bigquery_storage::big_query_write_client::BigQueryWriteClient;
-use protos::bigquery_storage::{
-    self, AppendRowsRequest, AppendRowsResponse, FinalizeWriteStreamRequest, ProtoRows,
-    ProtoSchema, WriteStream,
-};
+use protos::bigquery_storage::{AppendRowsRequest, AppendRowsResponse, WriteStream};
 use tonic::transport::Channel;
 
 use super::{BigQueryStorageClient, Error};
@@ -24,13 +18,13 @@ mod builder;
 mod default;
 mod schema;
 mod stream_types;
-mod value;
+// mod value;
 mod write2;
 
 pub(crate) use schema::{FieldInfo, Schema};
 pub use stream_types::{Buffered, Committed, Default, Pending, PendingStream};
 
-use super::proto::ProtoSerializer;
+// use super::proto::ProtoSerializer;
 
 #[derive(Debug, Clone)]
 pub struct WriteClient(BigQueryStorageClient);

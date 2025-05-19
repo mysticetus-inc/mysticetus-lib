@@ -206,11 +206,11 @@ impl ser::SerializeSeq for &mut ProtoSerializer<'_> {
 }
 
 pub struct ProtoMapSerializer<'a, 'b, B: ?Sized> {
-    parent: &'b mut ProtoSerializer<'a, B: ?Sized>,
+    parent: &'b mut ProtoSerializer<'a, B>,
     key_buf: String,
 }
 
-impl ser::SerializeMap for ProtoMapSerializer<'_, '_> {
+impl<B: ?Sized + BufMut> ser::SerializeMap for ProtoMapSerializer<'_, '_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -243,7 +243,7 @@ impl ser::SerializeMap for ProtoMapSerializer<'_, '_> {
     }
 }
 
-impl ser::SerializeTuple for &mut ProtoSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeTuple for &mut ProtoSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -259,7 +259,7 @@ impl ser::SerializeTuple for &mut ProtoSerializer<'_> {
     }
 }
 
-impl ser::SerializeTupleVariant for &mut ProtoSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeTupleVariant for &mut ProtoSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -275,7 +275,7 @@ impl ser::SerializeTupleVariant for &mut ProtoSerializer<'_> {
     }
 }
 
-impl ser::SerializeStruct for &mut ProtoSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeStruct for &mut ProtoSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -295,7 +295,7 @@ impl ser::SerializeStruct for &mut ProtoSerializer<'_> {
     }
 }
 
-impl ser::SerializeStructVariant for &mut ProtoSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeStructVariant for &mut ProtoSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -333,7 +333,7 @@ pub struct ProtoValueSerializer<'a, B: ?Sized = BytesMut> {
     field: &'a FieldInfo,
 }
 
-impl<'a, B: ?Sized> ProtoValueSerializer<'a, B> {
+impl<'a, B: ?Sized + BufMut> ProtoValueSerializer<'a, B> {
     fn new<S>(field: &'a S, parent: &'a mut ProtoSerializer<'_, B>) -> Result<Self, EncodeError>
     where
         S: AsRef<str>,
@@ -357,9 +357,9 @@ impl<'a, B: ?Sized> ProtoValueSerializer<'a, B> {
         let src = src.as_ref();
 
         if !src.is_empty() || matches!(self.field.mode(), Mode::Required) {
-            self.field.encode_tag(&mut self.buf);
+            self.field.encode_tag(self.buf);
             Varint::from_unsigned(src.len()).encode(&mut self.buf);
-            self.buf.extend_from_slice(src);
+            (&mut self.buf).put(src);
         }
     }
 
@@ -424,7 +424,7 @@ macro_rules! impl_int_fns {
     };
 }
 
-impl<'a> Serializer for &mut ProtoValueSerializer<'a> {
+impl<'a, B: ?Sized + BufMut> Serializer for &mut ProtoValueSerializer<'a, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -635,7 +635,7 @@ impl<'a> Serializer for &mut ProtoValueSerializer<'a> {
     }
 }
 
-impl ser::SerializeSeq for &mut ProtoValueSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeSeq for &mut ProtoValueSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -651,7 +651,7 @@ impl ser::SerializeSeq for &mut ProtoValueSerializer<'_> {
     }
 }
 
-impl ser::SerializeTuple for &mut ProtoValueSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeTuple for &mut ProtoValueSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -671,7 +671,7 @@ impl ser::SerializeTuple for &mut ProtoValueSerializer<'_> {
     }
 }
 
-impl ser::SerializeTupleStruct for &mut ProtoValueSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeTupleStruct for &mut ProtoValueSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
@@ -691,7 +691,7 @@ impl ser::SerializeTupleStruct for &mut ProtoValueSerializer<'_> {
     }
 }
 
-impl ser::SerializeTupleVariant for &mut ProtoValueSerializer<'_> {
+impl<B: ?Sized + BufMut> ser::SerializeTupleVariant for &mut ProtoValueSerializer<'_, B> {
     type Ok = ();
     type Error = EncodeError;
 
