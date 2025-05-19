@@ -24,6 +24,7 @@ mod builder;
 mod default;
 mod schema;
 mod stream_types;
+mod value;
 mod write2;
 
 pub(crate) use schema::{FieldInfo, Schema};

@@ -207,7 +207,9 @@ pub enum Error {
 }
 
 impl Error {
-    pub(crate) fn into_serde<E>(self, unexpected: Unexpected<'_>) -> E
+    /// Formats 'self' as an arbitrary [`serde::de::Error`], given the invalid
+    /// value we tried to parse from.
+    pub fn into_de_error<E>(self, unexpected: Unexpected<'_>) -> E
     where
         E: de::Error,
     {

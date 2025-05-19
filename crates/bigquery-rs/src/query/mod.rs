@@ -7,6 +7,9 @@ use bigquery_resources_rs::table::FieldType;
 
 use crate::BigQueryClient;
 
+mod stream;
+pub use stream::{Options, QueryStream};
+
 pub struct QueryBuilder<S = Box<str>> {
     client: BigQueryClient,
     request: QueryRequest<S>,
@@ -17,16 +20,29 @@ impl<S> QueryBuilder<S> {
         Self { client, request }
     }
 
-    pub fn limit(&mut self, limit: NonZeroU64) -> &mut Self {
+    /// Inserts a default dataset for the given query.
+    pub fn default_dataset(mut self, dataset_id: impl Into<S>) -> Self
+    where
+        S: From<&'static str>,
+    {
+        self.request.default_dataset = Some(bigquery_resources_rs::DatasetReference {
+            project_id: S::from(self.client.project_id()),
+            dataset_id: dataset_id.into(),
+        });
+
+        self
+    }
+
+    pub fn limit(mut self, limit: NonZeroU64) -> Self {
         self.request.max_results = Some(limit);
         self
     }
 
     pub fn number_param(
-        &mut self,
+        mut self,
         name: impl Into<S>,
         param: impl Into<serde_json::Number>,
-    ) -> &mut Self {
+    ) -> Self {
         self.request.parameter_mode = Some(bigquery_resources_rs::query::ParameterMode::Named);
 
         let number: serde_json::Number = param.into();
@@ -46,7 +62,7 @@ impl<S> QueryBuilder<S> {
         self
     }
 
-    pub fn string_param(&mut self, name: impl Into<S>, param: impl Into<String>) -> &mut Self {
+    pub fn string_param(mut self, name: impl Into<S>, param: impl Into<String>) -> Self {
         self.request.parameter_mode = Some(bigquery_resources_rs::query::ParameterMode::Named);
         self.request.query_parameters.push(QueryParameter {
             name: Some(name.into()),
@@ -56,7 +72,7 @@ impl<S> QueryBuilder<S> {
         self
     }
 
-    pub async fn execute<Row, S2>(&self) -> crate::Result<QueryResponse<Row, S2>>
+    pub async fn execute<Row, S2>(self) -> crate::Result<QueryResponse<Row, S2>>
     where
         S: serde::Serialize + std::fmt::Debug,
         S2: AsRef<str> + serde::de::DeserializeOwned,
@@ -65,6 +81,40 @@ impl<S> QueryBuilder<S> {
     {
         call_query(&self.client, &self.request).await
     }
+
+    pub fn execute_streamed<Row>(self) -> QueryStream<Row, S>
+    where
+        QueryResponse<Row, S>: std::fmt::Debug,
+        Row: serde::de::DeserializeOwned + 'static,
+        S: AsRef<str>
+            + serde::de::DeserializeOwned
+            + serde::Serialize
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.execute_streamed_opt(Options {
+            max_results: None,
+            per_request_timeout: None,
+            location: None,
+        })
+    }
+
+    pub fn execute_streamed_opt<Row>(self, options: Options) -> QueryStream<Row, S>
+    where
+        QueryResponse<Row, S>: std::fmt::Debug,
+        Row: serde::de::DeserializeOwned + 'static,
+        S: AsRef<str>
+            + serde::de::DeserializeOwned
+            + serde::Serialize
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+    {
+        QueryStream::new(self.client, options, self.request)
+    }
 }
 
 async fn call_query<Row, S1, S2>(
@@ -72,7 +122,7 @@ async fn call_query<Row, S1, S2>(
     request: &QueryRequest<S1>,
 ) -> crate::Result<QueryResponse<Row, S2>>
 where
-    S1: serde::Serialize + std::fmt::Debug,
+    S1: serde::Serialize,
     S2: AsRef<str> + serde::de::DeserializeOwned,
     Row: serde::de::DeserializeOwned,
     QueryResponse<Row, S2>: std::fmt::Debug,

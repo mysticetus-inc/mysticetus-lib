@@ -9,6 +9,7 @@ reqwest = { workspace = true, features = ["json"] }
 gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
 bigquery-resources-rs = { path = "../bigquery-resources-rs" }
 serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 thiserror.workspace = true
 protos = { path = "../protos", features = ["bigquery"] }
 net-utils = { path = "../net-utils", features = ["tonic"] }

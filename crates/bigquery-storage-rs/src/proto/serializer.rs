@@ -9,13 +9,13 @@ use super::encode::{Varint, WireType};
 use crate::write::{FieldInfo, Schema};
 
 #[derive(Debug)]
-pub struct ProtoSerializer<'a> {
-    row: &'a mut BytesMut,
+pub struct ProtoSerializer<'a, B: ?Sized = BytesMut> {
+    row: &'a mut B,
     schema: &'a Schema,
 }
 
-impl<'a> ProtoSerializer<'a> {
-    pub fn new(row: &'a mut BytesMut, schema: &'a Schema) -> Self {
+impl<'a, B: BufMut + ?Sized> ProtoSerializer<'a, B> {
+    pub fn new(row: &'a mut B, schema: &'a Schema) -> Self {
         Self { row, schema }
     }
 
@@ -46,7 +46,7 @@ macro_rules! impl_primitive_ser_fns {
     };
 }
 
-impl<'a, 'b> Serializer for &'b mut ProtoSerializer<'a>
+impl<'a, 'b, B: ?Sized + BufMut> Serializer for &'b mut ProtoSerializer<'a, B>
 where
     'a: 'b,
 {
@@ -54,7 +54,7 @@ where
     type Error = EncodeError;
 
     type SerializeSeq = ser::Impossible<Self::Ok, Self::Error>;
-    type SerializeMap = ProtoMapSerializer<'a, 'b>;
+    type SerializeMap = ProtoMapSerializer<'a, 'b, B>;
     type SerializeStruct = Self;
     type SerializeTupleStruct = ser::Impossible<Self::Ok, Self::Error>;
     type SerializeTuple = ser::Impossible<Self::Ok, Self::Error>;
@@ -205,8 +205,8 @@ impl ser::SerializeSeq for &mut ProtoSerializer<'_> {
     }
 }
 
-pub struct ProtoMapSerializer<'a, 'b> {
-    parent: &'b mut ProtoSerializer<'a>,
+pub struct ProtoMapSerializer<'a, 'b, B: ?Sized> {
+    parent: &'b mut ProtoSerializer<'a, B: ?Sized>,
     key_buf: String,
 }
 
@@ -328,13 +328,13 @@ impl ser::SerializeTupleStruct for &mut ProtoSerializer<'_> {
 }
 
 #[derive(Debug)]
-pub struct ProtoValueSerializer<'a> {
-    buf: &'a mut BytesMut,
+pub struct ProtoValueSerializer<'a, B: ?Sized = BytesMut> {
+    buf: &'a mut B,
     field: &'a FieldInfo,
 }
 
-impl<'a> ProtoValueSerializer<'a> {
-    fn new<S>(field: &'a S, parent: &'a mut ProtoSerializer<'_>) -> Result<Self, EncodeError>
+impl<'a, B: ?Sized> ProtoValueSerializer<'a, B> {
+    fn new<S>(field: &'a S, parent: &'a mut ProtoSerializer<'_, B>) -> Result<Self, EncodeError>
     where
         S: AsRef<str>,
     {

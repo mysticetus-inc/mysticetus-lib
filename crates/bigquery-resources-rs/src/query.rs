@@ -88,12 +88,23 @@ mod query_string {
     #[macro_export]
     macro_rules! query {
         ($sql:literal) => {{
-            /// SAFETY: this macro ensures we're being passed a literal
+            // SAFETY: this macro ensures we're being passed a literal
             unsafe {
                 QueryString::__new($sql)
             }
         }};
+        (concat!($($t:tt)*)) => {{
+            // SAFETY: this macro ensures we're being passed a literal
+            unsafe {
+                QueryString::__new(concat!($($t)*))
+            }
+        }};
     }
+
+    const _: () = {
+        // make sure this compiles
+        const _TEST_CONCAT: QueryString = query!(concat!("SELECT ", "1"));
+    };
 
     pub use query;
 }

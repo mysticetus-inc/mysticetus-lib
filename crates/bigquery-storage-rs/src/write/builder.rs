@@ -9,87 +9,94 @@ use super::default::load_default_schema;
 use super::stream_types::{self, WriteStreamType};
 use super::{BigQueryStorageClient, Error, WriteSession};
 
-pub struct WriteSessionBuilder<W, D, T> {
+pub struct WriteSessionBuilder<W, D, T, Schema = ()> {
     client: BigQueryStorageClient,
     stream_type: W,
     dataset_id: D,
     table_id: T,
+    schema: Schema,
 }
 
-impl WriteSessionBuilder<(), (), ()> {
+impl WriteSessionBuilder<(), (), (), ()> {
     pub fn new(client: BigQueryStorageClient) -> Self {
         Self {
             client,
             stream_type: (),
             dataset_id: (),
             table_id: (),
+            schema: (),
         }
     }
 }
 
-impl<D, T> WriteSessionBuilder<(), D, T> {
+impl<D, T, Schema> WriteSessionBuilder<(), D, T, Schema> {
     /// Marks the stream as being a [`Buffered`] stream.
     ///
     /// [`Buffered`]: [`stream_types::Buffered`]
-    pub fn buffered_stream(self) -> WriteSessionBuilder<stream_types::Buffered, D, T> {
+    pub fn buffered_stream(self) -> WriteSessionBuilder<stream_types::Buffered, D, T, Schema> {
         WriteSessionBuilder {
             client: self.client,
             stream_type: stream_types::Buffered,
             dataset_id: self.dataset_id,
             table_id: self.table_id,
+            schema: self.schema,
         }
     }
 
     /// Marks the stream as being a [`Pending`] stream.
     ///
     /// [`Pending`]: [`stream_types::Pending`]
-    pub fn pending_stream(self) -> WriteSessionBuilder<stream_types::Pending, D, T> {
+    pub fn pending_stream(self) -> WriteSessionBuilder<stream_types::Pending, D, T, Schema> {
         WriteSessionBuilder {
             client: self.client,
             stream_type: stream_types::Pending,
             dataset_id: self.dataset_id,
             table_id: self.table_id,
+            schema: self.schema,
         }
     }
 
     /// Marks the stream as being a [`Committed`] stream.
     ///
     /// [`Committed`]: [`stream_types::Committed`]
-    pub fn committed_stream(self) -> WriteSessionBuilder<stream_types::Committed, D, T> {
+    pub fn committed_stream(self) -> WriteSessionBuilder<stream_types::Committed, D, T, Schema> {
         WriteSessionBuilder {
             client: self.client,
             stream_type: stream_types::Committed,
             dataset_id: self.dataset_id,
             table_id: self.table_id,
+            schema: self.schema,
         }
     }
 }
 
-impl<W, T> WriteSessionBuilder<W, (), T> {
+impl<W, T, Schema> WriteSessionBuilder<W, (), T, Schema> {
     /// The BigQuery dataset ID
-    pub fn dataset_id<D>(self, dataset_id: D) -> WriteSessionBuilder<W, D, T> {
+    pub fn dataset_id<D>(self, dataset_id: D) -> WriteSessionBuilder<W, D, T, Schema> {
         WriteSessionBuilder {
             client: self.client,
             stream_type: self.stream_type,
             dataset_id,
             table_id: self.table_id,
+            schema: self.schema,
         }
     }
 }
 
-impl<W, D> WriteSessionBuilder<W, D, ()> {
+impl<W, D, Schema> WriteSessionBuilder<W, D, (), Schema> {
     /// The BigQuery Table to initialize a write stream from.
-    pub fn table_id<T>(self, table_id: T) -> WriteSessionBuilder<W, D, T> {
+    pub fn table_id<T>(self, table_id: T) -> WriteSessionBuilder<W, D, T, Schema> {
         WriteSessionBuilder {
             client: self.client,
             stream_type: self.stream_type,
             dataset_id: self.dataset_id,
             table_id,
+            schema: self.schema,
         }
     }
 }
 
-impl<W, D, T> WriteSessionBuilder<W, D, T>
+impl<W, D, T> WriteSessionBuilder<W, D, T, ()>
 where
     D: fmt::Display,
     T: fmt::Display,

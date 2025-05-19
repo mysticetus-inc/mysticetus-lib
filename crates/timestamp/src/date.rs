@@ -407,6 +407,13 @@ impl Date {
         day: unsafe { NonZeroU8::new_unchecked(Month::December.days_in(MAX_YEAR)) },
     };
 
+    /// The Day of the unix epoch.
+    pub const UNIX_EPOCH: Self = Self {
+        year: 1970,
+        month: Month::January,
+        day: unsafe { NonZeroU8::new_unchecked(1) },
+    };
+
     /// Returns an empty builder instance to assemble a [`Date`].
     pub const fn builder() -> DateBuilder<(), (), ()> {
         DateBuilder::new()
@@ -428,6 +435,15 @@ impl Date {
     #[inline]
     pub const fn day(&self) -> u8 {
         self.day.get()
+    }
+
+    /// Returns the number of days since 'other'. Can be negative if 'other' is
+    /// after 'self'
+    #[inline]
+    pub const fn days_since(&self, other: Self) -> i32 {
+        let other = other.into_time().to_julian_day();
+        let this = self.into_time().to_julian_day();
+        this - other
     }
 
     /// Returns the month containing this [`Date`].
