@@ -1,9 +1,7 @@
-use std::any::Any;
-use std::hash::Hasher;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use bytes::{Buf, Bytes, BytesMut};
+use bytes::{Buf, Bytes};
 use net_utils::bidi2::{self, RequestSink};
 use protos::storage::write_object_request::{Data, FirstMessage};
 use protos::storage::write_object_response::WriteStatus;

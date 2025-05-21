@@ -20,6 +20,8 @@ pub mod util;
 // TODO: writes
 pub mod write;
 
+pub use protos::storage::Object;
+
 const GOOG_PROJ_ID_HEADER: HeaderName = HeaderName::from_static("x-goog-project-id");
 const GOOG_REQUEST_PARAMS_HEADER: HeaderName = HeaderName::from_static("x-goog-request-params");
 

@@ -221,6 +221,10 @@ where
                     })
                 }
             }
+            FieldType::Bool => {
+                let b: bool = serde::Deserialize::deserialize(deserializer)?;
+                self.seed.deserialize(b.into_deserializer())
+            }
             _ => panic!("unknown format for bigquery encoded {:?}", self.ty),
         }
     }
