@@ -99,7 +99,7 @@ impl ExcelFile {
     }
 
     pub fn get_simple_sheet(&mut self, sheet: &str) -> sheets::SimpleSheet<'_> {
-        sheets::SimpleSheet::new(self.get_base_sheet(sheet))
+        sheets::SimpleSheet::new_from_base(self.get_base_sheet(sheet))
     }
 }
 
