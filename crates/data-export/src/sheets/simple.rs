@@ -1,4 +1,5 @@
 use super::BaseSheet;
+use super::private::SealedIntoSheet;
 use crate::{Cell, CellContent};
 
 pub struct SimpleSheet<'xlsx> {
@@ -41,5 +42,12 @@ impl<'xlsx> SimpleSheet<'xlsx> {
             self.write_row(row_iter)?;
         }
         Ok(())
+    }
+}
+
+impl SealedIntoSheet for SimpleSheet<'static> {
+    #[inline]
+    fn into_sheet(self) -> Box<rust_xlsxwriter::Worksheet> {
+        self.inner.into_sheet()
     }
 }
