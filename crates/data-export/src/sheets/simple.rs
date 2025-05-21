@@ -7,8 +7,14 @@ pub struct SimpleSheet<'xlsx> {
 }
 
 impl<'xlsx> SimpleSheet<'xlsx> {
-    pub(crate) fn new(inner: BaseSheet<'xlsx>) -> Self {
+    pub(crate) fn new_from_base(inner: BaseSheet<'xlsx>) -> Self {
         Self { inner }
+    }
+
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            inner: BaseSheet::new(name.into()),
+        }
     }
 
     pub fn incr_row(&mut self) {
