@@ -222,8 +222,10 @@ where
                 }
             }
             FieldType::Bool => {
-                let b: bool = serde::Deserialize::deserialize(deserializer)?;
-                self.seed.deserialize(b.into_deserializer())
+                let b = deserializer.deserialize_any(BoolVisitor)?;
+                self.seed.deserialize(SomeDeserializer {
+                    inner: b.into_deserializer(),
+                })
             }
             _ => panic!("unknown format for bigquery encoded {:?}", self.ty),
         }
@@ -478,5 +480,64 @@ where
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.0.expecting(formatter)
+    }
+}
+
+struct BoolVisitor;
+
+impl<'de> de::Visitor<'de> for BoolVisitor {
+    type Value = bool;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a boolean value")
+    }
+
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(v)
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        match v.trim() {
+            "true" | "TRUE" | "True" => Ok(true),
+            "false" | "FALSE" | "False" => Ok(false),
+            _ => Err(de::Error::invalid_value(
+                de::Unexpected::Str(v),
+                &"'true' or 'false'",
+            )),
+        }
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        match v.trim_ascii() {
+            b"true" | b"TRUE" | b"True" => Ok(true),
+            b"false" | b"FALSE" | b"False" => Ok(false),
+            _ => Err(de::Error::invalid_value(
+                de::Unexpected::Bytes(v),
+                &"'true' or 'false'",
+            )),
+        }
+    }
+
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        match v {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(de::Error::invalid_value(
+                de::Unexpected::Signed(v),
+                &"a valid boolean in integer format, 0 or 1",
+            )),
+        }
     }
 }
