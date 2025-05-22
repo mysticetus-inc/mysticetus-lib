@@ -227,6 +227,16 @@ where
                     inner: b.into_deserializer(),
                 })
             }
+            FieldType::Geography => {
+                let value: serde_json::Value = serde::Deserialize::deserialize(deserializer)?;
+                println!("GEOGRAPHY: {value:#?}");
+
+                self.seed
+                    .deserialize(SomeDeserializer {
+                        inner: value.into_deserializer(),
+                    })
+                    .map_err(de::Error::custom)
+            }
             _ => panic!("unknown format for bigquery encoded {:?}", self.ty),
         }
     }
