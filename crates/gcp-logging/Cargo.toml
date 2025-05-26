@@ -5,6 +5,13 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[lints.rust.unexpected_cfgs]
+check-cfg = ["cfg(tracing_unstable)"]
+level = "warn"
+priority = 0
+
+
 [dependencies]
 axum.workspace = true
 bytes.workspace = true
@@ -22,7 +29,7 @@ path-aware-serde = { path = "../path-aware-serde" }
 timestamp = { path = "../timestamp" }
 tower.workspace = true
 tower-http = { version = "0.5.2", features = ["trace"] }
-tracing = { workspace = true, features = ["valuable"] }
+tracing.workspace = true
 valuable = "0.1"
 tracing-subscriber = { workspace = true, features = [
     "json",
@@ -43,3 +50,13 @@ memchr = "2.7.2"
 fxhash = "0.2.1"
 dashmap = { version = "5.5.3", features = ["inline", "serde", "raw-api"] }
 anyhow = { version = "1.0.82", features = ["backtrace"] }
+
+
+[target."cfg(tracing_unstable)".dependencies.valuable]
+optional = true
+version = "0.1.0"
+default-features = false
+
+[features]
+default = ["valuable"]
+valuable = ["valuable?/std", "tracing/valuable", "tracing-subscriber/valuable"]

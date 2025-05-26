@@ -327,6 +327,21 @@ impl<M: SerializeMap> LabelsVisitor<'_, M> {
             self.error = serialize_entry(self.map, field).err();
         }
     }
+
+    #[inline]
+    fn serialize_field_value(
+        &mut self,
+        field: &tracing::field::Field,
+        value: impl serde::Serialize,
+    ) {
+        if self.error.is_some() {
+            return;
+        }
+
+        if let Some(field) = field.name().strip_prefix(LABEL_PREFIX) {
+            self.error = self.map.serialize_entry(field, &value).err();
+        }
+    }
 }
 
 macro_rules! record_int_fns {
@@ -344,6 +359,47 @@ macro_rules! record_int_fns {
 }
 
 impl<M: SerializeMap> Visit for LabelsVisitor<'_, M> {
+    #[cfg(all(tracing_unstable, feature = "valuable"))]
+    fn record_value(&mut self, field: &tracing::field::Field, value: valuable::Value<'_>) {
+        match value {
+            valuable::Value::Bool(b) => self.record_bool(field, b),
+            valuable::Value::Char(ch) => {
+                let mut buf = [0; 4];
+                let s = ch.encode_utf8(&mut buf);
+                self.record_str(field, s)
+            }
+            valuable::Value::F32(float) => self.record_f64(field, float as f64),
+            valuable::Value::F64(float) => self.record_f64(field, float),
+            valuable::Value::I8(int) => self.record_i64(field, int as i64),
+            valuable::Value::I16(int) => self.record_i64(field, int as i64),
+            valuable::Value::I32(int) => self.record_i64(field, int as i64),
+            valuable::Value::I64(int) => self.record_i64(field, int),
+            valuable::Value::I128(int) => self.record_i128(field, int),
+            valuable::Value::Isize(int) => self.record_i64(field, int as i64),
+            valuable::Value::String(s) => self.record_str(field, s),
+            valuable::Value::U8(uint) => self.record_u64(field, uint as u64),
+            valuable::Value::U16(uint) => self.record_u64(field, uint as u64),
+            valuable::Value::U32(uint) => self.record_u64(field, uint as u64),
+            valuable::Value::U64(uint) => self.record_u64(field, uint),
+            valuable::Value::U128(uint) => self.record_u128(field, uint),
+            valuable::Value::Usize(uint) => self.record_u64(field, uint as u64),
+            valuable::Value::Path(path) => match path.to_str() {
+                Some(path_str) => self.record_str(field, path_str),
+                None => self.serialize_field(field, |map, field| {
+                    map.serialize_entry(field, &crate::utils::SerializeDisplay(&path.display()))
+                }),
+            },
+            valuable::Value::Error(error) => self.record_error(field, error),
+            valuable::Value::Listable(listable) => todo!(),
+            valuable::Value::Mappable(mappable) => todo!(),
+            valuable::Value::Structable(structable) => todo!(),
+            valuable::Value::Enumerable(enumerable) => todo!(),
+            valuable::Value::Tuplable(tuplable) => todo!(),
+            valuable::Value::Unit => self.serialize_field_value(field, None::<()>),
+            _ => self.record_debug(field, &value),
+        }
+    }
+
     #[inline]
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
         self.serialize_field(field, |map, field| {
