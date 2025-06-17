@@ -146,6 +146,11 @@ impl Error {
             _ => None,
         }
     }
+
+    pub fn is_not_found(&self) -> bool {
+        matches!(self.rpc_code(), Some(tonic::Code::NotFound))
+    }
+
     pub fn is_transient_error(&self) -> bool {
         self.rpc_code().map(is_transient_error).unwrap_or(false)
     }
