@@ -39,7 +39,7 @@ where
 
     pub(crate) fn seq<V>(self, raw_values: &[&V]) -> Result<firestore::Value, ConvertError>
     where
-        V: Serialize,
+        V: Serialize + ?Sized,
     {
         let mut values = if N::OMIT {
             Vec::with_capacity(raw_values.len())

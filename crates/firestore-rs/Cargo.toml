@@ -14,9 +14,9 @@ doctest = false
 
 
 [features]
-default = ["firestore-admin"]                # Enabling by default during dev work
+default = ["firestore-admin"]                    # Enabling by default during dev work
 firestore-admin = ["protos/firestore-admin"]
-
+local-gcloud = ["gcp-auth-channel/local-gcloud"]
 
 [dependencies]
 tokio = { workspace = true, features = [

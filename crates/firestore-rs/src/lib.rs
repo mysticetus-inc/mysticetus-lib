@@ -384,6 +384,10 @@ fn test_extract_db_path() {
 #[allow(unused_mut, unused_variables)]
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use protos::firestore::Document;
+    use serde::ser::{SerializeMap, SerializeSeq};
     use tokio::sync::OnceCell;
 
     use super::*;
@@ -392,7 +396,12 @@ mod tests {
 
     async fn get_client() -> &'static Firestore {
         async fn init() -> Firestore {
-            firestore::Firestore::new("winged-citron-305220", gcp_auth_channel::Scope::Firestore)
+            let auth = gcp_auth_channel::Auth::new_gcloud(
+                "mysticetus-oncloud",
+                gcp_auth_channel::Scope::Firestore,
+            );
+
+            firestore::Firestore::from_auth_manager_future(std::future::ready(auth))
                 .await
                 .expect("should be able to build client")
         }
@@ -650,5 +659,134 @@ mod tests {
         assert!(ids.contains(&String::from("tests")));
 
         Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_dump_jasco_data() -> crate::Result<()> {
+        let mut client = get_client().await.clone();
+
+        let collections = ["bearing-lines", "detections", "ellipses", "vehicles"];
+
+        let sources = ["Jasco", "JASCO", "Equinor"];
+
+        let mut all_docs = HashMap::with_capacity(collections.len());
+
+        for collec in collections {
+            let docs = client
+                .collection(collec)
+                .query()
+                .where_field("properties.source")
+                .one_of(sources)?
+                .run_raw()
+                .await?
+                .run_to_completion()
+                .await?;
+
+            all_docs.insert(collec, docs);
+        }
+
+        let s = serde_json::to_string_pretty(&SerializeDocs(&all_docs)).unwrap();
+        std::fs::write("jasco.json", s.as_bytes()).unwrap();
+
+        Ok(())
+    }
+    pub struct SerializeDocs<'a>(&'a HashMap<&'static str, Vec<Document>>);
+
+    impl serde::Serialize for SerializeDocs<'_> {
+        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut map = serializer.serialize_map(Some(self.0.len()))?;
+
+            for (collec, docs) in self.0.iter() {
+                map.serialize_entry(collec, &SerializeDocInner(docs))?;
+            }
+
+            map.end()
+        }
+    }
+
+    pub struct SerializeDocInner<'a>(&'a [Document]);
+
+    impl serde::Serialize for SerializeDocInner<'_> {
+        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+
+            for doc in self.0.iter() {
+                seq.serialize_element(&SerializeFields(&doc.fields))?;
+            }
+
+            seq.end()
+        }
+    }
+
+    pub struct SerializeFields<'a>(&'a HashMap<String, protos::firestore::Value>);
+
+    impl serde::Serialize for SerializeFields<'_> {
+        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut map = serializer.serialize_map(Some(self.0.len()))?;
+
+            for (key, value) in self.0.iter() {
+                map.serialize_entry(key, &SerializeOptionalValue(value))?;
+            }
+
+            map.end()
+        }
+    }
+
+    pub struct SerializeOptionalValue<'a>(&'a protos::firestore::Value);
+
+    impl serde::Serialize for SerializeOptionalValue<'_> {
+        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            match self.0.value_type {
+                None | Some(protos::firestore::value::ValueType::NullValue(_)) => {
+                    serializer.serialize_none()
+                }
+                Some(ref other) => serializer.serialize_some(&SerializeSomeValue(other)),
+            }
+        }
+    }
+
+    pub struct SerializeSomeValue<'a>(&'a protos::firestore::value::ValueType);
+
+    impl serde::Serialize for SerializeSomeValue<'_> {
+        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            use protos::firestore::value::ValueType;
+
+            match &self.0 {
+                ValueType::NullValue(_) => serializer.serialize_unit(),
+                ValueType::MapValue(map) => SerializeFields(&map.fields).serialize(serializer),
+                ValueType::ArrayValue(array) => {
+                    let mut seq = serializer.serialize_seq(Some(array.values.len()))?;
+                    for val in array.values.iter() {
+                        seq.serialize_element(&SerializeOptionalValue(val))?;
+                    }
+                    seq.end()
+                }
+                ValueType::BytesValue(bytes) => serializer.serialize_str(&base64::encode(bytes)),
+                ValueType::DoubleValue(double) => serializer.serialize_f64(*double),
+                ValueType::StringValue(str) => serializer.serialize_str(str),
+                ValueType::TimestampValue(ts) => ::timestamp::Timestamp::from(*ts)
+                    .as_seconds()
+                    .serialize(serializer),
+                ValueType::BooleanValue(b) => serializer.serialize_bool(*b),
+                ValueType::IntegerValue(int) => serializer.serialize_i64(*int),
+                ValueType::GeoPointValue(gp) => [gp.longitude, gp.longitude].serialize(serializer),
+                ValueType::ReferenceValue(refer) => serializer.serialize_str(refer),
+            }
+        }
     }
 }

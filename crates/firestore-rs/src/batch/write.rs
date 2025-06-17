@@ -1,10 +1,10 @@
 use std::fmt;
 use std::sync::Arc;
 
-use protos::firestore::Write;
 use protos::firestore::document_transform::FieldTransform;
 use protos::firestore::document_transform::field_transform::TransformType;
 use protos::firestore::write::Operation;
+use protos::firestore::{BatchWriteResponse, Write};
 
 use crate::Error;
 use crate::client::FirestoreClient;
@@ -48,8 +48,7 @@ impl BatchWrite {
         self.writes.is_empty()
     }
 
-    ///
-    pub async fn commit(self) -> crate::Result<()> {
+    pub async fn commit_raw(self) -> crate::Result<BatchWriteResponse> {
         let Self {
             writes,
             client,
@@ -57,7 +56,7 @@ impl BatchWrite {
         } = self;
 
         if writes.is_empty() {
-            return Ok(());
+            return Ok(BatchWriteResponse::default());
         }
 
         let request = protos::firestore::BatchWriteRequest {
@@ -67,7 +66,36 @@ impl BatchWrite {
         };
 
         let resp = client.get().batch_write(request).await?.into_inner();
-        Error::check_many_rpc_statuses(resp.status)
+        Ok(resp)
+    }
+
+    pub async fn commit_inspect(
+        self,
+    ) -> crate::Result<impl ExactSizeIterator<Item = WriteResult> + Send + Sync + 'static> {
+        let count = self.writes.len();
+        let BatchWriteResponse {
+            write_results,
+            status,
+        } = self.commit_raw().await?;
+
+        debug_assert_eq!(write_results.len(), status.len());
+        debug_assert_eq!(write_results.len(), count);
+
+        Ok(write_results
+            .into_iter()
+            .zip(status)
+            .map(
+                |(write_result, status)| match Error::check_rpc_status(status) {
+                    Ok(()) => WriteResult::Succeeded(write_result),
+                    Err(error) => WriteResult::Error(error),
+                },
+            ))
+    }
+
+    ///
+    pub async fn commit(self) -> crate::Result<()> {
+        let raw = self.commit_raw().await?;
+        Error::check_many_rpc_statuses(raw.status)
     }
 
     pub fn collection<C>(&mut self, collection_name: C) -> BatchWriteCollectionRef<'_>
@@ -80,6 +108,12 @@ impl BatchWrite {
             writes: &mut self.writes,
         }
     }
+}
+
+#[derive(Debug)]
+pub enum WriteResult {
+    Succeeded(protos::firestore::WriteResult),
+    Error(crate::Error),
 }
 
 pub struct BatchWriteCollectionRef<'a> {
@@ -122,6 +156,18 @@ impl<'a> BatchDocRef<'a> {
             update_mask: None,
             update_transforms: Vec::new(),
             current_document: None,
+            operation: Some(Operation::Delete(self.doc_path)),
+        });
+    }
+
+    /// If the document doesn't exist, this will return an error indicating no delete was performed.
+    pub fn delete_existing(self) {
+        self.writes.push(Write {
+            update_mask: None,
+            update_transforms: Vec::new(),
+            current_document: Some(protos::firestore::Precondition {
+                condition_type: Some(protos::firestore::precondition::ConditionType::Exists(true)),
+            }),
             operation: Some(Operation::Delete(self.doc_path)),
         });
     }
@@ -205,5 +251,72 @@ impl<'a> BatchDocRef<'a> {
         D: serde::Serialize,
     {
         self.set_update_inner::<crate::ser::OmitNulls, D>(doc, true)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[tokio::test]
+    async fn test_batch_write_and_delete() -> crate::Result<()> {
+        let client =
+            crate::Firestore::new("mysticetus-oncloud", gcp_auth_channel::Scope::Firestore).await?;
+
+        #[derive(Debug, serde::Serialize, serde::Deserialize)]
+        struct Data {
+            field: String,
+        }
+
+        fn new_doc(field: impl ToString) -> Data {
+            Data {
+                field: field.to_string(),
+            }
+        }
+
+        client
+            .collection("test-docs")
+            .doc("existing-doc")
+            .set(&new_doc("existing doc"))
+            .await?;
+
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+        let mut write = client.batch_write();
+
+        let mut collec = write.collection("test-docs");
+
+        collec.doc("new-doc").set(&new_doc("new_doc"))?;
+        collec.doc("existing-doc").delete_existing();
+        collec.doc("not-existing-doc").delete_existing();
+
+        let mut resp = write.commit_inspect().await?;
+        let doc_add = resp.next().unwrap();
+        let doc_delete = resp.next().unwrap();
+        let doc_delete_missing = resp.next().unwrap();
+
+        match dbg!(doc_add) {
+            crate::batch::write::WriteResult::Succeeded(write) => {
+                assert!(write.update_time.is_some())
+            }
+            _ => panic!("first write should have succeeded"),
+        }
+
+        match dbg!(doc_delete) {
+            crate::batch::write::WriteResult::Succeeded(write) => {
+                assert!(write.update_time.is_none())
+            }
+            _ => panic!("first delete should have succeeded"),
+        }
+
+        match dbg!(doc_delete_missing) {
+            crate::batch::write::WriteResult::Error(error) => {
+                assert_eq!(error.rpc_code(), Some(tonic::Code::NotFound))
+            }
+            _ => panic!("missing doc should have returned an error"),
+        }
+
+        assert!(resp.next().is_none());
+
+        Ok(())
     }
 }

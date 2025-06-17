@@ -161,7 +161,7 @@ macro_rules! impl_array_fields {
         $(
             pub fn $fn_name<V, const N: usize>(self, values: [&V; N]) -> crate::Result<QueryBuilder<'a>>
             where
-                V: serde::Serialize,
+                V: serde::Serialize + ?Sized,
             {
                 assert!(N < 11, "cannot use more than 10 array values in an array query");
                 let serialized = ValueSerializer::<$null_strat>::NEW.seq(&values)?;
