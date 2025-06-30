@@ -400,3 +400,68 @@ impl serde::Serializer for FirestoreTimestampSerializer {
         Err(InvalidTimestamp::WrongType)
     }
 }
+
+#[test]
+fn test_firestore_timestamp_conversions() {
+    use rand::Rng;
+
+    fn test_value(ts: ::timestamp::Timestamp) {
+        let proto_ts = ts.into();
+        let encoded = FirestoreTimestamp::encode(proto_ts);
+
+        let decoded_ts = encoded.decode();
+
+        assert_eq!(proto_ts, decoded_ts);
+    }
+
+    // test some known timestamps
+    test_value(::timestamp::Timestamp::now());
+    test_value(::timestamp::Timestamp::UNIX_EPOCH);
+    test_value(::timestamp::Timestamp::MIN);
+    test_value(::timestamp::Timestamp::MAX);
+
+    // then for good measure test some random ones.
+    let mut rng = rand::rng();
+
+    for _ in 0..32 {
+        test_value(rng.random());
+    }
+}
+
+#[test]
+fn test_firestore_timestamp_serialization() {
+    #[derive(serde::Serialize)]
+    struct TestDocument {
+        #[serde(with = "crate::timestamp")]
+        value: ::timestamp::Timestamp,
+        #[serde(with = "crate::timestamp::optional")]
+        optional_value: Option<::timestamp::Timestamp>,
+    }
+
+    fn get_timestamp(value: Option<&protos::firestore::Value>) -> protos::protobuf::Timestamp {
+        match value {
+            Some(protos::firestore::Value {
+                value_type: Some(protos::firestore::value::ValueType::TimestampValue(ts)),
+            }) => *ts,
+            other => panic!("not a timestamp: {other:#?}"),
+        }
+    }
+
+    let now = ::timestamp::Timestamp::now();
+
+    let doc_fields = crate::ser::serialize_update::<crate::ser::Merge>(&TestDocument {
+        value: now,
+        optional_value: Some(::timestamp::Timestamp::UNIX_EPOCH),
+    })
+    .unwrap()
+    .into_fields();
+
+    let value = get_timestamp(doc_fields.get("value"));
+    let optional_value = get_timestamp(doc_fields.get("optional_value"));
+
+    assert_eq!(::timestamp::Timestamp::from(value), now);
+    assert_eq!(
+        ::timestamp::Timestamp::from(optional_value),
+        ::timestamp::Timestamp::UNIX_EPOCH
+    );
+}

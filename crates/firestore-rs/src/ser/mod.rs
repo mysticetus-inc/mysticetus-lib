@@ -76,6 +76,14 @@ pub struct DocFields {
 }
 
 impl DocFields {
+    pub fn serialize_merge<T: serde::Serialize + ?Sized>(value: &T) -> crate::Result<Self> {
+        serialize_update::<Merge>(value).map_err(crate::Error::from)
+    }
+
+    pub fn serialize<T: serde::Serialize + ?Sized>(value: &T) -> crate::Result<Self> {
+        serialize_update::<Update>(value).map_err(crate::Error::from)
+    }
+
     pub fn into_fields(self) -> HashMap<String, firestore::Value> {
         self.fields
     }
@@ -103,91 +111,6 @@ impl DocFields {
         (self.fields, mask)
     }
 }
-
-/*
-#[derive(Debug)]
-pub struct InvalidSerializeTarget<T> {
-    _marker: std::marker::PhantomData<T>,
-}
-
-impl<T> InvalidSerializeTarget<T> {
-    fn new() -> Self {
-        Self {
-            _marker: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<T> Default for InvalidSerializeTarget<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-macro_rules! impl_invalid_ser_traits {
-    ($(($trait:ty, $($fn_name:ident),* $(,)?)),* $(,)?) => {
-        $(
-            impl<T> $trait for InvalidSerializeTarget<T> {
-                type Ok = T;
-                type Error = ConvertError;
-
-                $(
-                    fn $fn_name<V>(&mut self, _value: &V) -> Result<(), Self::Error>
-                    where
-                        V: Serialize + ?Sized
-                    {
-                        Err(ConvertError::ser("invalid serialization target"))
-                    }
-                )*
-
-                fn end(self) -> Result<Self::Ok, Self::Error> {
-                    Err(ConvertError::ser("invalid serialization target"))
-                }
-            }
-        )*
-    };
-}
-
-impl_invalid_ser_traits! {
-    (serde::ser::SerializeSeq, serialize_element),
-    (serde::ser::SerializeTuple, serialize_element),
-    (serde::ser::SerializeTupleStruct, serialize_field),
-    (serde::ser::SerializeTupleVariant, serialize_field),
-    (serde::ser::SerializeMap, serialize_key, serialize_value),
-}
-
-impl<T> serde::ser::SerializeStruct for InvalidSerializeTarget<T> {
-    type Ok = T;
-    type Error = ConvertError;
-
-    fn serialize_field<V>(&mut self, _key: &'static str, _value: &V) -> Result<(), Self::Error>
-    where
-        V: Serialize + ?Sized,
-    {
-        Err(ConvertError::ser("invalid serialization target"))
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Err(ConvertError::ser("invalid serialization target"))
-    }
-}
-
-impl<T> serde::ser::SerializeStructVariant for InvalidSerializeTarget<T> {
-    type Ok = T;
-    type Error = ConvertError;
-
-    fn serialize_field<V>(&mut self, _key: &'static str, _value: &V) -> Result<(), Self::Error>
-    where
-        V: Serialize + ?Sized,
-    {
-        Err(ConvertError::ser("invalid serialization target"))
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Err(ConvertError::ser("invalid serialization target"))
-    }
-}
-*/
 
 /// Escapes invalid characters in document field paths. Assumes 'path' __does__ need to be escaped.
 fn escape_component_into(parent: &mut String, path: &str) {
@@ -408,68 +331,4 @@ fn test_component_escape_test() {
     for (comp, needs_escaping) in TEST_CASES {
         assert_eq!(*needs_escaping, component_needs_escaping(comp), "{comp}");
     }
-}
-
-#[test]
-fn test_firestore_timestamp_conversions() {
-    use rand::Rng;
-
-    fn test_value(ts: ::timestamp::Timestamp) {
-        let fs_ts = timestamp::FirestoreTimestamp(ts.into());
-
-        let nanos = fs_ts.to_nanos();
-        let from_nanos = timestamp::FirestoreTimestamp::from_nanos(nanos);
-
-        assert_eq!(fs_ts, from_nanos);
-    }
-
-    // test some known timestamps
-    test_value(::timestamp::Timestamp::now());
-    test_value(::timestamp::Timestamp::UNIX_EPOCH);
-    test_value(::timestamp::Timestamp::MIN);
-    test_value(::timestamp::Timestamp::MAX);
-
-    // then for good measure test some random ones.
-    let mut rng = rand::rng();
-
-    for _ in 0..32 {
-        test_value(rng.random());
-    }
-}
-
-#[test]
-fn test_firestore_timestamp_serialization() {
-    #[derive(serde::Serialize)]
-    struct TestDocument {
-        #[serde(with = "timestamp")]
-        value: ::timestamp::Timestamp,
-        #[serde(with = "timestamp::optional")]
-        optional_value: Option<::timestamp::Timestamp>,
-    }
-
-    fn get_timestamp(value: Option<&firestore::Value>) -> protos::protobuf::Timestamp {
-        match value {
-            Some(firestore::Value {
-                value_type: Some(firestore::value::ValueType::TimestampValue(ts)),
-            }) => *ts,
-            other => panic!("not a timestamp: {other:#?}"),
-        }
-    }
-
-    let now = ::timestamp::Timestamp::now();
-
-    let doc_fields = serialize_update::<Merge>(&TestDocument {
-        value: now,
-        optional_value: Some(::timestamp::Timestamp::UNIX_EPOCH),
-    })
-    .unwrap();
-
-    let value = get_timestamp(doc_fields.fields.get("value"));
-    let optional_value = get_timestamp(doc_fields.fields.get("optional_value"));
-
-    assert_eq!(::timestamp::Timestamp::from(value), now);
-    assert_eq!(
-        ::timestamp::Timestamp::from(optional_value),
-        ::timestamp::Timestamp::UNIX_EPOCH
-    );
 }

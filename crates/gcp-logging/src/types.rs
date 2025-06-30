@@ -328,6 +328,7 @@ impl<M: SerializeMap> LabelsVisitor<'_, M> {
         }
     }
 
+    #[cfg_attr(not(feature = "valuable"), allow(dead_code))]
     #[inline]
     fn serialize_field_value(
         &mut self,

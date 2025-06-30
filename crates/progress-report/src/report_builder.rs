@@ -94,7 +94,7 @@ where
         };
 
         // serialize the document once, that way we only need to clone it if a request fails.
-        let result = firestore_rs::serialize_set_doc(&message);
+        let result = firestore_rs::DocFields::serialize_merge(&message);
 
         (&mut self.reporter.driver, message, result)
     }

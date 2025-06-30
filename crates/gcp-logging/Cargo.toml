@@ -58,5 +58,5 @@ version = "0.1.0"
 default-features = false
 
 [features]
-default = ["valuable"]
+default = []
 valuable = ["valuable?/std", "tracing/valuable", "tracing-subscriber/valuable"]
