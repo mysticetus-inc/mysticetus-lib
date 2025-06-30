@@ -19,6 +19,9 @@ pub mod trace_layer;
 mod types;
 mod utils;
 
+#[cfg(all(tracing_unstable, feature = "valuable"))]
+mod valuable;
+
 #[inline]
 pub fn init_logging(project_id: &'static str, stage: Stage) -> middleware::TraceLayer {
     init_logging_opt(project_id, stage, DefaultLogOptions)

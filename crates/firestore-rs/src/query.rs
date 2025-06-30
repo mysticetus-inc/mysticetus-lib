@@ -22,7 +22,7 @@ use protos::protobuf::Int32Value;
 
 use crate::client::FirestoreClient;
 use crate::de::deserialize_doc_fields;
-use crate::ser::{NullOverwrite, OmitNulls, ValueSerializer};
+use crate::ser;
 
 pub struct FieldFilterBuilder<'a> {
     field: FieldReference,
@@ -157,14 +157,14 @@ macro_rules! impl_field {
 }
 
 macro_rules! impl_array_fields {
-    ($(($fn_name:ident, $op_variant:ident, $null_strat:ty)),* $(,)?) => {
+    ($(($fn_name:ident, $op_variant:ident, $ignore_null:ident)),* $(,)?) => {
         $(
             pub fn $fn_name<V, const N: usize>(self, values: [&V; N]) -> crate::Result<QueryBuilder<'a>>
             where
                 V: serde::Serialize + ?Sized,
             {
                 assert!(N < 11, "cannot use more than 10 array values in an array query");
-                let serialized = ValueSerializer::<$null_strat>::NEW.seq(&values)?;
+                let serialized = ser::ValueSerializer::<ser::$ignore_null, _>::default().seq(&values)?;
 
                 let Self { mut builder, field } = self;
                 builder.add_field_filter(field, FieldOperator::$op_variant, serialized);
@@ -194,10 +194,10 @@ impl<'a> FieldFilterBuilder<'a> {
     }
 
     impl_array_fields! {
-        (one_of, In, NullOverwrite),
-        (one_of_omit_nulls, In, OmitNulls),
-        (not_one_of, NotIn, NullOverwrite),
-        (not_one_of_omit_nulls, NotIn, OmitNulls),
+        (one_of, In, Update),
+        (one_of_ignore_nulls, In, Merge),
+        (not_one_of, NotIn, Update),
+        (not_one_of_ignore_nulls, NotIn, Merge),
     }
 }
 
@@ -274,10 +274,11 @@ impl<'a> QueryBuilder<'a> {
     where
         S: serde::Serialize,
     {
-        let values = match value.serialize(crate::ser::ValueSerializer::default())? {
-            Some(value) => vec![value],
-            None => vec![],
-        };
+        let value = ser::serialize_value::<ser::Update>(&value)?;
+
+        let values = vec![Value {
+            value_type: Some(value),
+        }];
 
         self.start_at = Some(Cursor { values, before });
         Ok(self)
@@ -301,10 +302,11 @@ impl<'a> QueryBuilder<'a> {
     where
         S: serde::Serialize,
     {
-        let values = match value.serialize(crate::ser::ValueSerializer::default())? {
-            Some(value) => vec![value],
-            None => vec![],
-        };
+        let value = ser::serialize_value::<ser::Update>(&value)?;
+
+        let values = vec![Value {
+            value_type: Some(value),
+        }];
 
         self.end_at = Some(Cursor { values, before });
         Ok(self)

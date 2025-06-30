@@ -79,11 +79,6 @@ impl FirestoreClient {
         firestore_client::FirestoreClient::new(self.channel.clone())
     }
 
-    #[inline]
-    pub(crate) fn get_mut_ref(&mut self) -> firestore_client::FirestoreClient<&mut AuthChannel> {
-        firestore_client::FirestoreClient::new(&mut self.channel)
-    }
-
     pub fn auth(&self) -> &Auth {
         self.channel.auth()
     }

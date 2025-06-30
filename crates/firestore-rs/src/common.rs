@@ -60,14 +60,7 @@ where
     })
 }
 
-macro_rules! extract_component {
-    ($iter:expr) => {{
-        $iter
-            .next()
-            .ok_or_else(|| crate::Error::Internal("resource path is invalid"))?
-    }};
-}
-
+/*
 pub(crate) fn database_path_from_resource_path<S>(resource_path: S) -> crate::Result<String>
 where
     S: AsRef<str>,
@@ -80,3 +73,4 @@ where
 
     Ok(format!("projects/{project_id}/databases/{database_id}"))
 }
+*/

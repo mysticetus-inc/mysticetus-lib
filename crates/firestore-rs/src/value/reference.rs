@@ -1,5 +1,10 @@
 use std::fmt;
 
+use protos::firestore::value::ValueType;
+
+use crate::error::SerError;
+use crate::ser;
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct Reference(str);
@@ -12,7 +17,7 @@ impl serde::Serialize for Reference {
     {
         // Serialize with a specific name, so the serializer can attempt to coerce this
         // to a firestore reference type instead of just a string
-        serializer.serialize_newtype_struct(Self::NEWTYPE_MARKER, self.as_str())
+        serializer.serialize_newtype_struct(Self::MARKER, self.as_str())
     }
 }
 
@@ -61,11 +66,30 @@ impl fmt::Display for Reference {
 }
 
 impl Reference {
-    pub(crate) const NEWTYPE_MARKER: &str = "__reference__";
+    pub(crate) const MARKER: &str = "__firestore_reference__";
 
     pub fn new(s: &str) -> &Self {
         // SAFETY: We're repr(transparent)
         unsafe { std::mem::transmute::<&str, &Self>(s) }
+    }
+
+    pub(crate) fn try_serialize<W: ser::WriteKind>(
+        value: &(impl serde::Serialize + ?Sized),
+    ) -> Result<ValueType, SerError> {
+        use ValueType::{NullValue, ReferenceValue, StringValue};
+
+        match ser::serialize_value::<W>(value)? {
+            StringValue(s) | ReferenceValue(s) => Ok(ReferenceValue(s)),
+            null @ NullValue(_) => Ok(null),
+            non_null => {
+                // panic in debug, otherwise just pass it on
+                if cfg!(debug_assertions) {
+                    panic!("expected newtype struct to be a string/reference, got: {non_null:?}");
+                }
+
+                Ok(non_null)
+            }
+        }
     }
 
     pub fn id(&self) -> &str {

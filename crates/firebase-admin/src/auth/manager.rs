@@ -1,6 +1,12 @@
 use std::sync::Arc;
 
+pub mod oob;
+pub use oob::{OobRequest, OobRequestType, OobResponse};
+
 pub mod list_users;
+
+const BASE_URL: &str = "https://identitytoolkit.googleapis.com/v1";
+const OOB_URL: &str = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode";
 
 #[derive(Debug, Clone)]
 pub struct AuthManager {
@@ -20,11 +26,8 @@ impl AuthManager {
 
     pub fn from_parts(auth: gcp_auth_channel::Auth, client: reqwest::Client) -> Self {
         let base_url = Arc::new(
-            reqwest::Url::parse(&format!(
-                "https://identitytoolkit.googleapis.com/v1/projects/{}",
-                auth.project_id()
-            ))
-            .expect("invalid project id?"),
+            reqwest::Url::parse(&format!("{BASE_URL}/projects/{}", auth.project_id()))
+                .expect("invalid project id?"),
         );
 
         Self {
@@ -58,6 +61,7 @@ impl AuthManager {
         let builder = self
             .client
             .request(method, url)
+            .header("x-goog-user-project", self.auth.project_id())
             .header(reqwest::header::AUTHORIZATION, auth_header);
 
         build_request(builder)
@@ -65,6 +69,38 @@ impl AuthManager {
             .await
             .map_err(crate::Error::Reqwest)
     }
+
+    pub async fn send_oob_code<T: OobRequestType>(
+        &self,
+        request: &OobRequest<'_, T>,
+    ) -> crate::Result<OobResponse> {
+        let response = self
+            .request(OOB_URL, reqwest::Method::POST, |builder| {
+                builder.json(request)
+            })
+            .await?;
+
+        parse_json_response(response).await
+    }
+}
+
+async fn parse_json_response<T>(response: reqwest::Response) -> crate::Result<T>
+where
+    T: serde::de::DeserializeOwned,
+{
+    let status = response.status();
+    let uri = response.url().clone();
+    let bytes = response.bytes().await?;
+
+    // handle the successful case first
+    if status.is_success() {
+        let value = path_aware_serde::json::deserialize_slice(&bytes)?;
+        return Ok(value);
+    }
+
+    Err(crate::Error::Status(crate::error::StatusError::new_from(
+        uri, status, bytes,
+    )))
 }
 
 #[cfg(test)]
@@ -81,7 +117,7 @@ mod tests {
                     "mysticetus-oncloud",
                     // std::env::var("GOOGLE_APPLICATION_CREDENTIALS")
                     //     .expect("`$GOOGLE_APPLICATION_CREDENTIALS` is unset"),
-                    gcp_auth_channel::Scope::CloudPlatformReadOnly,
+                    gcp_auth_channel::Scope::CloudPlatformAdmin,
                 )
                 .await
                 .unwrap();
@@ -100,5 +136,23 @@ mod tests {
         println!("{users:#?}");
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_generate_email_sign_in_link() -> crate::Result<()> {
+        let manager = get_manager().await;
+
+        let req = OobRequest::new("mrudisel@mysticetus.com", "http::localhost:3000");
+
+        match manager.send_oob_code::<oob::EmailSignIn>(&req).await {
+            Err(error) => {
+                println!("{error:#?}");
+                Err(error)
+            }
+            Ok(codes) => {
+                println!("{codes:#?}");
+                Ok(())
+            }
+        }
     }
 }

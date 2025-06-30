@@ -3,85 +3,53 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
+use protos::firestore::document_transform::FieldTransform;
 use protos::firestore::value::ValueType;
 use protos::firestore::{self, DocumentMask, MapValue, Value};
 use protos::protobuf::NullValue;
-use serde::Serialize;
 
-mod doc;
-mod map;
+pub(crate) mod doc;
+pub(crate) mod field_transform;
+mod path;
 mod value;
 
-pub(crate) use doc::DocSerializer;
-use map::MapSerializer;
 pub(crate) use value::ValueSerializer;
 
-use crate::ConvertError;
+use crate::error::SerError;
 
-/// A trait for handling null values in either set or update serialization.
-pub(crate) trait NullStrategy: Default + Copy + Eq {
-    const OMIT: bool;
-
-    /// Given a closure that takes in a value, the function is only called if
-    /// we want to insert nulls.
-    fn handle_null<F, O>(f: F)
-    where
-        F: FnOnce(firestore::Value) -> O;
+pub(crate) trait WriteKind: 'static {
+    const MERGE: bool;
 }
 
-/// Ignore all nulls, which prevents overwriting existing values.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct OmitNulls;
+pub(crate) enum Merge {}
+pub(crate) enum Update {}
 
-impl NullStrategy for OmitNulls {
-    const OMIT: bool = true;
+impl WriteKind for Merge {
+    const MERGE: bool = true;
+}
 
-    #[inline]
-    fn handle_null<F, O>(_: F)
-    where
-        F: FnOnce(firestore::Value) -> O,
-    {
+impl WriteKind for Update {
+    const MERGE: bool = false;
+}
+
+pub(crate) fn serialize_write<W: WriteKind>(
+    value: &(impl serde::Serialize + ?Sized),
+) -> Result<(DocFields, Vec<FieldTransform>), SerError> {
+    value.serialize(doc::WriteSerializer::<W>::NEW)
+}
+
+pub(crate) fn serialize_update<W: WriteKind>(
+    value: &(impl serde::Serialize + ?Sized),
+) -> Result<DocFields, SerError> {
+    value.serialize(doc::UpdateSerializer::<W>::NEW)
+}
+
+pub(crate) fn serialize_value<W: WriteKind>(
+    value: &(impl serde::Serialize + ?Sized),
+) -> Result<firestore::value::ValueType, SerError> {
+    match ValueSerializer::<W, std::convert::Infallible>::default().serialize(value)? {
+        value::SerializedValueKind::Value(value) => Ok(value),
     }
-}
-
-/// Include all nulls, overwriting existing values.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct NullOverwrite;
-
-impl NullStrategy for NullOverwrite {
-    const OMIT: bool = false;
-
-    #[inline]
-    fn handle_null<F, O>(f: F)
-    where
-        F: FnOnce(firestore::Value) -> O,
-    {
-        f(null_value());
-    }
-}
-
-pub(crate) fn serialize_doc_fields<T, N>(value: &T) -> crate::Result<DocFields>
-where
-    T: Serialize + ?Sized,
-    N: NullStrategy,
-{
-    value
-        .serialize(DocSerializer::<N>::default())
-        .map_err(crate::Error::Convert)
-}
-
-pub fn serialize_set_doc<T>(value: &T) -> crate::Result<DocFields>
-where
-    T: Serialize + ?Sized,
-{
-    serialize_doc_fields::<T, NullOverwrite>(value)
-}
-
-pub fn serialize_update_doc<T>(value: &T) -> crate::Result<DocFields>
-where
-    T: Serialize + ?Sized,
-{
-    serialize_doc_fields::<T, OmitNulls>(value)
 }
 
 #[inline]
@@ -91,12 +59,52 @@ const fn null_value() -> Value {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct DocFields {
-    pub(crate) field_mask: DocumentMask,
-    pub(crate) fields: HashMap<String, firestore::Value>,
+trait MapSerializerKind<Arg = ()>:
+    Sized
+    + serde::ser::SerializeMap<Ok = Self::Output, Error = SerError>
+    + serde::ser::SerializeStruct<Ok = Self::Output, Error = SerError>
+    + serde::ser::SerializeStructVariant<Ok = Self::Output, Error = SerError>
+{
+    type Output;
+    fn new_with_len(len: Option<usize>, arg: Arg) -> Self;
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct DocFields {
+    field_mask: Option<DocumentMask>,
+    fields: HashMap<String, firestore::Value>,
+}
+
+impl DocFields {
+    pub fn into_fields(self) -> HashMap<String, firestore::Value> {
+        self.fields
+    }
+
+    pub fn into_fields_with_optional_mask(
+        self,
+        build_mask: bool,
+    ) -> (HashMap<String, firestore::Value>, Option<DocumentMask>) {
+        if build_mask {
+            let (fields, mask) = self.into_fields_with_mask();
+            (fields, Some(mask))
+        } else {
+            (self.into_fields(), None)
+        }
+    }
+
+    pub fn into_fields_with_mask(self) -> (HashMap<String, firestore::Value>, DocumentMask) {
+        let mask = match self.field_mask {
+            Some(mask) if mask.field_paths.len() == self.fields.len() => mask,
+            _ => DocumentMask {
+                field_paths: build_mask(&self.fields),
+            },
+        };
+
+        (self.fields, mask)
+    }
+}
+
+/*
 #[derive(Debug)]
 pub struct InvalidSerializeTarget<T> {
     _marker: std::marker::PhantomData<T>,
@@ -179,6 +187,7 @@ impl<T> serde::ser::SerializeStructVariant for InvalidSerializeTarget<T> {
         Err(ConvertError::ser("invalid serialization target"))
     }
 }
+*/
 
 /// Escapes invalid characters in document field paths. Assumes 'path' __does__ need to be escaped.
 fn escape_component_into(parent: &mut String, path: &str) {
@@ -230,14 +239,20 @@ fn component_needs_escaping(s: &str) -> bool {
         }};
     }
 
+    let mut chars = s.chars();
+
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
     // quick check to make sure the leading char is invalid. leading chars cant be numbers,
     // even though numbers are valid elsewhere.
-    if s.starts_with(|ch: char| is_invalid_char!(NO_NUMBERS ch)) {
+    if is_invalid_char!(NO_NUMBERS first) {
         return true;
     }
 
-    // then verify all characters in the path are a-z, 0-9 or _.
-    s.chars().any(|ch| is_invalid_char!(ch))
+    // then verify the remaining characters in the path are a-z, 0-9 or _.
+    chars.any(|ch| is_invalid_char!(ch))
 }
 
 enum Key<'a> {
@@ -283,7 +298,7 @@ impl<'a> Key<'a> {
     }
 }
 
-fn build_mask(fields: &HashMap<String, firestore::Value>) -> Vec<String> {
+pub(super) fn build_mask(fields: &HashMap<String, firestore::Value>) -> Vec<String> {
     fn build_field_mask(
         parent: Option<Cow<'_, str>>,
         field_paths: &mut Vec<String>,
@@ -355,144 +370,6 @@ fn build_mask(fields: &HashMap<String, firestore::Value>) -> Vec<String> {
     }
 
     dst
-}
-
-/// Serde compat for serializing as a firestore timestamp type.
-pub mod timestamp {
-    use serde::Deserialize;
-
-    pub(crate) const NEWTYPE_MARKER: &str = "__timestamp__";
-
-    /// Concrete new-type that a serializer can use to enforce serialization as a
-    /// firestore timestamp.
-    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-    pub(crate) struct FirestoreTimestamp(pub(crate) protos::protobuf::Timestamp);
-
-    impl FirestoreTimestamp {
-        pub(crate) fn to_nanos(&self) -> i128 {
-            ::timestamp::Timestamp::from(self.0).as_nanos()
-        }
-
-        pub(crate) fn from_nanos(nanos: i128) -> Self {
-            Self(::timestamp::Timestamp::from_nanos_i128(nanos).into())
-        }
-    }
-
-    impl serde::Serialize for FirestoreTimestamp {
-        #[inline]
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            // convert to nanos to simplify the logic in MaybeTimestampSerializer (i.e no need to
-            // deserialize and verify a 'seconds' and 'nanos' field, we'd just need to override
-            // the serialize_i128 method)
-            let nanos = self.to_nanos();
-
-            serializer.serialize_newtype_struct(NEWTYPE_MARKER, &nanos)
-        }
-    }
-
-    impl<'de> serde::Deserialize<'de> for FirestoreTimestamp {
-        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de>,
-        {
-            struct I128Visitor;
-
-            impl<'vde> serde::de::Visitor<'vde> for I128Visitor {
-                type Value = i128;
-
-                fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    formatter.write_str("an i128 encoded timestamp in nanoseconds")
-                }
-
-                fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
-                where
-                    E: serde::de::Error,
-                {
-                    Ok(v)
-                }
-            }
-
-            deserializer
-                .deserialize_newtype_struct(NEWTYPE_MARKER, I128Visitor)
-                .map(Self::from_nanos)
-        }
-    }
-
-    pub trait AsTimestamp: Sized {
-        type Error: std::error::Error;
-
-        fn into_timestamp(&self) -> protos::protobuf::Timestamp;
-
-        fn from_timestamp(proto: protos::protobuf::Timestamp) -> Result<Self, Self::Error>;
-    }
-
-    impl AsTimestamp for timestamp::Timestamp {
-        type Error = std::convert::Infallible;
-
-        #[inline]
-        fn into_timestamp(&self) -> protos::protobuf::Timestamp {
-            (*self).into()
-        }
-
-        #[inline]
-        fn from_timestamp(proto: protos::protobuf::Timestamp) -> Result<Self, Self::Error> {
-            Self::try_from(proto)
-        }
-    }
-
-    #[inline]
-    pub fn serialize<T, S>(timestamp: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        T: AsTimestamp,
-        S: serde::Serializer,
-    {
-        serde::Serialize::serialize(&FirestoreTimestamp(timestamp.into_timestamp()), serializer)
-    }
-
-    #[inline]
-    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-    where
-        T: AsTimestamp,
-        D: serde::Deserializer<'de>,
-    {
-        let FirestoreTimestamp(ts) = FirestoreTimestamp::deserialize(deserializer)?;
-        T::from_timestamp(ts).map_err(serde::de::Error::custom)
-    }
-
-    pub mod optional {
-        use serde::Deserialize;
-
-        use super::{AsTimestamp, FirestoreTimestamp};
-
-        #[inline]
-        pub fn serialize<T, S>(timestamp: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            T: AsTimestamp,
-            S: serde::Serializer,
-        {
-            match timestamp {
-                Some(ts) => serializer.serialize_some(&FirestoreTimestamp(ts.into_timestamp())),
-                None => serializer.serialize_none(),
-            }
-        }
-
-        #[inline]
-        pub fn deserialize<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
-        where
-            T: AsTimestamp,
-            D: serde::Deserializer<'de>,
-        {
-            match Option::<FirestoreTimestamp>::deserialize(deserializer)? {
-                None => Ok(None),
-                Some(FirestoreTimestamp(ts)) => T::from_timestamp(ts)
-                    .map(Some)
-                    .map_err(serde::de::Error::custom),
-            }
-        }
-    }
 }
 
 #[test]
@@ -581,7 +458,7 @@ fn test_firestore_timestamp_serialization() {
 
     let now = ::timestamp::Timestamp::now();
 
-    let doc_fields = serialize_doc_fields::<_, OmitNulls>(&TestDocument {
+    let doc_fields = serialize_update::<Merge>(&TestDocument {
         value: now,
         optional_value: Some(::timestamp::Timestamp::UNIX_EPOCH),
     })

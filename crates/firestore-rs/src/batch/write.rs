@@ -8,7 +8,7 @@ use protos::firestore::{BatchWriteResponse, Write};
 
 use crate::Error;
 use crate::client::FirestoreClient;
-use crate::ser::{escape_field_path, serialize_doc_fields};
+use crate::ser::{escape_field_path, serialize_write};
 
 #[derive(Debug)]
 pub struct BatchWrite {
@@ -202,16 +202,23 @@ impl<'a> BatchDocRef<'a> {
         Ok(())
     }
 
-    fn set_update_inner<N, D>(self, doc: &D, use_field_masks: bool) -> crate::Result<usize>
+    fn set_update_inner<W, D>(self, doc: &D, use_field_masks: bool) -> crate::Result<usize>
     where
         D: serde::Serialize,
-        N: crate::ser::NullStrategy,
+        W: crate::ser::WriteKind,
     {
-        let serialized = serialize_doc_fields::<D, N>(doc)?;
+        let (doc, update_transforms) = serialize_write::<W>(doc)?;
+
+        let (fields, update_mask) = if use_field_masks {
+            (doc.into_fields(), None)
+        } else {
+            let (doc, mask) = doc.into_fields_with_mask();
+            (doc, Some(mask))
+        };
 
         let doc = protos::firestore::Document {
             name: self.doc_path,
-            fields: serialized.fields,
+            fields,
             create_time: None,
             update_time: None,
         };
@@ -226,8 +233,8 @@ impl<'a> BatchDocRef<'a> {
         }
 
         self.writes.push(Write {
-            update_mask: use_field_masks.then_some(serialized.field_mask),
-            update_transforms: Vec::new(),
+            update_mask,
+            update_transforms,
             current_document: None,
             operation: Some(Operation::Update(doc)),
         });
@@ -241,7 +248,7 @@ impl<'a> BatchDocRef<'a> {
     where
         D: serde::Serialize,
     {
-        self.set_update_inner::<crate::ser::NullOverwrite, D>(doc, false)
+        self.set_update_inner::<crate::ser::Update, D>(doc, false)
     }
 
     /// Updates a document as part of this batch write. Returns the encoded size of
@@ -250,7 +257,7 @@ impl<'a> BatchDocRef<'a> {
     where
         D: serde::Serialize,
     {
-        self.set_update_inner::<crate::ser::OmitNulls, D>(doc, true)
+        self.set_update_inner::<crate::ser::Merge, D>(doc, true)
     }
 }
 

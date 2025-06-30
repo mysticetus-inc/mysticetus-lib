@@ -139,12 +139,10 @@ async fn make_request(
             })
             .await?;
 
-        let bytes = response.error_for_status()?.bytes().await?;
-
         let ListUsersPage {
             users,
             next_page_token,
-        } = path_aware_serde::json::deserialize_slice(&bytes)?;
+        } = super::parse_json_response(response).await?;
 
         Ok((next_page_token, users))
     };

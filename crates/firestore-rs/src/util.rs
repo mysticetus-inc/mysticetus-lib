@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use protos::firestore::value::ValueType;
 use protos::firestore::{Document, Value};
 
@@ -67,25 +65,6 @@ where
             key_size + value_size
         })
         .sum()
-}
-
-pub(crate) fn extract_value<'a>(
-    values: &'a HashMap<String, protos::firestore::Value>,
-    field_path: &str,
-) -> Option<crate::value::ValueRef<'a>> {
-    let mut map = Some(values);
-    let mut raw_value: Option<&protos::firestore::value::ValueType> = None;
-
-    for field in field_path.split('.') {
-        raw_value = map?.get(field)?.value_type.as_ref();
-
-        map = match raw_value {
-            Some(ValueType::MapValue(map)) => Some(&map.fields),
-            _ => None,
-        };
-    }
-
-    raw_value.map(crate::value::ValueRef::from_proto_type_ref)
 }
 
 /// compares resource paths, comparing on a path component basis

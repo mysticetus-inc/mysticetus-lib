@@ -11,7 +11,6 @@ use protos::firestore::{
 use crate::batch::read::{BatchRead, BatchReadStream, Collection, RawBatchReadStream};
 use crate::doc::{Doc, DocumentRef};
 use crate::query::QueryBuilder;
-use crate::ser::serialize_doc_fields;
 use crate::{Firestore, PathComponent, Reference};
 
 /// Reference to a firestore collection.
@@ -95,9 +94,9 @@ impl<C: PathComponent> CollectionRef<C> {
     async fn push_doc_inner<N, D>(&mut self, id: Option<String>, doc: &D) -> crate::Result<Doc<D>>
     where
         D: serde::de::DeserializeOwned + serde::Serialize,
-        N: crate::ser::NullStrategy,
+        N: crate::ser::WriteKind,
     {
-        let doc_fields = serialize_doc_fields::<D, N>(doc)?;
+        let doc_fields = crate::ser::serialize_update::<N>(doc)?;
 
         let request = CreateDocumentRequest {
             parent: self.parent_path().to_owned(),
@@ -108,7 +107,7 @@ impl<C: PathComponent> CollectionRef<C> {
             mask: None,
             document: Some(Document {
                 name: String::new(),
-                fields: doc_fields.fields,
+                fields: doc_fields.into_fields(),
                 create_time: None,
                 update_time: None,
             }),
@@ -130,7 +129,7 @@ impl<C: PathComponent> CollectionRef<C> {
         S: AsRef<str>,
         D: serde::Serialize + serde::de::DeserializeOwned,
     {
-        self.push_doc_inner::<crate::ser::NullOverwrite, D>(Some(id.as_ref().to_owned()), doc)
+        self.push_doc_inner::<crate::ser::Update, D>(Some(id.as_ref().to_owned()), doc)
             .await
     }
 
@@ -138,16 +137,15 @@ impl<C: PathComponent> CollectionRef<C> {
     where
         D: serde::Serialize + serde::de::DeserializeOwned,
     {
-        self.push_doc_inner::<crate::ser::NullOverwrite, D>(None, doc)
+        self.push_doc_inner::<crate::ser::Update, D>(None, doc)
             .await
     }
 
-    pub async fn push_doc_omit_nulls<D>(&mut self, doc: &D) -> crate::Result<Doc<D>>
+    pub async fn push_doc_ignore_nulls<D>(&mut self, doc: &D) -> crate::Result<Doc<D>>
     where
         D: serde::Serialize + serde::de::DeserializeOwned,
     {
-        self.push_doc_inner::<crate::ser::OmitNulls, D>(None, doc)
-            .await
+        self.push_doc_inner::<crate::ser::Merge, D>(None, doc).await
     }
 
     pub fn query(&mut self) -> QueryBuilder<'_> {
