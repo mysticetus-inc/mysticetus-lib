@@ -80,7 +80,17 @@ impl Path {
         #[inline]
         fn format_segment<W: std::fmt::Write + ?Sized>(key: &str, dst: &mut W) -> std::fmt::Result {
             if super::component_needs_escaping(key) {
-                todo!()
+                dst.write_str("`")?;
+
+                for ch in key.chars() {
+                    if ch == '`' {
+                        dst.write_str("\\")?;
+                    }
+
+                    dst.write_char(ch)?;
+                }
+
+                dst.write_str("`")
             } else {
                 dst.write_str(key)
             }
