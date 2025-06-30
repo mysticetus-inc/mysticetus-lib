@@ -1,56 +1,82 @@
 //! A serializer to create [`firestore::Value`] from [`Serialize`]-able types.
-use std::any::Any;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::marker::PhantomData;
 
 use protos::firestore::value::ValueType;
-use protos::firestore::{self, ArrayValue, MapValue};
-use protos::r#type::LatLng;
-use serde::ser::{self, Serialize, Serializer};
-use serde_helpers::key_capture::KeyCapture;
+use protos::firestore::{self, ArrayValue};
+use serde::ser::{Serialize, Serializer};
 
-mod newtype;
+pub(crate) mod geo;
+// mod newtype;
+pub(crate) mod timestamp;
 
-use super::NullStrategy;
-use crate::{ConvertError, Reference};
+mod map;
+mod seq;
+
+use crate::error::SerError;
+use crate::ser::field_transform::Transform;
+use crate::ser::{MapSerializerKind, WriteKind};
+use crate::timestamp::FirestoreTimestamp;
+use crate::{Reference, transform};
 
 /// Handles serializing [`Serialize`]-able types into a [`firestore::Value`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ValueSerializer<N = super::OmitNulls> {
+pub(crate) struct ValueSerializer<'a, N, T: Transform> {
+    container: T::Container<'a>,
     _marker: PhantomData<fn(N)>,
 }
 
-impl Default for ValueSerializer<super::OmitNulls> {
+impl<'a, W: WriteKind, T: Transform<Container<'a>: Default>> Default for ValueSerializer<'a, W, T> {
     fn default() -> Self {
-        Self {
-            _marker: PhantomData,
-        }
+        Self::new(Default::default())
     }
 }
 
-impl<N> ValueSerializer<N>
-where
-    N: NullStrategy,
-{
-    pub(crate) const NEW: Self = Self {
-        _marker: PhantomData,
-    };
+impl<'a, W: WriteKind, T: Transform> ValueSerializer<'a, W, T> {
+    pub(crate) const fn new(container: T::Container<'a>) -> Self {
+        Self {
+            container,
+            _marker: PhantomData,
+        }
+    }
 
-    pub(crate) fn seq<V>(self, raw_values: &[&V]) -> Result<firestore::Value, ConvertError>
+    pub fn reborrow(&mut self) -> ValueSerializer<'_, W, T> {
+        ValueSerializer {
+            container: T::reborrow(&mut self.container),
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn serialize(
+        &mut self,
+        value: &(impl serde::Serialize + ?Sized),
+    ) -> Result<SerializedValueKind<T>, SerError>
+    where
+        for<'b> &'b mut Self: serde::Serializer<Ok = SerializedValueKind<T>, Error = SerError>,
+    {
+        value.serialize(self)
+    }
+}
+
+impl<W: WriteKind> ValueSerializer<'_, W, std::convert::Infallible> {
+    pub(crate) fn seq<V>(mut self, raw_values: &[&V]) -> Result<firestore::Value, SerError>
     where
         V: Serialize,
     {
-        let mut values = if N::OMIT {
-            Vec::with_capacity(raw_values.len())
-        } else {
-            Vec::with_capacity(raw_values.len() / 2)
-        };
+        let mut values = Vec::with_capacity(raw_values.len());
 
-        for result in raw_values.iter().map(|value| value.serialize(self)) {
+        for result in raw_values
+            .iter()
+            .map(move |value| value.serialize(&mut self))
+        {
             match result? {
-                Some(val) => values.push(val),
-                None => N::handle_null(|val| values.push(val)),
+                SerializedValueKind::Value(ValueType::NullValue(_)) if W::MERGE => (),
+                SerializedValueKind::Value(ValueType::NullValue(_)) => {
+                    values.push(super::null_value())
+                }
+                SerializedValueKind::Value(value_type) => values.push(firestore::Value {
+                    value_type: Some(value_type),
+                }),
             }
         }
 
@@ -60,38 +86,42 @@ where
     }
 }
 
-impl<N> Serializer for ValueSerializer<N>
+pub enum SerializedValueKind<Transform> {
+    Value(ValueType),
+    Transform(Transform),
+}
+
+impl<'a, 'b, W: WriteKind, T: Transform> Serializer for &'b mut ValueSerializer<'a, W, T>
 where
-    N: NullStrategy,
+    map::ValueMapSerializer<'b, W, T>:
+        MapSerializerKind<ValueSerializer<'b, W, T>, Output = SerializedValueKind<T>>,
 {
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
+    type Ok = SerializedValueKind<T>;
+    type Error = SerError;
 
-    type SerializeSeq = ValueSeqSerializer<N>;
-    type SerializeTuple = ValueSeqSerializer<N>;
-    type SerializeTupleStruct = ValueSeqSerializer<N>;
-    type SerializeTupleVariant = ValueSeqSerializer<N>;
+    type SerializeSeq = seq::ValueSeqSerializer<'b, W, T>;
+    type SerializeTuple = seq::ValueSeqSerializer<'b, W, T>;
+    type SerializeTupleStruct = seq::ValueSeqSerializer<'b, W, T>;
+    type SerializeTupleVariant = seq::ValueSeqSerializer<'b, W, T>;
 
-    type SerializeMap = ValueMapSerializer<N>;
-    type SerializeStruct = ValueMapSerializer<N>;
-    type SerializeStructVariant = ValueMapSerializer<N>;
+    type SerializeMap = map::ValueMapSerializer<'b, W, T>;
+    type SerializeStruct = map::ValueMapSerializer<'b, W, T>;
+    type SerializeStructVariant = map::ValueMapSerializer<'b, W, T>;
 
     fn serialize_bool(self, boolean: bool) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::BooleanValue(boolean)),
-        }))
+        Ok(SerializedValueKind::Value(ValueType::BooleanValue(boolean)))
     }
 
     fn serialize_bytes(self, bytes: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::BytesValue(bytes.to_vec().into())),
-        }))
+        Ok(SerializedValueKind::Value(ValueType::BytesValue(
+            bytes.to_vec().into(),
+        )))
     }
 
     fn serialize_char(self, c: char) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::StringValue(String::from(c))),
-        }))
+        Ok(SerializedValueKind::Value(ValueType::StringValue(
+            String::from(c),
+        )))
     }
 
     fn serialize_f32(self, float: f32) -> Result<Self::Ok, Self::Error> {
@@ -99,16 +129,12 @@ where
     }
 
     fn serialize_f64(self, float: f64) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::DoubleValue(float)),
-        }))
+        Ok(SerializedValueKind::Value(ValueType::DoubleValue(float)))
     }
 
     // Redirect all integer types to this master function
     fn serialize_i64(self, int: i64) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::IntegerValue(int)),
-        }))
+        Ok(SerializedValueKind::Value(ValueType::IntegerValue(int)))
     }
 
     fn serialize_i8(self, int: i8) -> Result<Self::Ok, Self::Error> {
@@ -159,67 +185,69 @@ where
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        let fields = len.map(HashMap::with_capacity).unwrap_or_default();
-        Ok(ValueMapSerializer {
-            inner: self,
-            fields,
-            key: None,
-        })
+        Ok(map::ValueMapSerializer::new_with_len(len, self.reborrow()))
     }
 
-    fn serialize_newtype_struct<T>(
+    fn serialize_newtype_struct<V>(
         self,
         name: &'static str,
-        value: &T,
+        value: &V,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize + ?Sized,
+        V: Serialize + ?Sized,
     {
-        if name == super::timestamp::NEWTYPE_MARKER {
-            value.serialize(newtype::MaybeTimestampSerializer::new(self))
-        } else if name == Reference::NEWTYPE_MARKER {
-            value.serialize(newtype::MaybeReferenceSerializer::new(self))
-        } else {
-            value.serialize(self)
+        match name {
+            transform::Increment::MARKER => T::increment(value).map(SerializedValueKind::Transform),
+            transform::Maximum::MARKER => T::maximum(value).map(SerializedValueKind::Transform),
+            transform::Minimum::MARKER => T::minimum(value).map(SerializedValueKind::Transform),
+            transform::ArrayUnion::MARKER => {
+                T::append_missing_elements::<V, W>(value).map(SerializedValueKind::Transform)
+            }
+            transform::RemoveFromArray::MARKER => {
+                T::remove_all_from_array::<V, W>(value).map(SerializedValueKind::Transform)
+            }
+            FirestoreTimestamp::MARKER => FirestoreTimestamp::try_serialize(value)
+                .map(|ts| SerializedValueKind::Value(ValueType::TimestampValue(ts)))
+                .map_err(serde::ser::Error::custom),
+            Reference::MARKER => {
+                Reference::try_serialize::<W>(value).map(SerializedValueKind::Value)
+            }
+            _ => value.serialize(self),
         }
     }
 
-    fn serialize_newtype_variant<T>(
+    fn serialize_newtype_variant<V>(
         self,
         _name: &'static str,
         _variant_index: u32,
         _variant: &'static str,
-        value: &T,
+        value: &V,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize + ?Sized,
+        V: Serialize + ?Sized,
     {
         value.serialize(self)
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-        Ok(None)
+        Ok(SerializedValueKind::Value(ValueType::NullValue(0)))
     }
 
-    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<V>(self, value: &V) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize + ?Sized,
+        V: Serialize + ?Sized,
     {
         value.serialize(self)
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        let values = len.map(Vec::with_capacity).unwrap_or_default();
-        Ok(ValueSeqSerializer {
-            inner: self,
-            values,
-        })
+        Ok(seq::ValueSeqSerializer::new(len))
     }
 
     fn serialize_str(self, s: &str) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::StringValue(s.to_owned())),
-        }))
+        Ok(SerializedValueKind::Value(ValueType::StringValue(
+            s.to_owned(),
+        )))
     }
 
     fn serialize_struct(
@@ -245,7 +273,12 @@ where
     }
 
     fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
-        self.serialize_str(name)
+        if name == transform::ServerTimestamp::MARKER {
+            let transform = T::server_timestamp()?;
+            Ok(SerializedValueKind::Transform(transform))
+        } else {
+            self.serialize_str(name)
+        }
     }
 
     fn serialize_unit_variant(
@@ -279,9 +312,9 @@ where
         self.serialize_seq(Some(len))
     }
 
-    fn collect_str<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn collect_str<V>(self, value: &V) -> Result<Self::Ok, Self::Error>
     where
-        T: ?Sized + std::fmt::Display,
+        V: ?Sized + std::fmt::Display,
     {
         thread_local! {
             static COLLECT_STR_BUF: RefCell<String> = RefCell::new(String::with_capacity(256));
@@ -289,192 +322,10 @@ where
 
         COLLECT_STR_BUF.with_borrow_mut(|str_buf| {
             str_buf.clear();
-            std::fmt::write(str_buf, format_args!("{value}")).map_err(ConvertError::ser)?;
+            std::fmt::write(str_buf, format_args!("{value}"))
+                .map_err(<SerError as serde::ser::Error>::custom)?;
+
             self.serialize_str(str_buf.as_str())
         })
-    }
-}
-
-pub struct ValueSeqSerializer<N> {
-    inner: ValueSerializer<N>,
-    values: Vec<firestore::Value>,
-}
-
-impl<N> ser::SerializeSeq for ValueSeqSerializer<N>
-where
-    N: NullStrategy,
-{
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
-
-    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: Serialize + ?Sized,
-    {
-        match value.serialize(self.inner)? {
-            Some(elem) => self.values.push(elem),
-            None => N::handle_null(|elem| self.values.push(elem)),
-        }
-
-        Ok(())
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::ArrayValue(ArrayValue {
-                values: self.values,
-            })),
-        }))
-    }
-}
-
-impl<N> ser::SerializeTuple for ValueSeqSerializer<N>
-where
-    N: NullStrategy,
-{
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
-
-    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: Serialize + ?Sized,
-    {
-        ser::SerializeSeq::serialize_element(self, value)
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        ser::SerializeSeq::end(self)
-    }
-}
-
-impl<N> ser::SerializeTupleStruct for ValueSeqSerializer<N>
-where
-    N: NullStrategy,
-{
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
-
-    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: Serialize + ?Sized,
-    {
-        ser::SerializeSeq::serialize_element(self, value)
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        ser::SerializeSeq::end(self)
-    }
-}
-
-impl<N> ser::SerializeTupleVariant for ValueSeqSerializer<N>
-where
-    N: NullStrategy,
-{
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
-
-    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: Serialize + ?Sized,
-    {
-        ser::SerializeSeq::serialize_element(self, value)
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        ser::SerializeSeq::end(self)
-    }
-}
-
-pub struct ValueMapSerializer<N> {
-    inner: ValueSerializer<N>,
-    fields: HashMap<String, firestore::Value>,
-    key: Option<String>,
-}
-
-impl<N> ser::SerializeMap for ValueMapSerializer<N>
-where
-    N: NullStrategy,
-{
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
-
-    fn serialize_key<S>(&mut self, key: &S) -> Result<(), Self::Error>
-    where
-        S: Serialize + ?Sized,
-    {
-        key.serialize(KeyCapture(&mut self.key))
-            .map_err(ConvertError::ser)
-    }
-
-    fn serialize_value<S>(&mut self, value: &S) -> Result<(), Self::Error>
-    where
-        S: Serialize + ?Sized,
-    {
-        let key = self
-            .key
-            .take()
-            .ok_or_else(|| ConvertError::ser("map value has no key"))?;
-
-        match value.serialize(self.inner)? {
-            Some(value) => {
-                self.fields.insert(key, value);
-            }
-            None => N::handle_null(|value| self.fields.insert(key, value)),
-        }
-
-        Ok(())
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(Some(firestore::Value {
-            value_type: Some(ValueType::MapValue(MapValue {
-                fields: self.fields,
-            })),
-        }))
-    }
-}
-
-impl<N> ser::SerializeStruct for ValueMapSerializer<N>
-where
-    N: NullStrategy,
-{
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
-
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
-    where
-        T: Serialize + ?Sized,
-    {
-        match value.serialize(self.inner)? {
-            Some(val) => {
-                self.fields.insert(key.to_owned(), val);
-            }
-            None => N::handle_null(|val| self.fields.insert(key.to_owned(), val)),
-        }
-
-        Ok(())
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        <Self as ser::SerializeMap>::end(self)
-    }
-}
-
-impl<N> ser::SerializeStructVariant for ValueMapSerializer<N>
-where
-    N: NullStrategy,
-{
-    type Ok = Option<firestore::Value>;
-    type Error = ConvertError;
-
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
-    where
-        T: Serialize + ?Sized,
-    {
-        <Self as ser::SerializeStruct>::serialize_field(self, key, value)
-    }
-
-    fn end(self) -> Result<Self::Ok, Self::Error> {
-        <Self as ser::SerializeMap>::end(self)
     }
 }

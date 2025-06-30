@@ -1,14 +1,16 @@
 use protos::firestore;
 
 use super::ValueSerializer;
-use crate::ser::NullStrategy;
+use crate::error::SerError;
+use crate::ser::SerializerOptions;
 use crate::ser::timestamp::FirestoreTimestamp;
+use crate::ser::value::SerializedValueKind;
 
-pub(super) struct MaybeTimestampSerializer<N> {
+pub(super) struct MaybeTimestampSerializer<N: SerializerOptions> {
     inner: ValueSerializer<N>,
 }
 
-impl<N> MaybeTimestampSerializer<N> {
+impl<N: SerializerOptions> MaybeTimestampSerializer<N> {
     #[inline]
     pub(super) fn new(inner: ValueSerializer<N>) -> Self {
         Self { inner }
@@ -33,9 +35,9 @@ macro_rules! defer_to_inner_serializer {
     };
 }
 
-impl<N: NullStrategy> serde::Serializer for MaybeTimestampSerializer<N> {
-    type Ok = Option<firestore::Value>;
-    type Error = <ValueSerializer<N> as serde::Serializer>::Error;
+impl<N: SerializerOptions> serde::Serializer for MaybeTimestampSerializer<N> {
+    type Ok = SerializedValueKind<N::FieldTransform>;
+    type Error = SerError;
 
     type SerializeMap = <ValueSerializer<N> as serde::Serializer>::SerializeMap;
     type SerializeSeq = <ValueSerializer<N> as serde::Serializer>::SerializeSeq;
@@ -149,11 +151,11 @@ impl<N: NullStrategy> serde::Serializer for MaybeTimestampSerializer<N> {
     }
 }
 
-pub(super) struct MaybeReferenceSerializer<N> {
+pub(super) struct MaybeReferenceSerializer<N: SerializerOptions> {
     inner: ValueSerializer<N>,
 }
 
-impl<N> MaybeReferenceSerializer<N> {
+impl<N: SerializerOptions> MaybeReferenceSerializer<N> {
     #[inline]
     pub(super) fn new(inner: ValueSerializer<N>) -> Self {
         Self { inner }
@@ -178,9 +180,9 @@ macro_rules! defer_to_inner_serializer {
     };
 }
 
-impl<N: NullStrategy> serde::Serializer for MaybeReferenceSerializer<N> {
-    type Ok = Option<firestore::Value>;
-    type Error = <ValueSerializer<N> as serde::Serializer>::Error;
+impl<N: SerializerOptions> serde::Serializer for MaybeReferenceSerializer<N> {
+    type Ok = SerializedValueKind<N::FieldTransform>;
+    type Error = SerError;
 
     type SerializeMap = <ValueSerializer<N> as serde::Serializer>::SerializeMap;
     type SerializeSeq = <ValueSerializer<N> as serde::Serializer>::SerializeSeq;

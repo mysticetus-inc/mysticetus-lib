@@ -7,11 +7,11 @@ edition = "2024"
 
 [dependencies]
 compact_str = { version = "0.6.0", features = ["serde", "bytes"] }
-# data-structures = { path = "../data-structures" }
-rustversion = "1.0.9"
 serde.workspace = true
 static_assertions = "1.1.0"
 deepsize = { version = "0.2.0", features = ["derive"], optional = true }
 tracing.workspace = true
+
+
 [features]
 deepsize = ["dep:deepsize"]

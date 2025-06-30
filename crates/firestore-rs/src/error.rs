@@ -13,7 +13,7 @@ pub enum Error {
     Transport(#[from] tonic::transport::Error),
     #[error("Status: {0}")]
     Status(#[from] tonic::Status),
-    #[error("{0}")]
+    #[error(transparent)]
     Convert(ConvertError),
     #[error(
         "document size of {size} is over the limit of {} (document id: {document_id})",
@@ -196,36 +196,97 @@ where
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum SerError {
+    #[error("field transforms not supported for this method")]
+    FieldTransformsNotSupported,
+    #[error(transparent)]
+    InvalidTransform(#[from] InvalidTransform),
+    #[error(transparent)]
+    Serialize(#[from] serde::de::value::Error),
+}
+
+impl serde::ser::Error for SerError {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: fmt::Display,
+    {
+        Self::Serialize(serde::ser::Error::custom(msg))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("invalid value for {transform_type} field transform ({})", DisplayValueError(.value))]
+pub struct InvalidTransform {
+    transform_type: &'static str,
+    value: protos::firestore::value::ValueType,
+}
+
+struct DisplayValueError<'a>(&'a protos::firestore::value::ValueType);
+
+impl std::fmt::Display for DisplayValueError<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            protos::firestore::value::ValueType::MapValue(_) => f.write_str("map"),
+            protos::firestore::value::ValueType::ArrayValue(_) => f.write_str("array"),
+            protos::firestore::value::ValueType::NullValue(_) => f.write_str("null"),
+            protos::firestore::value::ValueType::BooleanValue(b) => write!(f, "boolean {b}"),
+            protos::firestore::value::ValueType::IntegerValue(i) => write!(f, "integer {i})"),
+            protos::firestore::value::ValueType::DoubleValue(d) => write!(f, "float {d}"),
+            protos::firestore::value::ValueType::TimestampValue(ts) => {
+                write!(f, "timestamp '{}'", timestamp::Timestamp::from(*ts))
+            }
+            protos::firestore::value::ValueType::StringValue(s) => write!(f, "'{s}'"),
+            protos::firestore::value::ValueType::BytesValue(_) => f.write_str("bytes"),
+            protos::firestore::value::ValueType::ReferenceValue(refer) => {
+                write!(f, "document reference: {refer}")
+            }
+            protos::firestore::value::ValueType::GeoPointValue(gp) => {
+                write!(f, "geo point ({}, {})", gp.longitude, gp.latitude)
+            }
+        }
+    }
+}
+
+impl InvalidTransform {
+    pub(crate) fn new(
+        transform_type: &'static str,
+        value: protos::firestore::value::ValueType,
+    ) -> Self {
+        Self {
+            transform_type,
+            value,
+        }
+    }
+}
+
 /// Specific error type encountered in document serialization/deserialization.
 #[derive(Debug, thiserror::Error)]
 pub enum ConvertError {
-    #[error("Serialization: {error}")]
-    Serialize { error: StringErr },
-    #[error("Serialization at: '{path}': {error}")]
-    SerializeWithPath { path: Path, error: StringErr },
-    #[error("Deserialization: {error}")]
-    Deserialize { error: StringErr },
-    #[error("Deserialization at: '{path}': {error}")]
-    DeserializeWithPath { path: Path, error: StringErr },
+    #[error(transparent)]
+    Serialize(#[from] SerError),
+    #[error("{error} @ '{path}'")]
+    SerializeWithPath {
+        path: Path,
+        #[source]
+        error: SerError,
+    },
+    #[error(transparent)]
+    Deserialize(serde::de::value::Error),
+    #[error("{error} @ '{path}'")]
+    DeserializeWithPath {
+        path: Path,
+        #[source]
+        error: serde::de::value::Error,
+    },
 }
 
 impl ConvertError {
-    pub(crate) fn ser<S>(msg: S) -> Self
-    where
-        S: fmt::Display,
-    {
-        Self::Serialize {
-            error: StringErr(msg.to_string()),
-        }
-    }
-
     pub(crate) fn de<S>(msg: S) -> Self
     where
         S: fmt::Display,
     {
-        Self::Deserialize {
-            error: StringErr(msg.to_string()),
-        }
+        Self::Deserialize(serde::de::Error::custom(msg))
     }
 
     pub(crate) fn from_path_aware(wrapped_error: PathAwareError<Self>) -> Self {
@@ -235,57 +296,20 @@ impl ConvertError {
         };
 
         match conv_error {
-            Self::Serialize { error } => Self::SerializeWithPath { path, error },
+            Self::Serialize(error) => Self::SerializeWithPath { path, error },
             Self::SerializeWithPath { error, .. } => Self::SerializeWithPath { path, error },
-            Self::Deserialize { error } => Self::DeserializeWithPath { path, error },
+            Self::Deserialize(error) => Self::DeserializeWithPath { path, error },
             Self::DeserializeWithPath { error, .. } => Self::DeserializeWithPath { path, error },
         }
     }
 }
-
-#[derive(Clone)]
-pub struct StringErr(String);
-
-impl From<String> for StringErr {
-    fn from(string: String) -> Self {
-        Self(string)
-    }
-}
-
-impl From<&str> for StringErr {
-    fn from(string: &str) -> Self {
-        Self(string.to_owned())
-    }
-}
-
-impl From<serde_json::Error> for StringErr {
-    fn from(json_err: serde_json::Error) -> Self {
-        Self(json_err.to_string())
-    }
-}
-
-impl fmt::Debug for StringErr {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{:?}", self.0)
-    }
-}
-
-impl fmt::Display for StringErr {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{}", self.0)
-    }
-}
-
-impl std::error::Error for StringErr {}
 
 impl serde::ser::Error for ConvertError {
     fn custom<T>(msg: T) -> Self
     where
         T: fmt::Display,
     {
-        Self::Serialize {
-            error: msg.to_string().into(),
-        }
+        Self::Serialize(serde::ser::Error::custom(msg))
     }
 }
 
@@ -294,8 +318,6 @@ impl serde::de::Error for ConvertError {
     where
         T: fmt::Display,
     {
-        Self::Deserialize {
-            error: msg.to_string().into(),
-        }
+        Self::de(msg)
     }
 }

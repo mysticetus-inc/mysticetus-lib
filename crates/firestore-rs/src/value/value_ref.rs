@@ -47,7 +47,7 @@ impl<'a> ValueRef<'a> {
             .unwrap_or(Self::Null)
     }
 
-    pub(crate) fn ord_cmp(&self, other: ValueRef<'_>) -> std::cmp::Ordering {
+    pub(crate) fn ord_cmp(&self, _other: ValueRef<'_>) -> std::cmp::Ordering {
         todo!()
     }
 }

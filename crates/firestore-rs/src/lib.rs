@@ -66,6 +66,8 @@ mod transaction;
 mod util;
 mod value;
 
+pub mod timestamp;
+
 use std::borrow::Cow;
 use std::fmt::{Debug, Display};
 
@@ -82,10 +84,15 @@ pub use collec::CollectionRef;
 pub use doc::{Doc, DocumentRef, RawDoc};
 pub use firestore::Firestore;
 pub use protos::r#type::LatLng;
-pub use ser::{
-    DocFields, escape_field_path_into, serialize_set_doc, serialize_update_doc, timestamp,
-};
+pub use ser::{DocFields, escape_field_path_into};
 pub use value::{Reference, Value};
+
+/// Wrapper/marker types for field transforms.
+pub mod transform {
+    pub use crate::ser::field_transform::{
+        ArrayUnion, Increment, Maximum, Minimum, RemoveFromArray, ServerTimestamp,
+    };
+}
 
 /// Shared trait to represent collection names and document ids.
 ///

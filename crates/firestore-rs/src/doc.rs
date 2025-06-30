@@ -23,7 +23,7 @@ use crate::batch::read;
 use crate::client::ResponseExt;
 use crate::collec::CollectionRef;
 use crate::de::deserialize_doc_fields;
-use crate::ser::DocFields;
+use crate::ser::{DocFields, WriteKind};
 use crate::{Error, PathComponent, Reference, ser};
 
 /// Deserialized document from Firestore.
@@ -175,8 +175,9 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
 
         match transaction_fn(init_doc) {
             Some(update) => {
-                let DocFields { fields, field_mask } =
-                    ser::serialize_doc_fields::<T, ser::NullOverwrite>(&update)?;
+                let (doc, update_transforms) = ser::serialize_write::<ser::Update>(&update)?;
+
+                let (fields, field_mask) = doc.into_fields_with_mask();
 
                 let document = Document {
                     fields,
@@ -190,7 +191,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
                     writes: vec![Write {
                         current_document: None,
                         update_mask: Some(field_mask),
-                        update_transforms: vec![],
+                        update_transforms,
                         operation: Some(protos::firestore::write::Operation::Update(document)),
                     }],
                     transaction: transaction_bytes,
@@ -551,20 +552,18 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
         &self,
         doc_fields: DocFields,
         precond: Option<Precondition>,
-        omit_mask: bool,
+        merge: bool,
     ) -> crate::Result<RawDoc> {
+        let (fields, update_mask) = doc_fields.into_fields_with_optional_mask(merge);
+
         let request = UpdateDocumentRequest {
             document: Some(Document {
                 name: self.reference.to_string(),
-                fields: doc_fields.fields,
+                fields,
                 update_time: None,
                 create_time: None,
             }),
-            update_mask: if omit_mask {
-                None
-            } else {
-                Some(doc_fields.field_mask)
-            },
+            update_mask,
             mask: None,
             current_document: precond,
         };
@@ -592,9 +591,9 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
             condition_type: Some(ConditionType::Exists(must_already_exist)),
         };
 
-        let doc_fields = ser::serialize_update_doc(doc)?;
+        let doc_fields = ser::serialize_update::<ser::Merge>(doc)?;
 
-        self.update_inner(doc_fields, Some(precond), false)
+        self.update_inner(doc_fields, Some(precond), ser::Merge::MERGE)
             .await?
             .deserialize_fields()
     }
@@ -612,7 +611,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     where
         T: serde::Serialize + serde::Deserialize<'de>,
     {
-        let doc_fields = ser::serialize_update_doc(doc)?;
+        let doc_fields = ser::serialize_update::<ser::Merge>(doc)?;
         self.update_inner(doc_fields, None, false)
             .await?
             .deserialize_fields()
@@ -622,7 +621,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
     where
         T: serde::Serialize + serde::Deserialize<'de>,
     {
-        let doc_fields = ser::serialize_set_doc(doc)?;
+        let doc_fields = ser::serialize_update::<ser::Update>(doc)?;
 
         self.update_inner(doc_fields, None, true)
             .await?
@@ -663,7 +662,7 @@ impl<C: PathComponent, D: PathComponent> DocumentRef<C, D> {
             condition_type: Some(ConditionType::Exists(must_already_exist)),
         };
 
-        let doc_fields = ser::serialize_set_doc(doc)?;
+        let doc_fields = ser::serialize_update::<ser::Update>(doc)?;
 
         self.update_inner(doc_fields, Some(precond), true)
             .await?
@@ -689,8 +688,6 @@ fn encode_mask(fields: impl IntoIterator<Item: AsRef<str>>) -> Option<DocumentMa
 }
 
 pub mod write_type {
-    pub(crate) use private::WriteType;
-
     use super::firestore::write::Operation;
 
     pub(super) mod private {
@@ -790,11 +787,19 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         }
     }
 
-    pub fn set<T>(self, doc: &T) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>>
+    pub fn set<T>(mut self, doc: &T) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>>
     where
         T: serde::Serialize,
     {
-        let doc_fields = ser::serialize_set_doc(doc)?;
+        let (doc_fields, mut transforms) = ser::serialize_write::<ser::Update>(doc)?;
+
+        if !transforms.is_empty() {
+            match self.transforms {
+                Some(ref mut existing) if !existing.is_empty() => existing.append(&mut transforms),
+                _ => self.transforms = Some(transforms),
+            }
+        }
+
         self.set_serialized(doc_fields)
     }
 
@@ -804,7 +809,7 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
     ) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>> {
         let doc = Document {
             name: self.doc_ref.reference.to_string(),
-            fields: doc_fields.fields,
+            fields: doc_fields.into_fields(),
             create_time: None,
             update_time: None,
         };
@@ -830,11 +835,19 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         })
     }
 
-    pub fn update<T>(self, doc: &T) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>>
+    pub fn update<T>(mut self, doc: &T) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>>
     where
         T: serde::Serialize,
     {
-        let doc_fields = ser::serialize_update_doc(doc)?;
+        let (doc_fields, mut transforms) = ser::serialize_write::<ser::Merge>(doc)?;
+
+        if !transforms.is_empty() {
+            match self.transforms {
+                Some(ref mut existing) if !existing.is_empty() => existing.append(&mut transforms),
+                _ => self.transforms = Some(transforms),
+            }
+        }
+
         self.update_serialized(doc_fields)
     }
 
@@ -842,20 +855,17 @@ impl<'a, C: PathComponent, D: PathComponent> WriteBuilder<'a, C, D, ()> {
         mut self,
         doc_fields: DocFields,
     ) -> crate::Result<WriteBuilder<'a, C, D, write_type::Update>> {
-        if !doc_fields.field_mask.field_paths.is_empty() {
+        let (fields, mut field_mask) = doc_fields.into_fields_with_mask();
+        if !field_mask.field_paths.is_empty() {
             match self.mask {
-                Some(ref mut mask) => mask.field_paths.extend(doc_fields.field_mask.field_paths),
-                None => {
-                    self.mask = Some(DocumentMask {
-                        field_paths: doc_fields.field_mask.field_paths,
-                    })
-                }
+                Some(ref mut mask) => mask.field_paths.append(&mut field_mask.field_paths),
+                None => self.mask = Some(field_mask),
             }
         }
 
         let doc = Document {
             name: self.doc_ref.reference.to_string(),
-            fields: doc_fields.fields,
+            fields,
             create_time: None,
             update_time: None,
         };
@@ -1000,11 +1010,18 @@ where
     T: write_type::private::WriteType,
 {
     pub(crate) fn into_parts(self) -> (&'a mut DocumentRef<C, D>, Write) {
+        let operation = self.write.to_operation();
+
         let write = Write {
-            update_mask: self.mask,
+            // this field can only be set for update operations, ensure
+            // that it's None if not an Update
+            update_mask: match operation {
+                firestore::write::Operation::Update(_) => self.mask,
+                _ => None,
+            },
             update_transforms: self.transforms.unwrap_or_default(),
             current_document: self.precondition,
-            operation: Some(self.write.to_operation()),
+            operation: Some(operation),
         };
 
         (self.doc_ref, write)

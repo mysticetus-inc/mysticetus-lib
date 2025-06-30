@@ -3,6 +3,7 @@ use std::collections::hash_map::IntoIter;
 
 use protos::firestore::value::ValueType;
 use protos::firestore::{self, ArrayValue, MapValue};
+use serde::de::value::StringDeserializer;
 use serde::de::{self, EnumAccess, IntoDeserializer, VariantAccess};
 
 use super::{ValueDeserializer, ValueMapAccess, ValueSeqAccess};
@@ -151,7 +152,8 @@ impl<'de> EnumAccess<'de> for RootEnum {
 
         enum_vis.value = Some(value);
 
-        let deserialized = seed.deserialize(key.into_deserializer())?;
+        let deserialized =
+            seed.deserialize::<StringDeserializer<ConvertError>>(key.into_deserializer())?;
 
         Ok((deserialized, enum_vis))
     }
@@ -182,7 +184,8 @@ impl<'de> EnumAccess<'de> for StringEnum {
             .take()
             .ok_or_else(|| ConvertError::de("no string remaining to deserialize"))?;
 
-        let deserialized = seed.deserialize(variant.into_deserializer())?;
+        let deserialized =
+            seed.deserialize::<StringDeserializer<ConvertError>>(variant.into_deserializer())?;
 
         Ok((deserialized, self))
     }

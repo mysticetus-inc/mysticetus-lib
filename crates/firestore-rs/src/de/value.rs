@@ -10,6 +10,7 @@ use timestamp::Timestamp;
 
 use super::enum_de::{RootEnum, StringEnum};
 use crate::ConvertError;
+use crate::timestamp::FirestoreTimestamp;
 
 pub struct ValueDeserializer {
     value: firestore::Value,
@@ -99,9 +100,9 @@ impl<'de> Deserializer<'de> for ValueDeserializer {
         V: de::Visitor<'de>,
     {
         match (name, self.value.value_type) {
-            (crate::timestamp::NEWTYPE_MARKER, Some(ValueType::TimestampValue(ts))) => {
-                let nanos = Timestamp::from(ts).as_nanos();
-                visitor.visit_i128(nanos)
+            (FirestoreTimestamp::MARKER, Some(ValueType::TimestampValue(ts))) => {
+                let ts = FirestoreTimestamp::encode(ts);
+                visitor.visit_bytes(&ts.0)
             }
             (_, value_type) => Self::from(firestore::Value { value_type }).deserialize_any(visitor),
         }
