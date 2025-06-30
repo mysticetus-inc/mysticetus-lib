@@ -6,6 +6,8 @@ use tracing::span::Id;
 use tracing_subscriber::fmt::{FmtContext, FormatFields};
 use tracing_subscriber::registry::LookupSpan;
 
+mod valuable_ser;
+
 use crate::Stage;
 use crate::payload::{EventInfo, serialize_event_payload};
 use crate::subscriber::RequestTrace;
@@ -390,11 +392,19 @@ impl<M: SerializeMap> Visit for LabelsVisitor<'_, M> {
                 }),
             },
             valuable::Value::Error(error) => self.record_error(field, error),
-            valuable::Value::Listable(listable) => todo!(),
-            valuable::Value::Mappable(mappable) => todo!(),
-            valuable::Value::Structable(structable) => todo!(),
+            valuable::Value::Listable(listable) => self.serialize_field(field, |map, field| {
+                map.serialize_entry(field, &valuable_ser::SerializeListable(listable))
+            }),
+            valuable::Value::Mappable(mappable) => self.serialize_field(field, |map, field| {
+                map.serialize_entry(field, &valuable_ser::SerializeMappable(mappable))
+            }),
+            valuable::Value::Structable(structable) => self.serialize_field(field, |map, field| {
+                map.serialize_entry(field, &valuable_ser::SerializeStructable(structable))
+            }),
             valuable::Value::Enumerable(enumerable) => todo!(),
-            valuable::Value::Tuplable(tuplable) => todo!(),
+            valuable::Value::Tuplable(tuplable) => self.serialize_field(field, |map, field| {
+                map.serialize_entry(field, &valuable_ser::SerializeTuplable(tuplable))
+            }),
             valuable::Value::Unit => self.serialize_field_value(field, None::<()>),
             _ => self.record_debug(field, &value),
         }

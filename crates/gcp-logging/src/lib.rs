@@ -22,6 +22,9 @@ mod utils;
 #[cfg(all(tracing_unstable, feature = "valuable"))]
 mod valuable;
 
+#[cfg(feature = "valuable")]
+compile_error!("gcp-logging `valuable` is still a work in progress");
+
 #[inline]
 pub fn init_logging(project_id: &'static str, stage: Stage) -> middleware::TraceLayer {
     init_logging_opt(project_id, stage, DefaultLogOptions)
@@ -187,3 +190,11 @@ where
         writer.write_str("\n")
     }
 }
+
+/*
+pub struct Serde<'a, T: ?Sized>(pub &'a T);
+
+impl<T: serde::Serialize + ?Sized> tracing::Value for Serde<'_, T> {
+    fn record(&self, key: &tracing::field::Field, visitor: &mut dyn tracing::field::Visit) {}
+}
+ */
