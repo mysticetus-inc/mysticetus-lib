@@ -32,6 +32,12 @@ pub(crate) type HttpClient<R = GaiResolver> = Client<HttpConnector<R>>;
 pub(crate) type HttpsClient<R = GaiResolver> = Client<HttpsConnector<HttpConnector<R>>>;
 
 fn make_https_connection<R>(resolver: R) -> std::io::Result<HttpsConnector<HttpConnector<R>>> {
+    static INIT_RUSTLS: std::sync::Once = std::sync::Once::new();
+
+    INIT_RUSTLS.call_once(|| {
+        _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    });
+
     let builder = {
         #[cfg(feature = "webpki-roots")]
         {
