@@ -11,15 +11,45 @@ const DEFAULT_TOKEN_LIFETIME: Duration = Duration::from_seconds(3600 - 10);
 #[derive(serde::Deserialize)]
 pub struct Token<T = ()> {
     access_token: Box<str>,
-    #[serde(rename = "expires_at", deserialize_with = "deserialize_expires_at")]
+    #[serde(rename = "expires_in", deserialize_with = "deserialize_expires_at")]
     expires_at: Timestamp,
     /// used when deserializing tokens from the metadata server,
     /// to ensure that `"token_type": "Bearer"`
     token_type: T,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug)]
 pub(crate) struct Bearer;
+
+impl<'de> serde::Deserialize<'de> for Bearer {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> serde::de::Visitor<'vde> for Visitor {
+            type Value = Bearer;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a `Bearer` token_type")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                if v == "Bearer" {
+                    Ok(Bearer)
+                } else {
+                    Err(E::invalid_value(serde::de::Unexpected::Str(v), &self))
+                }
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
 
 impl Token<Bearer> {
     #[inline]
@@ -72,6 +102,14 @@ impl Token {
             expires_at: Timestamp::now().add_duration(DEFAULT_TOKEN_LIFETIME),
             token_type: (),
         }
+    }
+
+    pub fn access_token(&self) -> &str {
+        &self.access_token
+    }
+
+    pub fn expires_at(&self) -> timestamp::Timestamp {
+        self.expires_at
     }
 }
 

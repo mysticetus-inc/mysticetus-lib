@@ -2,6 +2,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use bytes::Bytes;
+use http::HeaderValue;
 use http_body::{Body, Frame};
 use hyper::body::Incoming;
 use hyper_rustls::HttpsConnector;
@@ -12,6 +13,9 @@ use hyper_util::rt;
 use tower::Service;
 
 use crate::Error;
+
+const USER_AGENT: HeaderValue =
+    HeaderValue::from_static(concat!("gcp-auth-provider ", env!("CARGO_PKG_VERSION")));
 
 /// Simple HTTP 1|2 client that avoids the overhead of using reqwest.
 ///
@@ -61,6 +65,30 @@ impl Client<HttpsConnector<HttpConnector<GaiResolver>>> {
     }
 }
 
+fn insert_headers_for_request(request: &mut http::Request<BytesBody>) {
+    fn insert_missing_header(
+        headers: &mut http::HeaderMap,
+        name: http::HeaderName,
+        make_header: impl FnOnce() -> HeaderValue,
+    ) {
+        if let http::header::Entry::Vacant(vacant) = headers.entry(name) {
+            vacant.insert(make_header());
+        }
+    }
+    let body_len = request.body().len();
+    let headers = request.headers_mut();
+
+    insert_missing_header(headers, http::header::ACCEPT, || {
+        HeaderValue::from_static("*/*")
+    });
+
+    insert_missing_header(headers, http::header::USER_AGENT, || USER_AGENT);
+
+    insert_missing_header(headers, http::header::CONTENT_LENGTH, || {
+        HeaderValue::from(body_len)
+    });
+}
+
 impl<Connector> Client<Connector>
 where
     Connector: Clone + Connect,
@@ -75,6 +103,8 @@ where
     }
 
     pub async fn request(&self, mut request: http::Request<BytesBody>) -> Result<Bytes, Error> {
+        insert_headers_for_request(&mut request);
+
         let mut response = self.request_with_retry(&request).await?;
 
         // handle at most 1 redirect
@@ -126,6 +156,17 @@ where
         // since it's likely to work first try (assuming a valid request)
         let mut error = make_request!();
 
+        if cfg!(debug_assertions) {
+            return match error {
+                ErrorKind::Error(error) => Err(error),
+                ErrorKind::Response(resp) => {
+                    let response_error =
+                        crate::ResponseError::from_response(request.uri().clone(), resp).await?;
+                    Err(Error::Response(response_error))
+                }
+            };
+        }
+
         let mut backoff = net_utils::backoff::Backoff::default();
 
         while let Some(backoff_delay) = backoff.backoff_once() {
@@ -168,6 +209,10 @@ impl BytesBody {
     pub(crate) fn new(bytes: Bytes) -> Self {
         Self { bytes: Some(bytes) }
     }
+
+    pub(crate) fn len(&self) -> usize {
+        self.bytes.as_ref().map(Bytes::len).unwrap_or(0)
+    }
 }
 
 impl Body for BytesBody {
@@ -187,10 +232,7 @@ impl Body for BytesBody {
 
     #[inline]
     fn is_end_stream(&self) -> bool {
-        match self.bytes {
-            Some(ref buf) => !buf.is_empty(),
-            None => true,
-        }
+        self.bytes.is_none()
     }
 }
 

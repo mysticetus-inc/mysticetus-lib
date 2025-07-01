@@ -2,12 +2,14 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use gcp_auth::Token;
+use http::HeaderValue;
+use timestamp::Timestamp;
 use tokio_util::sync::ReusableBoxFuture;
 
 use crate::Scope;
 
 pub(super) struct PendingRequest {
-    future: ReusableBoxFuture<'static, Result<Arc<Token>, gcp_auth::Error>>,
+    future: ReusableBoxFuture<'static, crate::Result<(HeaderValue, Timestamp)>>,
     state: State,
 }
 
@@ -17,10 +19,11 @@ enum State {
 }
 
 impl PendingRequest {
-    pub(super) fn new(provider: Arc<dyn gcp_auth::TokenProvider>, scope: Scope) -> Self {
+    pub(super) fn new(provider: &Arc<super::Provider>, scope: Scope) -> Self {
+        let future = provider.get_token(scope);
         Self {
             state: State::Pending,
-            future: ReusableBoxFuture::new(async move { provider.token(&[scope.as_str()]).await }),
+            future: ReusableBoxFuture::new(future),
         }
     }
 
@@ -28,20 +31,15 @@ impl PendingRequest {
         matches!(self.state, State::Pending)
     }
 
-    pub(super) fn start_request(
-        &mut self,
-        provider: Arc<dyn gcp_auth::TokenProvider>,
-        scope: Scope,
-    ) {
-        self.future
-            .set(async move { provider.token(&[scope.as_str()]).await });
+    pub(super) fn start_request(&mut self, provider: &Arc<super::Provider>, scope: Scope) {
+        self.future.set(provider.get_token(scope));
         self.state = State::Pending;
     }
 
     pub(super) fn poll(
         &mut self,
         cx: &mut Context<'_>,
-    ) -> Poll<Result<Option<Arc<Token>>, gcp_auth::Error>> {
+    ) -> Poll<crate::Result<Option<(HeaderValue, Timestamp)>>> {
         if matches!(self.state, State::Empty) {
             return Poll::Ready(Ok(None));
         }

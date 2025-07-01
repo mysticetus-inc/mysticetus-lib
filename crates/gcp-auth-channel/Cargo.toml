@@ -17,9 +17,7 @@ pin-project-lite.workspace = true
 timestamp = { path = "../timestamp" }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["parking_lot", "sync"] }
-tonic = { workspace = true, features = [
-    "tls-webpki-roots",
-], optional = true }
+tonic = { workspace = true, features = ["tls-webpki-roots"], optional = true }
 # data-structures = { path = "../data-structures" }
 tower = { workspace = true, features = ["tracing", "timeout", "retry"] }
 tower-service = { version = "0.3.1", optional = true }
@@ -28,6 +26,7 @@ strum = { version = "0.24.1", features = ["derive"] }
 futures.workspace = true
 tokio-util = "0.7.11"
 memchr.workspace = true
+gcp-auth-provider = { path = "../gcp-auth-provider" }
 
 [features]
 channel = ["dep:tower-service", "dep:tonic"]

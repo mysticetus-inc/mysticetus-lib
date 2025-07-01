@@ -1,10 +1,13 @@
 use std::io;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::{Arc, LazyLock};
 use std::task::{Context, Poll};
 
 use http::{HeaderName, HeaderValue, Uri};
 use tokio::io::{AsyncRead, AsyncWrite};
+
+static HOST: &str = "http://metadata.google.internal";
 
 static TOKEN_URI: LazyLock<Uri> = LazyLock::new(|| {
     Uri::from_static("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token")
@@ -16,6 +19,20 @@ static PROJECT_ID_URI: LazyLock<Uri> = LazyLock::new(|| {
 
 const METADATA_FLAVOR_NAME: HeaderName = HeaderName::from_static("metadata-flavor");
 const METADATA_FLAVOR_VALUE: HeaderValue = HeaderValue::from_static("google");
+
+async fn lookup_metadata_host() -> std::io::Result<&'static [SocketAddr]> {
+    static SOCKET_ADDRS: tokio::sync::OnceCell<Vec<SocketAddr>> =
+        tokio::sync::OnceCell::const_new();
+
+    SOCKET_ADDRS
+        .get_or_try_init(|| async {
+            let addrs = tokio::net::lookup_host((HOST, 80)).await?;
+
+            Ok(addrs.collect::<Vec<_>>())
+        })
+        .await
+        .map(|vec| vec.as_slice())
+}
 
 #[derive(Debug, Clone)]
 pub struct MetadataServer {

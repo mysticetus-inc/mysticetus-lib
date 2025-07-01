@@ -3,10 +3,10 @@ use std::fmt;
 use std::future::{Future, IntoFuture};
 use std::path::Path;
 use std::pin::Pin;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, PoisonError, RwLock};
 use std::task::{Context, Poll};
 
-use gcp_auth::Token;
 use http::HeaderValue;
 
 #[cfg(any(debug_assertions, feature = "local-gcloud"))]
@@ -14,16 +14,84 @@ mod local_gcloud_provider;
 
 mod pending;
 use pending::PendingRequest;
+use timestamp::{Duration, Timestamp};
 
 use crate::Scope;
 
 /// Struct encapsulating all state + the auth manager itself.
 #[derive(Clone)]
 pub struct Auth {
-    provider: Arc<dyn gcp_auth::TokenProvider>,
+    provider: Arc<Provider>,
     scope: Scope,
     project_id: &'static str,
     state: Arc<RwLock<AuthState>>,
+}
+
+pub struct Provider {
+    new: Option<Arc<gcp_auth_provider::TokenProvider>>,
+    use_fallback: AtomicBool,
+    fallback: tokio::sync::OnceCell<Arc<dyn gcp_auth::TokenProvider>>,
+}
+
+impl Provider {
+    fn get_token(
+        self: &Arc<Self>,
+        scope: Scope,
+    ) -> impl Future<Output = crate::Result<(HeaderValue, Timestamp)>> + Send + 'static {
+        let this = Arc::clone(self);
+        async move {
+            if this.use_fallback.load(std::sync::atomic::Ordering::Relaxed) {
+                return this.get_from_fallback(scope).await;
+            }
+
+            let Some(ref new) = this.new else {
+                this.use_fallback
+                    .store(true, std::sync::atomic::Ordering::SeqCst);
+                return this.get_from_fallback(scope).await;
+            };
+
+            let result = new
+                .get_token(match scope {
+                    Scope::CloudPlatformAdmin => gcp_auth_provider::Scopes::CLOUD_PLATFORM_ADMIN,
+                    Scope::CloudPlatformReadOnly => {
+                        gcp_auth_provider::Scopes::CLOUD_PLATFORM_READ_ONLY
+                    }
+                    Scope::BigQueryAdmin => gcp_auth_provider::Scopes::BIG_QUERY_ADMIN,
+                    Scope::BigQueryReadWrite => gcp_auth_provider::Scopes::BIG_QUERY_READ_WRITE,
+                    Scope::BigQueryReadOnly => gcp_auth_provider::Scopes::BIG_QUERY_READ_ONLY,
+                    Scope::Firestore => gcp_auth_provider::Scopes::FIRESTORE,
+                    Scope::GcsAdmin => gcp_auth_provider::Scopes::GCS_ADMIN,
+                    Scope::GcsReadWrite => gcp_auth_provider::Scopes::GCS_READ_WRITE,
+                    Scope::GcsReadOnly => gcp_auth_provider::Scopes::GCS_READ_ONLY,
+                    Scope::CloudTasks => gcp_auth_provider::Scopes::CLOUD_TASKS,
+                    Scope::PubSub => gcp_auth_provider::Scopes::PUB_SUB,
+                    Scope::SpannerAdmin => gcp_auth_provider::Scopes::SPANNER_ADMIN,
+                    Scope::SpannerData => gcp_auth_provider::Scopes::SPANNER_DATA,
+                    Scope::FirestoreRealtimeDatabase => {
+                        gcp_auth_provider::Scopes::REALTIME_DATABASE
+                    }
+                })
+                .await;
+
+            match result {
+                Ok(token) => Ok((build_header(token.access_token()), token.expires_at())),
+                Err(error) => {
+                    tracing::error!(message = "new auth provider error, switching to fallback", ?error, provider = ?this.new);
+                    this.use_fallback
+                        .store(true, std::sync::atomic::Ordering::SeqCst);
+                    this.get_from_fallback(scope).await
+                }
+            }
+        }
+    }
+
+    async fn get_from_fallback(&self, scope: Scope) -> crate::Result<(HeaderValue, Timestamp)> {
+        let provider = self.fallback.get_or_try_init(gcp_auth::provider).await?;
+
+        let token = provider.token(&[scope.scope_uri()]).await?;
+
+        Ok((build_header(token.as_str()), token.expires_at().into()))
+    }
 }
 
 #[cfg(feature = "emulator")]
@@ -53,18 +121,16 @@ impl fmt::Debug for Auth {
 }
 
 struct AuthState {
-    cached_header: Option<(Arc<Token>, HeaderValue)>,
+    cached: Option<(HeaderValue, Timestamp)>,
     pending_request: PendingRequest,
 }
 
-fn build_header(token: &Token) -> HeaderValue {
+fn build_header(token: &str) -> HeaderValue {
     const BEARER_PREFIX: &str = "Bearer ";
-    let access_token = token.as_str();
-
-    let mut dst = bytes::BytesMut::with_capacity(BEARER_PREFIX.len() + access_token.len());
+    let mut dst = bytes::BytesMut::with_capacity(BEARER_PREFIX.len() + token.len());
 
     dst.extend_from_slice(BEARER_PREFIX.as_bytes());
-    dst.extend_from_slice(access_token.as_bytes());
+    dst.extend_from_slice(token.as_bytes());
 
     // SAFETY: we only append bytes from utf-8 strings to 'dst', therefore
     // this is safe and we can skip the checks.
@@ -127,10 +193,6 @@ impl Auth {
         self.project_id
     }
 
-    pub fn inner_auth(&self) -> &Arc<dyn gcp_auth::TokenProvider> {
-        &self.provider
-    }
-
     pub fn with_new_scope(&self, scope: Scope) -> Self {
         if scope == self.scope {
             return self.clone();
@@ -141,8 +203,8 @@ impl Auth {
             scope,
             project_id: self.project_id,
             state: Arc::new(RwLock::new(AuthState {
-                cached_header: None,
-                pending_request: PendingRequest::new(Arc::clone(&self.provider), scope),
+                cached: None,
+                pending_request: PendingRequest::new(&self.provider, scope),
             })),
         }
     }
@@ -181,36 +243,31 @@ impl Auth {
     #[cfg(any(debug_assertions, feature = "local-gcloud"))]
     pub fn new_gcloud(project_id: &'static str, scope: Scope) -> Self {
         match local_gcloud_provider::LocalGCloudProvider::try_load() {
-            Ok(Some(provider)) => Self::new_from_provider(project_id, Arc::from(provider), scope),
+            Ok(Some(provider)) => Self::new_from_provider(
+                project_id,
+                Arc::new(Provider {
+                    new: None,
+                    use_fallback: AtomicBool::new(true),
+                    fallback: tokio::sync::OnceCell::new_with(Some(Arc::from(provider))),
+                }),
+                scope,
+            ),
             Ok(None) => panic!("gcloud cli not found"),
             Err(error) => panic!("error trying to find gcloud: {error}"),
         }
     }
 
-    // the gcp_auth gcloud provider is broken, so we try to use our own in tests
-    #[cfg(any(debug_assertions, feature = "local-gcloud"))]
     pub async fn new(project_id: &'static str, scope: Scope) -> crate::Result<Self> {
-        println!("looking for local gcloud provider");
-        let provider = match local_gcloud_provider::LocalGCloudProvider::try_load() {
-            Ok(Some(provider)) => {
-                println!("using local gcloud provider");
-                Arc::from(provider)
-            }
-            Ok(None) => {
-                println!("gcloud not found, attempting to use fallback");
-                gcp_auth::provider().await?
-            }
-            Err(error) => {
-                println!("failed to load local gcloud, attempting to use fallback: {error}");
-                gcp_auth::provider().await?
-            }
-        };
-        Ok(Self::new_from_provider(project_id, provider, scope))
-    }
+        let (inner_provider, id) = gcp_auth_provider::TokenProvider::detect().await?;
 
-    #[cfg(not(any(debug_assertions, feature = "local-gcloud")))]
-    pub async fn new(project_id: &'static str, scope: Scope) -> crate::Result<Self> {
-        let provider = gcp_auth::provider().await?;
+        debug_assert_eq!(project_id, id.0.as_ref());
+
+        let provider = Arc::new(Provider {
+            new: Some(Arc::new(inner_provider)),
+            use_fallback: AtomicBool::new(false),
+            fallback: tokio::sync::OnceCell::const_new(),
+        });
+
         Ok(Self::new_from_provider(project_id, provider, scope))
     }
 
@@ -218,10 +275,14 @@ impl Auth {
         project_id: &'static str,
         scope: Scope,
     ) -> crate::Result<Self> {
-        match gcp_auth::MetadataServiceAccount::new().await {
-            Ok(provider) => Ok(Self::new_from_provider(
+        match gcp_auth_provider::TokenProvider::detect().await {
+            Ok((provider, _)) => Ok(Self::new_from_provider(
                 project_id,
-                Arc::new(provider),
+                Arc::new(Provider {
+                    new: Some(Arc::new(provider)),
+                    use_fallback: AtomicBool::new(false),
+                    fallback: tokio::sync::OnceCell::const_new(),
+                }),
                 scope,
             )),
             Err(error) => {
@@ -236,17 +297,17 @@ impl Auth {
 
     pub fn new_from_provider(
         project_id: &'static str,
-        provider: Arc<dyn gcp_auth::TokenProvider>,
+        provider: Arc<Provider>,
         scope: Scope,
     ) -> Self {
-        let provider_clone = Arc::clone(&provider);
+        let pending_request = PendingRequest::new(&provider, scope);
         Self {
             provider,
             scope,
             project_id,
             state: Arc::new(RwLock::new(AuthState {
-                cached_header: None,
-                pending_request: PendingRequest::new(provider_clone, scope),
+                cached: None,
+                pending_request,
             })),
         }
     }
@@ -261,7 +322,13 @@ impl Auth {
             debug_assert_eq!(project_id, proj_id);
         }
 
-        Self::new_from_provider(project_id, Arc::from(service_account), scope)
+        let provider = Provider {
+            fallback: tokio::sync::OnceCell::new_with(Some(Arc::from(service_account))),
+            use_fallback: AtomicBool::new(true),
+            new: None,
+        };
+
+        Self::new_from_provider(project_id, Arc::new(provider), scope)
     }
 
     pub fn new_from_service_account_json(
@@ -285,9 +352,9 @@ impl Auth {
     pub fn get_cached_header(&self) -> Option<HeaderValue> {
         let read_guard = self.state.read().unwrap_or_else(PoisonError::into_inner);
 
-        let (token, header) = read_guard.cached_header.as_ref()?;
+        let (header, expires_at) = read_guard.cached.as_ref()?;
 
-        if token.has_expired() {
+        if is_expired(*expires_at) {
             None
         } else {
             Some(header.clone())
@@ -303,8 +370,8 @@ impl Auth {
 
         // while we were waiting to acquire the write guard, see if
         // another thread already finished polling + updating the token
-        match &guard.cached_header {
-            Some((token, header)) if !token.has_expired() => {
+        match &guard.cached {
+            Some((header, expires_at)) if is_expired(*expires_at) => {
                 return GetHeaderResult::Cached(header.clone());
             }
             _ => (),
@@ -313,7 +380,7 @@ impl Auth {
         if !guard.pending_request.is_request_pending() {
             guard
                 .pending_request
-                .start_request(Arc::clone(&self.provider), self.scope);
+                .start_request(&self.provider, self.scope);
         }
 
         drop(guard);
@@ -323,6 +390,10 @@ impl Auth {
             retries_left: 5,
         })
     }
+}
+
+fn is_expired(expires_at: Timestamp) -> bool {
+    Timestamp::now() >= expires_at - Duration::from_seconds(15)
 }
 
 pin_project_lite::pin_project! {
@@ -345,17 +416,16 @@ impl Future for RefreshHeaderFuture {
             .unwrap_or_else(PoisonError::into_inner);
 
         loop {
-            match guard.cached_header {
-                Some((ref token, ref header)) if !token.has_expired() => {
+            match guard.cached {
+                Some((ref header, expires_at)) if !is_expired(expires_at) => {
                     return Poll::Ready(Ok(header.clone()));
                 }
                 _ => (),
             }
 
             match std::task::ready!(guard.pending_request.poll(cx)) {
-                Ok(Some(token)) => {
-                    let header = build_header(&token);
-                    guard.cached_header = Some((token, header.clone()));
+                Ok(Some((header, expires_at))) => {
+                    guard.cached = Some((header.clone(), expires_at));
                     return Poll::Ready(Ok(header));
                 }
                 Ok(None) => unreachable!(),
@@ -365,7 +435,7 @@ impl Future for RefreshHeaderFuture {
                     tracing::warn!(message="error getting auth token", error = ?err, retries_left=*this.retries_left);
                     guard
                         .pending_request
-                        .start_request(this.auth.provider.clone(), this.auth.scope);
+                        .start_request(&this.auth.provider, this.auth.scope);
                 }
             }
         }

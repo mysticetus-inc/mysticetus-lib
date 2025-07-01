@@ -5,7 +5,7 @@ mod error;
 mod gcloud;
 mod metadata;
 mod scope;
-mod service_account;
+pub mod service_account;
 mod state;
 mod token;
 mod util;
@@ -18,13 +18,13 @@ pub use token::Token;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum TokenProvider {
     #[cfg(feature = "gcloud")]
     GCloud(gcloud::GCloudProvider),
-    MetadataServer(Arc<metadata::MetadataServer>),
-    ServiceAccount(Arc<service_account::ServiceAccount>),
-    ApplicationDefault(Arc<application_default::ApplicationDefault>),
+    MetadataServer(metadata::MetadataServer),
+    ServiceAccount(service_account::ServiceAccount),
+    ApplicationDefault(application_default::ApplicationDefault),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -37,17 +37,17 @@ impl TokenProvider {
         if let Some((service_account, project_id)) =
             service_account::ServiceAccount::try_load(&mut ctx).await?
         {
-            return Ok((Self::ServiceAccount(Arc::new(service_account)), project_id));
+            return Ok((Self::ServiceAccount(service_account), project_id));
         }
 
         if let Some((metadata, project_id)) = metadata::MetadataServer::try_load(&mut ctx).await? {
-            return Ok((Self::MetadataServer(Arc::new(metadata)), project_id));
+            return Ok((Self::MetadataServer(metadata), project_id));
         }
 
         if let Some((app, project_id)) =
             application_default::ApplicationDefault::try_load(&mut ctx).await?
         {
-            return Ok((Self::ApplicationDefault(Arc::new(app)), project_id));
+            return Ok((Self::ApplicationDefault(app), project_id));
         }
 
         #[cfg(feature = "gcloud")]
@@ -69,17 +69,17 @@ impl TokenProvider {
     }
 
     pub fn get_token(
-        &self,
+        self: &Arc<Self>,
         scopes: Scopes,
     ) -> impl Future<Output = Result<Token>> + Send + 'static {
-        let this = self.clone();
+        let this = Arc::clone(self);
         async move {
-            match this {
+            match *this {
                 #[cfg(feature = "gcloud")]
-                Self::GCloud(gcloud) => gcloud.get_token(scopes).await,
-                Self::MetadataServer(meta) => meta.get_token(scopes).await,
-                Self::ServiceAccount(acct) => acct.get_token(scopes).await,
-                Self::ApplicationDefault(app) => app.get_token(scopes).await,
+                Self::GCloud(ref gcloud) => gcloud.get_token(scopes).await,
+                Self::MetadataServer(ref meta) => meta.get_token(scopes).await,
+                Self::ServiceAccount(ref acct) => acct.get_token(scopes).await,
+                Self::ApplicationDefault(ref app) => app.get_token(scopes).await,
             }
         }
     }

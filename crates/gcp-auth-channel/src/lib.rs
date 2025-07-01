@@ -34,6 +34,13 @@ pub enum Error {
     InvalidHeaderValue(http::header::InvalidHeaderValue),
 }
 
+impl From<gcp_auth_provider::Error> for Error {
+    fn from(value: gcp_auth_provider::Error) -> Self {
+        // TODO: replace this with the Auth variant once gcp_auth is phased out
+        Self::channel(value)
+    }
+}
+
 impl Error {
     #[cfg(feature = "channel")]
     pub(crate) fn channel(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {

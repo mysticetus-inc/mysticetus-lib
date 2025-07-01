@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{fmt, io};
@@ -14,7 +15,8 @@ use http::HeaderValue;
 use rustls_pki_types::pem::PemObject;
 use timestamp::Timestamp;
 
-use crate::{Error, ProjectId, Scopes};
+use crate::token::Bearer;
+use crate::{Error, ProjectId, Scopes, Token};
 
 const FORM_URL_ENCODED: HeaderValue = HeaderValue::from_static("application/x-www-form-urlencoded");
 
@@ -82,14 +84,9 @@ impl ServiceAccount {
         });
 
         let body = form_urlencoded::Serializer::new(dst)
-            .extend_pairs(&[
-                ("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
-                ("assertion", jwt.as_str()),
-            ])
+            .extend_pairs(&[("grant_type", GRANT_TYPE), ("assertion", jwt.as_str())])
             .finish()
             .into_bytes();
-
-        println!("body: {}", bstr::BStr::new(&body));
 
         MAX_URL_ENCODED_LEN.fetch_max(body.len(), Ordering::Relaxed);
         Ok(Bytes::from(body))
@@ -145,9 +142,9 @@ impl crate::RawTokenProvider for ServiceAccount {
                 .body(crate::client::BytesBody::new(body))
                 .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
 
-            let token = client.request_json(request).await?;
+            let token = client.request_json::<Token<Bearer>>(request).await?;
 
-            Ok(token)
+            Ok(token.into_unit_token_type())
         }
     }
 }
@@ -241,14 +238,23 @@ impl Signer {
 }
 
 impl<'a> ServiceAccountKey<'a> {
-    pub(crate) fn from_json_bytes(
+    pub fn from_json_bytes(
         bytes: &'a [u8],
     ) -> Result<Self, path_aware_serde::Error<serde_json::Error>> {
-        serde_json::from_slice(bytes).map_err(path_aware_serde::Error::from)
-        // path_aware_serde::json::deserialize_slice(bytes)
+        // serde_json::from_slice(bytes).map_err(path_aware_serde::Error::from)
+        path_aware_serde::json::deserialize_slice(bytes)
     }
 
-    pub(crate) async fn from_env<F, O>(visitor: F) -> Result<Option<O>, Error>
+    pub async fn from_path<F, O>(path: &Path, visitor: F) -> Result<Option<O>, Error>
+    where
+        for<'b> F: FnOnce(ServiceAccountKey<'b>) -> O,
+    {
+        let bytes = tokio::fs::read(path).await?;
+        let key = ServiceAccountKey::from_json_bytes(&bytes)?;
+        Ok(Some(visitor(key)))
+    }
+
+    pub async fn from_env<F, O>(visitor: F) -> Result<Option<O>, Error>
     where
         for<'b> F: FnOnce(ServiceAccountKey<'b>) -> O,
     {
@@ -260,10 +266,7 @@ impl<'a> ServiceAccountKey<'a> {
             return Ok(None);
         }
 
-        let bytes = tokio::fs::read(path).await?;
-
-        let key = ServiceAccountKey::from_json_bytes(&bytes)?;
-        Ok(Some(visitor(key)))
+        Self::from_path(Path::new(&path), visitor).await
     }
 }
 
@@ -299,6 +302,7 @@ impl serde::Serialize for Audience<'_> {
 impl<'a> Claims<'a> {
     fn new(service_acct: &'a ServiceAccount, scope: Scopes) -> Self {
         let now = Timestamp::now();
+
         Self {
             iss: &service_acct.shared.client_email,
             aud: match service_acct.audience.as_deref() {
@@ -309,7 +313,12 @@ impl<'a> Claims<'a> {
             exp: now
                 .add_duration(timestamp::Duration::from_seconds(3600 - 5))
                 .as_seconds(),
-            sub: service_acct.subject.as_deref(),
+            sub: Some(
+                service_acct
+                    .subject
+                    .as_deref()
+                    .unwrap_or(&service_acct.shared.client_email),
+            ),
             scope,
         }
     }
@@ -341,7 +350,6 @@ impl<'a> Claims<'a> {
 
             buf.clear();
             self.encode_claims(&mut *buf)?;
-            println!("claims: {}", bstr::BStr::new(&*buf));
 
             URL_SAFE_NO_PAD.encode_string(&*buf, &mut jwt);
 
@@ -353,8 +361,6 @@ impl<'a> Claims<'a> {
         })?;
 
         MAX_JWT_CAPACITY.fetch_max(jwt.len(), Ordering::Relaxed);
-
-        println!("jwt: {jwt}");
 
         Ok(jwt)
     }
@@ -379,7 +385,7 @@ mod tests {
     use crate::RawTokenProvider;
 
     #[tokio::test]
-    async fn test_keys() -> Result<(), Error> {
+    async fn test_service_account() -> Result<(), Error> {
         let (service_acct, project_id) = ServiceAccount::try_load(&mut Default::default())
             .await?
             .unwrap();
