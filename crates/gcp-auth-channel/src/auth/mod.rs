@@ -19,7 +19,7 @@ use timestamp::{Duration, Timestamp};
 use crate::Scope;
 
 /// Struct encapsulating all state + the auth manager itself.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Auth {
     provider: Arc<Provider>,
     scope: Scope,
@@ -31,6 +31,15 @@ pub struct Provider {
     new: Option<Arc<gcp_auth_provider::TokenProvider>>,
     use_fallback: AtomicBool,
     fallback: tokio::sync::OnceCell<Arc<dyn gcp_auth::TokenProvider>>,
+}
+
+impl std::fmt::Debug for Provider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Provider")
+            .field("new", &self.new.as_ref())
+            .field("use_fallback", &self.use_fallback)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Provider {
@@ -75,7 +84,7 @@ impl Provider {
 
             match result {
                 Ok(token) => {
-                    tracing::info!(message = "got token from new provider", ?token);
+                    tracing::info!(message = "got token from new provider", ?token, provider = ?this);
                     Ok((build_header(token.access_token()), token.expires_at()))
                 }
                 Err(error) => {
@@ -94,7 +103,7 @@ impl Provider {
         let token = provider.token(&[scope.scope_uri()]).await?;
 
         let expires_at = token.expires_at().into();
-        tracing::info!(message = "got token from fallback provider", %expires_at);
+        tracing::info!(message = "got token from fallback provider", %expires_at, provider = ?self);
 
         Ok((build_header(token.as_str()), expires_at))
     }
@@ -118,17 +127,21 @@ impl gcp_auth::TokenProvider for EmulatorTokenProvider {
     }
 }
 
-impl fmt::Debug for Auth {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Auth")
-            .field("scope", &self.scope)
-            .finish_non_exhaustive()
-    }
-}
-
 struct AuthState {
     cached: Option<(HeaderValue, Timestamp)>,
     pending_request: PendingRequest,
+}
+
+impl fmt::Debug for AuthState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AuthState")
+            .field("cached", &self.cached)
+            .field(
+                "has_pending_request",
+                &self.pending_request.is_request_pending(),
+            )
+            .finish()
+    }
 }
 
 fn build_header(token: &str) -> HeaderValue {
@@ -140,7 +153,9 @@ fn build_header(token: &str) -> HeaderValue {
 
     // SAFETY: we only append bytes from utf-8 strings to 'dst', therefore
     // this is safe and we can skip the checks.
-    unsafe { HeaderValue::from_maybe_shared_unchecked(dst.freeze()) }
+    let mut header = unsafe { HeaderValue::from_maybe_shared_unchecked(dst.freeze()) };
+    header.set_sensitive(true);
+    header
 }
 
 pub enum GetHeaderResult {
@@ -380,7 +395,7 @@ impl Auth {
 
     pub fn get_header(&self) -> GetHeaderResult {
         if let Some(token) = self.get_cached_header() {
-            tracing::debug!("returning cached token");
+            tracing::debug!(message = "returning cached token", auth = ?self);
             return GetHeaderResult::Cached(token);
         }
 
@@ -390,14 +405,14 @@ impl Auth {
         // another thread already finished polling + updating the token
         match &guard.cached {
             Some((header, expires_at)) if is_expired(*expires_at) => {
-                tracing::debug!("returning newly cached token");
+                tracing::debug!(message = "returning newly cached token", auth = ?self);
                 return GetHeaderResult::Cached(header.clone());
             }
             _ => (),
         }
 
         if !guard.pending_request.is_request_pending() {
-            tracing::debug!("starting request for new token");
+            tracing::debug!(message = "starting request for new token", auth = ?self);
             guard
                 .pending_request
                 .start_request(&self.provider, self.scope);
@@ -456,7 +471,7 @@ impl Future for RefreshHeaderFuture {
                 Err(err) if *this.retries_left == 0 => return Poll::Ready(Err(err.into())),
                 Err(err) => {
                     *this.retries_left -= 1;
-                    tracing::warn!(message="error getting auth token", error = ?err, retries_left=*this.retries_left);
+                    tracing::warn!(message="error getting auth token", auth = ?this.auth, error = ?err, retries_left=*this.retries_left);
                     guard
                         .pending_request
                         .start_request(&this.auth.provider, this.auth.scope);
