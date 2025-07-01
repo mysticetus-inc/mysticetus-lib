@@ -214,6 +214,26 @@ impl Auth {
         Ok(Self::new_from_provider(project_id, provider, scope))
     }
 
+    pub async fn new_metadata_server(
+        project_id: &'static str,
+        scope: Scope,
+    ) -> crate::Result<Self> {
+        match gcp_auth::MetadataServiceAccount::new().await {
+            Ok(provider) => Ok(Self::new_from_provider(
+                project_id,
+                Arc::new(provider),
+                scope,
+            )),
+            Err(error) => {
+                tracing::warn!(
+                    message = "failed to reach metadata server, trying fallback",
+                    ?error
+                );
+                Self::new(project_id, scope).await
+            }
+        }
+    }
+
     pub fn new_from_provider(
         project_id: &'static str,
         provider: Arc<dyn gcp_auth::TokenProvider>,
