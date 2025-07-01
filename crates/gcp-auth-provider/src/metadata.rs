@@ -18,7 +18,7 @@ static PROJECT_ID_URI: LazyLock<Uri> = LazyLock::new(|| {
 });
 
 const METADATA_FLAVOR_NAME: HeaderName = HeaderName::from_static("metadata-flavor");
-const METADATA_FLAVOR_VALUE: HeaderValue = HeaderValue::from_static("google");
+const METADATA_FLAVOR_VALUE: HeaderValue = HeaderValue::from_static("Google");
 
 async fn lookup_metadata_host() -> std::io::Result<&'static [SocketAddr]> {
     static SOCKET_ADDRS: tokio::sync::OnceCell<Vec<SocketAddr>> =
