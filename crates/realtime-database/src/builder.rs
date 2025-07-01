@@ -61,7 +61,7 @@ impl RealtimeDbBuilder<'_> {
 }
 
 impl RealtimeDbBuilder<'_> {
-    pub fn from_service_account_file<P>(mut self, path: P) -> Result<Self, crate::Error>
+    pub async fn from_service_account_file<P>(mut self, path: P) -> Result<Self, crate::Error>
     where
         P: AsRef<Path>,
     {
@@ -71,7 +71,8 @@ impl RealtimeDbBuilder<'_> {
             Scope::FirestoreRealtimeDatabase
         };
 
-        let auth_manager = Auth::new_from_service_account_file(self.project_id, path, scope)?;
+        let auth_manager =
+            Auth::new_from_service_account_file(self.project_id, path, scope).await?;
 
         self.auth_manager = Some(auth_manager);
         Ok(self)

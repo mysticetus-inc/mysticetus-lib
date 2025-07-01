@@ -314,18 +314,15 @@ impl Auth {
 
     fn new_from_service_account(
         project_id: &'static str,
-        service_account: gcp_auth::CustomServiceAccount,
+        service_account: gcp_auth_provider::service_account::ServiceAccount,
         scope: Scope,
     ) -> Self {
-        #[cfg(debug_assertions)]
-        if let Some(proj_id) = service_account.project_id() {
-            debug_assert_eq!(project_id, proj_id);
-        }
-
         let provider = Provider {
-            fallback: tokio::sync::OnceCell::new_with(Some(Arc::from(service_account))),
-            use_fallback: AtomicBool::new(true),
-            new: None,
+            fallback: tokio::sync::OnceCell::new(),
+            use_fallback: AtomicBool::new(false),
+            new: Some(Arc::new(gcp_auth_provider::TokenProvider::ServiceAccount(
+                service_account,
+            ))),
         };
 
         Self::new_from_provider(project_id, Arc::new(provider), scope)
@@ -336,17 +333,26 @@ impl Auth {
         json: &str,
         scope: Scope,
     ) -> crate::Result<Self> {
-        let provider = gcp_auth::CustomServiceAccount::from_json(json)?;
-        Ok(Self::new_from_service_account(project_id, provider, scope))
+        let (svc_acct, proj_id) =
+            gcp_auth_provider::service_account::ServiceAccount::new_from_json_bytes(
+                json.as_bytes(),
+            )?;
+
+        debug_assert_eq!(project_id, proj_id.0.as_ref());
+
+        Ok(Self::new_from_service_account(project_id, svc_acct, scope))
     }
 
-    pub fn new_from_service_account_file(
+    pub async fn new_from_service_account_file(
         project_id: &'static str,
         path: impl AsRef<Path>,
         scope: Scope,
     ) -> crate::Result<Self> {
-        let provider = gcp_auth::CustomServiceAccount::from_file(path.as_ref())?;
-        Ok(Self::new_from_service_account(project_id, provider, scope))
+        let (svc_acct, proj_id) =
+            gcp_auth_provider::service_account::ServiceAccount::new_from_json_file(path.as_ref())
+                .await?;
+        debug_assert_eq!(project_id, proj_id.0.as_ref());
+        Ok(Self::new_from_service_account(project_id, svc_acct, scope))
     }
 
     pub fn get_cached_header(&self) -> Option<HeaderValue> {

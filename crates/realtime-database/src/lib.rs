@@ -189,7 +189,8 @@ mod tests {
 
     lazy_static::lazy_static! {
         static ref AUTH: Auth = {
-            Auth::new_from_service_account_file(PROJECT_ID, CERT, gcp_auth_channel::Scope::FirestoreRealtimeDatabase).unwrap()
+            todo!()
+            //Auth::new_from_service_account_file(PROJECT_ID, CERT, gcp_auth_channel::Scope::FirestoreRealtimeDatabase).unwrap()
         };
     }
 

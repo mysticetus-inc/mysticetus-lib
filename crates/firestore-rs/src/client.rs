@@ -110,9 +110,14 @@ impl FirestoreClient {
     where
         P: AsRef<Path>,
     {
-        let auth = Auth::new_from_service_account_file(project_id, path.as_ref(), scope)?;
-
-        let channel = build_channel().await?;
+        let (auth, channel) = tokio::try_join!(
+            async move {
+                Auth::new_from_service_account_file(project_id, path.as_ref(), scope)
+                    .await
+                    .map_err(crate::Error::from)
+            },
+            build_channel(),
+        )?;
 
         Ok(Self::new_inner(auth, channel))
     }

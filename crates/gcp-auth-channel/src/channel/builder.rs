@@ -59,7 +59,7 @@ impl<C, S, A> AuthChannelBuilder<C, S, A> {
 
 impl<C> AuthChannelBuilder<C, Scope, ()> {
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_service_account_file<P>(
+    pub async fn from_service_account_file<P>(
         self,
         project_id: &'static str,
         path: P,
@@ -69,7 +69,8 @@ impl<C> AuthChannelBuilder<C, Scope, ()> {
     {
         Ok(AuthChannelBuilder {
             channel: self.channel,
-            auth: Auth::new_from_service_account_file(project_id, path.as_ref(), self.scope)?,
+            auth: Auth::new_from_service_account_file(project_id, path.as_ref(), self.scope)
+                .await?,
             scope: self.scope,
         })
     }

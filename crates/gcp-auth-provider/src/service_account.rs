@@ -40,6 +40,21 @@ impl fmt::Debug for ServiceAccount {
 }
 
 impl ServiceAccount {
+    pub fn new_from_json_bytes(bytes: &[u8]) -> Result<(Self, ProjectId), Error> {
+        ServiceAccountKey::from_json_bytes(bytes)
+            .map_err(Error::Json)
+            .and_then(Self::new_from_key)
+    }
+
+    pub async fn new_from_json_file(path: &Path) -> Result<(Self, ProjectId), Error> {
+        ServiceAccountKey::from_path(path, Self::new_from_key).await?
+    }
+
+    pub fn new_from_key(key: ServiceAccountKey<'_>) -> Result<(Self, ProjectId), Error> {
+        let client = crate::client::HttpsClient::new_https()?;
+        Self::from_parts(client, key).map_err(|(error, _)| error)
+    }
+
     fn from_parts(
         client: crate::client::HttpsClient,
         key: ServiceAccountKey<'_>,
@@ -151,7 +166,7 @@ impl crate::RawTokenProvider for ServiceAccount {
 
 #[derive(serde::Deserialize)]
 #[serde(bound = "'de: 'a")]
-struct ServiceAccountKey<'a> {
+pub struct ServiceAccountKey<'a> {
     #[serde(with = "serde_helpers::borrow")]
     project_id: Cow<'a, str>,
     #[serde(with = "serde_helpers::borrow")]
@@ -245,13 +260,13 @@ impl<'a> ServiceAccountKey<'a> {
         path_aware_serde::json::deserialize_slice(bytes)
     }
 
-    pub async fn from_path<F, O>(path: &Path, visitor: F) -> Result<Option<O>, Error>
+    pub async fn from_path<F, O>(path: &Path, visitor: F) -> Result<O, Error>
     where
         for<'b> F: FnOnce(ServiceAccountKey<'b>) -> O,
     {
         let bytes = tokio::fs::read(path).await?;
         let key = ServiceAccountKey::from_json_bytes(&bytes)?;
-        Ok(Some(visitor(key)))
+        Ok(visitor(key))
     }
 
     pub async fn from_env<F, O>(visitor: F) -> Result<Option<O>, Error>
@@ -266,7 +281,7 @@ impl<'a> ServiceAccountKey<'a> {
             return Ok(None);
         }
 
-        Self::from_path(Path::new(&path), visitor).await
+        Self::from_path(Path::new(&path), visitor).await.map(Some)
     }
 }
 

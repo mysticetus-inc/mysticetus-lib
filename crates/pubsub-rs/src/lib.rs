@@ -74,8 +74,14 @@ impl PubSubClient {
     where
         S: AsRef<Path>,
     {
-        let auth = Auth::new_from_service_account_file(project_id, path.as_ref(), scope)?;
-        let channel = build_channel().await?;
+        let (auth, channel) = tokio::try_join!(
+            async move {
+                Auth::new_from_service_account_file(project_id, path.as_ref(), scope)
+                    .await
+                    .map_err(Error::from)
+            },
+            build_channel()
+        )?;
 
         let channel = AuthChannel::builder()
             .with_channel(channel)
