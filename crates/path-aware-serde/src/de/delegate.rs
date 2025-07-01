@@ -66,6 +66,7 @@ where
 
     impl_wrapper_visitor_fns! {
         visit_bool(bool),
+        visit_bytes(&[u8]),
         visit_borrowed_bytes(&'de [u8]),
         visit_borrowed_str(&'de str),
         visit_byte_buf(Vec<u8>),
