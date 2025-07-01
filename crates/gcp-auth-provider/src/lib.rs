@@ -2,8 +2,8 @@ mod application_default;
 mod client;
 mod error;
 #[cfg(feature = "gcloud")]
-mod gcloud;
-mod metadata;
+pub mod gcloud;
+pub mod metadata;
 mod scope;
 pub mod service_account;
 mod state;

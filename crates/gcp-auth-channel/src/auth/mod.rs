@@ -74,7 +74,10 @@ impl Provider {
                 .await;
 
             match result {
-                Ok(token) => Ok((build_header(token.access_token()), token.expires_at())),
+                Ok(token) => {
+                    tracing::info!(message = "got token from new provider", ?token);
+                    Ok((build_header(token.access_token()), token.expires_at()))
+                }
                 Err(error) => {
                     tracing::error!(message = "new auth provider error, switching to fallback", ?error, provider = ?this.new);
                     this.use_fallback
@@ -90,7 +93,10 @@ impl Provider {
 
         let token = provider.token(&[scope.scope_uri()]).await?;
 
-        Ok((build_header(token.as_str()), token.expires_at().into()))
+        let expires_at = token.expires_at().into();
+        tracing::info!(message = "got token from fallback provider", %expires_at);
+
+        Ok((build_header(token.as_str()), expires_at))
     }
 }
 
@@ -275,19 +281,24 @@ impl Auth {
         project_id: &'static str,
         scope: Scope,
     ) -> crate::Result<Self> {
-        match gcp_auth_provider::TokenProvider::detect().await {
-            Ok((provider, _)) => Ok(Self::new_from_provider(
-                project_id,
-                Arc::new(Provider {
-                    new: Some(Arc::new(provider)),
-                    use_fallback: AtomicBool::new(false),
-                    fallback: tokio::sync::OnceCell::const_new(),
-                }),
-                scope,
-            )),
+        match gcp_auth_provider::metadata::MetadataServer::new().await {
+            Ok((provider, proj_id)) => {
+                debug_assert_eq!(project_id, proj_id.0.as_ref());
+                Ok(Self::new_from_provider(
+                    project_id,
+                    Arc::new(Provider {
+                        new: Some(Arc::new(gcp_auth_provider::TokenProvider::MetadataServer(
+                            provider,
+                        ))),
+                        use_fallback: AtomicBool::new(false),
+                        fallback: tokio::sync::OnceCell::const_new(),
+                    }),
+                    scope,
+                ))
+            }
             Err(error) => {
                 tracing::warn!(
-                    message = "failed to reach metadata server, trying fallback",
+                    message = "failed to connect to the metadata instance, falling back",
                     ?error
                 );
                 Self::new(project_id, scope).await
@@ -369,6 +380,7 @@ impl Auth {
 
     pub fn get_header(&self) -> GetHeaderResult {
         if let Some(token) = self.get_cached_header() {
+            tracing::debug!("returning cached token");
             return GetHeaderResult::Cached(token);
         }
 
@@ -378,12 +390,14 @@ impl Auth {
         // another thread already finished polling + updating the token
         match &guard.cached {
             Some((header, expires_at)) if is_expired(*expires_at) => {
+                tracing::debug!("returning newly cached token");
                 return GetHeaderResult::Cached(header.clone());
             }
             _ => (),
         }
 
         if !guard.pending_request.is_request_pending() {
+            tracing::debug!("starting request for new token");
             guard
                 .pending_request
                 .start_request(&self.provider, self.scope);
@@ -424,6 +438,10 @@ impl Future for RefreshHeaderFuture {
         loop {
             match guard.cached {
                 Some((ref header, expires_at)) if !is_expired(expires_at) => {
+                    tracing::debug!(
+                        "got {} byte token, expires at {expires_at}",
+                        header.as_bytes().len()
+                    );
                     return Poll::Ready(Ok(header.clone()));
                 }
                 _ => (),

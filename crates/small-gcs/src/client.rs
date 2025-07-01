@@ -160,4 +160,35 @@ impl BucketClient {
             Some(&mut self.url_buffer),
         )
     }
+
+    pub async fn list_notification_configs(&self) -> Result<serde_json::Value, Error> {
+        let header = self.auth().get_header().await?;
+        let url = format!(
+            "https://storage.googleapis.com/storage/v1/b/{}/notificationConfigs",
+            self.bucket
+        );
+        let (client, result) = self
+            .client
+            .client
+            .get(url)
+            .header(reqwest::header::AUTHORIZATION, header)
+            .build_split();
+
+        let request = result?;
+
+        let resp = crate::execute_and_validate_with_backoff(&client, request).await?;
+
+        resp.json().await.map_err(Error::Reqwest)
+    }
+}
+
+#[tokio::test]
+async fn test_list_notifications() -> Result<(), Error> {
+    let auth = gcp_auth_channel::Auth::new_gcloud("mysticetus-oncloud", Scope::GcsReadOnly);
+    let client = Client::from_parts(Default::default(), auth)
+        .into_bucket("mysticetus-replicated-data".into());
+
+    let configs = client.list_notification_configs().await?;
+    println!("{configs:#?}");
+    Ok(())
 }
