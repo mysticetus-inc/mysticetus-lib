@@ -13,9 +13,15 @@ pub mod streaming;
 pub use iter::ResultIter;
 pub use streaming::StreamingRead;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FieldIndex<Cols: ArrayLength> {
     fields: GenericArray<Field, Cols>,
+}
+
+impl<Cols: ArrayLength> std::fmt::Debug for FieldIndex<Cols> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.fields.iter()).finish()
+    }
 }
 
 impl<Cols: ArrayLength> FieldIndex<Cols> {

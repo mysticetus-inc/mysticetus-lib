@@ -11,6 +11,16 @@ pub struct ResultIter<T: Queryable> {
     stats: Option<spanner::ResultSetStats>,
 }
 
+impl<T: Queryable> std::fmt::Debug for ResultIter<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResultIter")
+            .field("stats", &self.stats)
+            .field("field_index", &self.field_index)
+            .field("rows", &self.rows.as_slice())
+            .finish()
+    }
+}
+
 impl<T: Queryable> ResultIter<T> {
     pub(crate) fn into_parts(self) -> (FieldIndex<T::NumColumns>, std::vec::IntoIter<ListValue>) {
         (self.field_index, self.rows)
