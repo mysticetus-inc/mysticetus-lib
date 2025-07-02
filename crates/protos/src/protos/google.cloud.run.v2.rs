@@ -149,6 +149,8 @@ pub mod condition {
         PostponedRetry = 15,
         /// An internal error occurred. Further information may be in the message.
         Internal = 16,
+        /// User-provided VPC network was not found.
+        VpcNetworkNotFound = 17,
     }
     impl CommonReason {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -174,6 +176,7 @@ pub mod condition {
                 Self::ImmediateRetry => "IMMEDIATE_RETRY",
                 Self::PostponedRetry => "POSTPONED_RETRY",
                 Self::Internal => "INTERNAL",
+                Self::VpcNetworkNotFound => "VPC_NETWORK_NOT_FOUND",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -196,6 +199,7 @@ pub mod condition {
                 "IMMEDIATE_RETRY" => Some(Self::ImmediateRetry),
                 "POSTPONED_RETRY" => Some(Self::PostponedRetry),
                 "INTERNAL" => Some(Self::Internal),
+                "VPC_NETWORK_NOT_FOUND" => Some(Self::VpcNetworkNotFound),
                 _ => None,
             }
         }
@@ -1325,6 +1329,9 @@ pub struct RevisionTemplate {
     /// Optional. The node selector for the revision template.
     #[prost(message, optional, tag = "21")]
     pub node_selector: ::core::option::Option<NodeSelector>,
+    /// Optional. True if GPU zonal redundancy is disabled on this revision.
+    #[prost(bool, optional, tag = "24")]
+    pub gpu_zonal_redundancy_disabled: ::core::option::Option<bool>,
 }
 /// Holds a single traffic routing entry for the Service. Allocations can be done
 /// to a specific Revision name, or pointing to the latest Ready Revision.
@@ -2200,6 +2207,13 @@ pub struct Revision {
     /// The node selector for the revision.
     #[prost(message, optional, tag = "40")]
     pub node_selector: ::core::option::Option<NodeSelector>,
+    /// Optional. Output only. True if GPU zonal redundancy is disabled on this
+    /// revision.
+    #[prost(bool, optional, tag = "48")]
+    pub gpu_zonal_redundancy_disabled: ::core::option::Option<bool>,
+    /// Output only. Email address of the authenticated creator.
+    #[prost(string, tag = "49")]
+    pub creator: ::prost::alloc::string::String,
     /// Output only. A system-generated fingerprint for this version of the
     /// resource. May be used to detect modification conflict during updates.
     #[prost(string, tag = "99")]
