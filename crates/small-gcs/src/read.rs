@@ -119,8 +119,7 @@ where
 
         let request = builder.build()?;
 
-        let resp =
-            crate::try_execute_with_backoff(&self.shared.client, request, Backoff::default).await?;
+        let resp = crate::try_execute_with_backoff(&self.shared, request, Backoff::default).await?;
 
         let resp = crate::validate_response(resp).await?;
 

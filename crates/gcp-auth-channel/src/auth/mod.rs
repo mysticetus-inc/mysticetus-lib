@@ -393,6 +393,18 @@ impl Auth {
         }
     }
 
+    pub fn revoke_token(&self, start_new_request: bool) {
+        let mut guard = self.state.write().unwrap_or_else(PoisonError::into_inner);
+
+        guard.cached = None;
+
+        if start_new_request && !guard.pending_request.is_request_pending() {
+            guard
+                .pending_request
+                .start_request(&self.provider, self.scope);
+        }
+    }
+
     pub fn get_header(&self) -> GetHeaderResult {
         if let Some(token) = self.get_cached_header() {
             tracing::debug!(message = "returning cached token", auth = ?self);

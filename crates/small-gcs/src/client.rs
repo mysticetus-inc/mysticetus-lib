@@ -58,7 +58,7 @@ impl Client {
             .header(header::AUTHORIZATION, auth_header)
             .build()?;
 
-        crate::execute_and_validate_with_backoff(&self.client, request).await?;
+        crate::execute_and_validate_with_backoff(&self, request).await?;
         Ok(())
     }
 
@@ -167,16 +167,14 @@ impl BucketClient {
             "https://storage.googleapis.com/storage/v1/b/{}/notificationConfigs",
             self.bucket
         );
-        let (client, result) = self
+        let request = self
             .client
             .client
             .get(url)
             .header(reqwest::header::AUTHORIZATION, header)
-            .build_split();
+            .build()?;
 
-        let request = result?;
-
-        let resp = crate::execute_and_validate_with_backoff(&client, request).await?;
+        let resp = crate::execute_and_validate_with_backoff(&self.client, request).await?;
 
         resp.json().await.map_err(Error::Reqwest)
     }

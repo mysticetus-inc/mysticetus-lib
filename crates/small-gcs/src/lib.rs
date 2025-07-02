@@ -68,7 +68,7 @@ pub mod params {
 }
 
 async fn try_execute_with_backoff<F>(
-    client: &reqwest::Client,
+    client: &Client,
     request: reqwest::Request,
     backoff_builder: F,
 ) -> Result<reqwest::Response, Error>
@@ -77,12 +77,19 @@ where
 {
     // helper that tries to clone a request, then make said request with the original.
     async fn execute_once(
-        client: &reqwest::Client,
-        request: reqwest::Request,
+        client: &Client,
+        mut request: reqwest::Request,
     ) -> Result<(Option<reqwest::Request>, reqwest::Response), Error> {
         let cloned = request.try_clone();
 
-        let resp = client.execute(request).await?;
+        if let reqwest::header::Entry::Vacant(vacant) =
+            request.headers_mut().entry(reqwest::header::AUTHORIZATION)
+        {
+            let header = client.auth.get_header().await?;
+            vacant.insert(header);
+        }
+
+        let resp = client.client.execute(request).await?;
         Ok((cloned, resp))
     }
 
@@ -90,17 +97,22 @@ where
     /// meet one of the 2 criteria for being retried:
     ///
     /// - A 429 (too many requests) status
+    /// - A 401 | 403 (auth error)
     /// - A 5XX server error, on google's end
     macro_rules! bail_if_no_retry {
         ($maybe_request:expr, $resp:expr) => {{
-            match (&$maybe_request, $resp.status().as_u16()) {
+            match (&mut $maybe_request, $resp.status().as_u16()) {
                 (Some(_), 429 | 500..=599) => (),
+                (Some(request), 401 | 403) => {
+                    client.auth.revoke_token(true);
+                    request.headers_mut().remove(reqwest::header::AUTHORIZATION);
+                }
                 _ => return Ok($resp),
             }
         }};
     }
 
-    let (mut maybe_request, mut last_response) = execute_once(client, request).await?;
+    let (mut maybe_request, mut last_response) = execute_once(&client, request).await?;
 
     bail_if_no_retry!(maybe_request, last_response);
 
@@ -116,7 +128,7 @@ where
             None => return Ok(last_response),
         }
 
-        (maybe_request, last_response) = execute_once(client, request).await?;
+        (maybe_request, last_response) = execute_once(&client, request).await?;
         bail_if_no_retry!(maybe_request, last_response);
     }
 
@@ -128,7 +140,7 @@ where
 
 /// Combines [`try_execute_with_backoff`] and [`validate_response`] into 1 function call.
 async fn execute_and_validate_with_backoff(
-    client: &reqwest::Client,
+    client: &Client,
     request: reqwest::Request,
 ) -> Result<reqwest::Response, Error> {
     use futures::TryFutureExt;

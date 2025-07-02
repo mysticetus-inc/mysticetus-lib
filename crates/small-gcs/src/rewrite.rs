@@ -174,7 +174,7 @@ async fn call_rewrite(
             .finish();
     }
 
-    crate::execute_and_validate_with_backoff(&client.client, request)
+    crate::execute_and_validate_with_backoff(&client, request)
         .await?
         .json()
         .await

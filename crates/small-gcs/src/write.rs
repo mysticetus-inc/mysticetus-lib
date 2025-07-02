@@ -214,7 +214,7 @@ async fn upload_body_inner(
         .body(body)
         .build()?;
 
-    let resp = crate::try_execute_with_backoff(&shared.client, request, Backoff::default).await?;
+    let resp = crate::try_execute_with_backoff(&shared, request, Backoff::default).await?;
 
     let ok_resp = crate::validate_response(resp).await?;
 

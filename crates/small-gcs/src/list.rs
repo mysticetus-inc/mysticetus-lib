@@ -102,7 +102,7 @@ impl<'a> ListBuilder<'a> {
                     let header = shared_clone.auth.get_header().await?;
 
                     request.headers_mut().insert(header::AUTHORIZATION, header);
-                    crate::execute_and_validate_with_backoff(&shared_clone.client, request)
+                    crate::execute_and_validate_with_backoff(&shared_clone, request)
                         .await?
                         .json()
                         .await
@@ -258,7 +258,7 @@ fn request_next_page<'a>(
             .query(&[("pageToken", token)])
             .build()?;
 
-        crate::execute_and_validate_with_backoff(&shared.client, request)
+        crate::execute_and_validate_with_backoff(&shared, request)
             .await?
             .json()
             .await
