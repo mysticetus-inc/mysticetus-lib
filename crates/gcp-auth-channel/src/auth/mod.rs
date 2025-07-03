@@ -393,6 +393,28 @@ impl Auth {
         }
     }
 
+    pub fn start_token_request(&self, force_refresh: bool) -> bool {
+        let mut guard = self.state.write().unwrap_or_else(PoisonError::into_inner);
+
+        if !force_refresh {
+            if let Some((_, expires_at)) = guard.cached {
+                if !is_expired(expires_at) {
+                    return false;
+                }
+            }
+        }
+
+        if guard.pending_request.is_request_pending() {
+            return false;
+        }
+
+        guard
+            .pending_request
+            .start_request(&self.provider, self.scope);
+
+        true
+    }
+
     pub fn revoke_token(&self, start_new_request: bool) {
         let mut guard = self.state.write().unwrap_or_else(PoisonError::into_inner);
 
@@ -416,7 +438,7 @@ impl Auth {
         // while we were waiting to acquire the write guard, see if
         // another thread already finished polling + updating the token
         match &guard.cached {
-            Some((header, expires_at)) if is_expired(*expires_at) => {
+            Some((header, expires_at)) if !is_expired(*expires_at) => {
                 tracing::debug!(message = "returning newly cached token", auth = ?self);
                 return GetHeaderResult::Cached(header.clone());
             }
