@@ -70,6 +70,23 @@ where
     middleware::TraceLayer::new(handle)
 }
 
+type DefaultSubscriber<O> = tracing_subscriber::fmt::Subscriber<
+    tracing_subscriber::fmt::format::JsonFields,
+    GoogleLogEventFormatter<O>,
+>;
+
+struct SpanInfo {}
+
+impl<O: LogOptions> tracing_subscriber::Layer<DefaultSubscriber<O>> for SpanInfo {
+    fn on_new_span(
+        &self,
+        attrs: &tracing::span::Attributes<'_>,
+        id: &tracing::span::Id,
+        ctx: tracing_subscriber::layer::Context<'_, DefaultSubscriber<O>>,
+    ) {
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GoogleLogEventFormatter<O = DefaultLogOptions> {
     project_id: &'static str,
@@ -93,6 +110,8 @@ pub trait LogOptions: Send + Sync + Clone + 'static {
 
     fn include_stage(&self, stage: Stage, meta: &tracing::Metadata<'_>) -> bool;
 
+    fn include_timestamp(&self, stage: Stage, meta: &tracing::Metadata<'_>) -> bool;
+
     fn try_get_backtrace(
         &self,
         meta: &tracing::Metadata<'_>,
@@ -111,6 +130,10 @@ impl LogOptions for DefaultLogOptions {
 
     fn treat_as_error(&self, meta: &tracing::Metadata<'_>) -> bool {
         matches!(*meta.level(), tracing::Level::ERROR)
+    }
+
+    fn include_timestamp(&self, _stage: Stage, _meta: &tracing::Metadata<'_>) -> bool {
+        true
     }
 
     fn include_stage(&self, _stage: Stage, _meta: &tracing::Metadata<'_>) -> bool {

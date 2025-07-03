@@ -177,16 +177,16 @@ where
 
         let meta = self.event.metadata();
 
-        let timestamp = self.timestamp.unwrap_or_else(Timestamp::now);
+        if self.options.include_timestamp(self.stage, meta) {
+            let timestamp = self.timestamp.unwrap_or_else(Timestamp::now);
 
-        map.serialize_entry(
-            TIMESTAMP_KEY,
-            &serialize_with!(timestamp; Timestamp::serialize_as_proto),
-        )?;
-        map.serialize_entry(
-            SEVERITY_KEY,
-            &serialize_with!(meta.level(); tracing::Level => serialize_as_severity),
-        )?;
+            map.serialize_entry(
+                TIMESTAMP_KEY,
+                &serialize_with!(timestamp; Timestamp::serialize_as_proto),
+            )?;
+        }
+
+        map.serialize_entry(SEVERITY_KEY, get_severity_string(meta.level()))?;
         map.serialize_entry(SOURCE_LOCATION_KEY, &SourceLocation::new(meta))?;
 
         self.serialize_request_trace(&mut map)?;
@@ -194,7 +194,7 @@ where
         let EventInfo {
             alert_found,
             labels,
-        } = serialize_event_payload(&mut map, self.event, self.options)?;
+        } = serialize_event_payload(&mut map, self.ctx, self.event, self.options)?;
 
         if alert_found && self.options.treat_as_error(meta) {
             map.serialize_entry(ALERT_ERROR_NAME, ALERT_ERROR_VALUE)?;
@@ -254,13 +254,6 @@ fn get_severity_string(level: &tracing::Level) -> &'static str {
     } else {
         "ERROR"
     }
-}
-
-fn serialize_as_severity<S>(level: &tracing::Level, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(get_severity_string(level))
 }
 
 #[derive(serde::Serialize)]
@@ -425,7 +418,7 @@ impl<M: SerializeMap> Visit for LabelsVisitor<'_, M> {
             let float_str = match value.classify() {
                 FpCategory::Normal | FpCategory::Subnormal => {
                     buf = ryu::Buffer::new();
-                    buf.format(value)
+                    buf.format_finite(value)
                 }
                 FpCategory::Zero => "0.0",
                 FpCategory::Infinite if value.is_sign_positive() => "Inf",

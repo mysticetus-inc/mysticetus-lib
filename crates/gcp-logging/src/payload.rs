@@ -1,5 +1,7 @@
 use serde::ser::SerializeMap;
 use tracing::field::{Field, Visit};
+use tracing_subscriber::fmt::{FmtContext, FormatFields, FormattedFields};
+use tracing_subscriber::registry::LookupSpan;
 
 use super::types::LABEL_PREFIX;
 
@@ -11,12 +13,16 @@ pub(crate) struct EventInfo {
     pub alert_found: bool,
 }
 
-pub(crate) fn serialize_event_payload<M, O>(
+pub(crate) fn serialize_event_payload<M, L, N, O>(
     map: &mut M,
+    ctx: &FmtContext<'_, L, N>,
     event: &tracing::Event<'_>,
     options: &O,
 ) -> Result<EventInfo, M::Error>
 where
+    L: tracing::Subscriber,
+    for<'b> L: LookupSpan<'b>,
+    for<'b> N: FormatFields<'b> + 'static,
     M: SerializeMap,
     O: crate::LogOptions,
 {
@@ -30,8 +36,26 @@ where
 
     event.record(&mut visitor);
 
-    if let Some(error) = visitor.error {
+    if let Some(error) = visitor.error.take() {
         return Err(error);
+    }
+
+    let Some(scope) = ctx.event_scope() else {
+        return Ok(visitor.event_info);
+    };
+
+    let mut buf = itoa::Buffer::new();
+
+    for span in scope {
+        if let Some(fields) = span.extensions().get::<FormattedFields<N>>() {
+            let span_id = span.id().into_non_zero_u64();
+
+            let span_id_str = buf.format(span_id.get());
+
+            if let Err(error) = visitor.map.serialize_entry(&span_id_str, &fields.fields) {
+                return Err(error);
+            }
+        }
     }
 
     Ok(visitor.event_info)
