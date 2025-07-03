@@ -25,7 +25,7 @@ pub use topic::TopicClient;
 
 const PUBSUB_URL: &str = "https://pubsub.googleapis.com";
 
-// const PUBSUB_DOMAIN: &str = "pubsub.googleapis.com";
+const PUBSUB_DOMAIN: &str = "pubsub.googleapis.com";
 // const PUBSUB_SCOPE: &[&str] = &["https://www.googleapis.com/auth/pubsub"];
 
 const DEFAULT_KEEPALIVE_DURATION: Duration = Duration::from_secs(60);
@@ -38,6 +38,11 @@ pub struct PubSubClient {
 async fn build_channel() -> Result<Channel, Error> {
     Channel::from_static(PUBSUB_URL)
         .tcp_keepalive(Some(DEFAULT_KEEPALIVE_DURATION))
+        .tls_config(
+            tonic::transport::ClientTlsConfig::new()
+                .domain_name(PUBSUB_DOMAIN)
+                .with_enabled_roots(),
+        )?
         .connect()
         .await
         .map_err(Error::from)
