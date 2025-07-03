@@ -417,21 +417,14 @@ pub(crate) mod fmt_helpers {
 
     impl fmt::Debug for DebugValue<'_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            macro_rules! fmt {
-                ($f:expr; $name:literal $(, $val:expr)?) => {
-                    $f.debug_tuple($name)
-                    $(.field(&$val))?
-                        .finish()
-                };
-            }
-
             match &self.0 {
-                Kind::NullValue(_) => fmt!(f; "Null"),
-                Kind::BoolValue(b) => fmt!(f; "Bool", b),
-                Kind::NumberValue(n) => fmt!(f; "Number", n),
-                Kind::StringValue(s) => fmt!(f; "String", s),
-                Kind::StructValue(map) => fmt!(f; "Struct", DebugMap(&map.fields)),
-                Kind::ListValue(list) => fmt!(f; "List", DebugList(&list.values)),
+                Kind::NullValue(_) => f.write_str("null"),
+                Kind::BoolValue(true) => f.write_str("true"),
+                Kind::BoolValue(false) => f.write_str("false"),
+                Kind::NumberValue(n) => std::fmt::Debug::fmt(n, f),
+                Kind::StringValue(s) => std::fmt::Debug::fmt(s, f),
+                Kind::StructValue(map) => std::fmt::Debug::fmt(&DebugMap(&map.fields), f),
+                Kind::ListValue(list) => std::fmt::Debug::fmt(&DebugList(&list.values), f),
             }
         }
     }
