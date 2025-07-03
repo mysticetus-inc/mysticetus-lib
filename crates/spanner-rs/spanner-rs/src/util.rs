@@ -15,7 +15,13 @@ pub(crate) fn table_col_names<T: Table>() -> Vec<String> {
 
     // SAFETY: 'buf' was initialized from the length of 'slice', then
     // each element was initialized with an owned version of each element in 'slice'.
-    unsafe { buf.assume_init().into_vec() }
+    let table_names = unsafe { buf.assume_init().into_vec() };
+
+    if T::NAME.contains("MasterFile") || T::NAME.contains("Station") {
+        tracing::info!(message = "debug column order", table = T::NAME, table_names = ?table_names);
+    }
+
+    table_names
 }
 
 /*
