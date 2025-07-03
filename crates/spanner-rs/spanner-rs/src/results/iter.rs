@@ -16,7 +16,18 @@ impl<T: Queryable> std::fmt::Debug for ResultIter<T> {
         f.debug_struct("ResultIter")
             .field("stats", &self.stats.as_ref().map(DebugResultSetStats))
             .field("field_index", &self.field_index)
-            .field("rows", &self.rows.as_slice())
+            .field("rows", &DebugRows(self.rows.as_slice()))
+            .finish()
+    }
+}
+
+struct DebugRows<'a>(&'a [ListValue]);
+
+impl std::fmt::Debug for DebugRows<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use crate::value::fmt_helpers::DebugList;
+        f.debug_list()
+            .entries(self.0.iter().map(|list| DebugList(&list.values)))
             .finish()
     }
 }
