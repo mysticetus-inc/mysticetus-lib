@@ -282,7 +282,7 @@ impl Auth {
     pub async fn new(project_id: &'static str, scope: Scope) -> crate::Result<Self> {
         let (inner_provider, id) = gcp_auth_provider::TokenProvider::detect().await?;
 
-        debug_assert_eq!(project_id, id.0.as_ref());
+        debug_assert_eq!(project_id, id.as_ref());
 
         let provider = Arc::new(Provider {
             new: Some(Arc::new(inner_provider)),
@@ -299,7 +299,7 @@ impl Auth {
     ) -> crate::Result<Self> {
         match gcp_auth_provider::metadata::MetadataServer::new().await {
             Ok((provider, proj_id)) => {
-                debug_assert_eq!(project_id, proj_id.0.as_ref());
+                debug_assert_eq!(project_id, proj_id.as_ref());
                 Ok(Self::new_from_provider(
                     project_id,
                     Arc::new(Provider {
@@ -365,7 +365,7 @@ impl Auth {
                 json.as_bytes(),
             )?;
 
-        debug_assert_eq!(project_id, proj_id.0.as_ref());
+        debug_assert_eq!(project_id, proj_id.as_ref());
 
         Ok(Self::new_from_service_account(project_id, svc_acct, scope))
     }
@@ -378,7 +378,7 @@ impl Auth {
         let (svc_acct, proj_id) =
             gcp_auth_provider::service_account::ServiceAccount::new_from_json_file(path.as_ref())
                 .await?;
-        debug_assert_eq!(project_id, proj_id.0.as_ref());
+        debug_assert_eq!(project_id, proj_id.as_ref());
         Ok(Self::new_from_service_account(project_id, svc_acct, scope))
     }
 
@@ -569,7 +569,7 @@ mod tests {
             .await?
             .expect("GOOGLE_APPLICATION_CREDENTIALS not set");
 
-        assert_eq!(proj_id.0.as_ref(), "mysticetus-oncloud");
+        assert_eq!(proj_id.as_ref(), "mysticetus-oncloud");
 
         let provider = Arc::new(Provider {
             new: Some(Arc::new(gcp_auth_provider::TokenProvider::ServiceAccount(
