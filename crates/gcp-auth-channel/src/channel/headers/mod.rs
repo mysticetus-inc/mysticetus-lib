@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
+use bytes::BytesMut;
 use tonic::service::interceptor;
 use tonic::{Request, Status};
 use tower::{Layer, Service};
@@ -10,6 +11,79 @@ mod kvp;
 pub use kvp::{Grpc, Http, InsertHeaders, KeyValuePair};
 
 use super::AuthChannel;
+
+const GOOG_REQUEST_PARAMS: http::HeaderName =
+    http::HeaderName::from_static("x-goog-request-params");
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GoogRequestParams<Svc> {
+    svc: Svc,
+    value: http::HeaderValue,
+}
+
+impl<Svc> GoogRequestParams<Svc> {
+    pub fn new_parse(
+        svc: Svc,
+        pairs: &[(&str, &str)],
+    ) -> Result<Self, (Svc, http::header::InvalidHeaderValue)> {
+        assert_ne!(
+            0,
+            pairs.len(),
+            "need at least 1 pair to encode `x-goog-request-params` header value"
+        );
+
+        let raw_len = pairs
+            .iter()
+            .map(|(k, v)| k.len() + 1 + v.len())
+            .sum::<usize>();
+
+        let len = raw_len + pairs.len() - 1;
+
+        let mut buf = BytesMut::with_capacity(len);
+
+        for (idx, (k, v)) in pairs.iter().enumerate() {
+            if idx > 0 {
+                buf.extend_from_slice(b"&");
+            }
+
+            buf.extend_from_slice(k.as_bytes());
+            buf.extend_from_slice(b"=");
+            buf.extend_from_slice(v.as_bytes());
+        }
+
+        debug_assert_eq!(buf.len(), len);
+
+        match http::HeaderValue::from_maybe_shared(buf.freeze()) {
+            Ok(value) => Ok(Self { value, svc }),
+            Err(error) => Err((svc, error)),
+        }
+    }
+
+    pub fn new(svc: Svc, value: http::HeaderValue) -> Self {
+        Self { svc, value }
+    }
+}
+
+impl<Svc, Body> Service<http::Request<Body>> for GoogRequestParams<Svc>
+where
+    Svc: Service<http::Request<Body>>,
+{
+    type Error = Svc::Error;
+    type Future = Svc::Future;
+    type Response = Svc::Response;
+
+    #[inline]
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.svc.poll_ready(cx)
+    }
+
+    #[inline]
+    fn call(&mut self, mut req: http::Request<Body>) -> Self::Future {
+        req.headers_mut()
+            .insert(GOOG_REQUEST_PARAMS, self.value.clone());
+        self.svc.call(req)
+    }
+}
 
 pub struct AddHeaderService<Svc> {
     pub(super) svc: Svc,

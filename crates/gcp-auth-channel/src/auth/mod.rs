@@ -381,15 +381,14 @@ impl Auth {
         Ok(Self::new_from_service_account(project_id, svc_acct, scope))
     }
 
-    pub fn get_cached_header(&self) -> Option<HeaderValue> {
+    pub fn get_cached_header(&self) -> Option<(HeaderValue, Duration)> {
         let read_guard = self.state.read().unwrap_or_else(PoisonError::into_inner);
 
         let (header, expires_at) = read_guard.cached.as_ref()?;
 
-        if is_expired(*expires_at) {
-            None
-        } else {
-            Some(header.clone())
+        match TokenStatus::new(*expires_at) {
+            TokenStatus::Expired => None,
+            TokenStatus::Valid { valid_for } => Some((header.clone(), valid_for)),
         }
     }
 
@@ -398,7 +397,7 @@ impl Auth {
 
         if !force_refresh {
             if let Some((_, expires_at)) = guard.cached {
-                if !is_expired(expires_at) {
+                if !TokenStatus::new(expires_at).is_expired() {
                     return false;
                 }
             }
@@ -428,8 +427,8 @@ impl Auth {
     }
 
     pub fn get_header(&self) -> GetHeaderResult {
-        if let Some(token) = self.get_cached_header() {
-            tracing::debug!(message = "returning cached token", auth = ?self);
+        if let Some((token, valid_for)) = self.get_cached_header() {
+            tracing::info!(message = "returning cached token", auth = ?self, %valid_for, project_id = self.project_id);
             return GetHeaderResult::Cached(token);
         }
 
@@ -438,15 +437,18 @@ impl Auth {
         // while we were waiting to acquire the write guard, see if
         // another thread already finished polling + updating the token
         match &guard.cached {
-            Some((header, expires_at)) if !is_expired(*expires_at) => {
-                tracing::debug!(message = "returning newly cached token", auth = ?self);
-                return GetHeaderResult::Cached(header.clone());
-            }
+            Some((header, expires_at)) => match TokenStatus::new(*expires_at) {
+                TokenStatus::Valid { valid_for } => {
+                    tracing::info!(message = "returning newly cached token", auth = ?self, %valid_for, project_id = self.project_id);
+                    return GetHeaderResult::Cached(header.clone());
+                }
+                TokenStatus::Expired => guard.cached = None,
+            },
             _ => (),
         }
 
         if !guard.pending_request.is_request_pending() {
-            tracing::debug!(message = "starting request for new token", auth = ?self);
+            tracing::info!(message = "starting request for new token", auth = ?self, project_id = self.project_id);
             guard
                 .pending_request
                 .start_request(&self.provider, self.scope);
@@ -461,8 +463,28 @@ impl Auth {
     }
 }
 
-fn is_expired(expires_at: Timestamp) -> bool {
-    Timestamp::now() >= expires_at - Duration::from_seconds(15)
+enum TokenStatus {
+    Expired,
+    Valid { valid_for: Duration },
+}
+
+impl TokenStatus {
+    pub fn is_expired(&self) -> bool {
+        matches!(self, Self::Expired)
+    }
+
+    pub fn new(expires_at: Timestamp) -> Self {
+        let now = Timestamp::now();
+
+        let expires_at_with_buffer = expires_at - Duration::from_seconds(30);
+
+        if expires_at_with_buffer <= now {
+            Self::Expired
+        } else {
+            let valid_for = expires_at_with_buffer - now;
+            Self::Valid { valid_for }
+        }
+    }
 }
 
 pin_project_lite::pin_project! {
@@ -486,14 +508,23 @@ impl Future for RefreshHeaderFuture {
 
         loop {
             match guard.cached {
-                Some((ref header, expires_at)) if !is_expired(expires_at) => {
-                    tracing::debug!(
-                        "got {} byte token, expires at {expires_at}",
-                        header.as_bytes().len()
-                    );
-                    return Poll::Ready(Ok(header.clone()));
-                }
+                Some((ref header, expires_at)) => match TokenStatus::new(expires_at) {
+                    TokenStatus::Valid { valid_for } => {
+                        tracing::info!(
+                            "got {} byte token, valid for {valid_for}",
+                            header.as_bytes().len()
+                        );
+                        return Poll::Ready(Ok(header.clone()));
+                    }
+                    _ => (),
+                },
                 _ => (),
+            }
+
+            if !guard.pending_request.is_request_pending() {
+                guard
+                    .pending_request
+                    .start_request(&this.auth.provider, this.auth.scope);
             }
 
             match std::task::ready!(guard.pending_request.poll(cx)) {

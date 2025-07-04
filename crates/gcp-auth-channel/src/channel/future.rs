@@ -41,6 +41,7 @@ pin_project_lite::pin_project! {
     }
 }
 
+#[inline]
 fn poll_channel_fut<Svc, Body>(
     fut: Pin<&mut Svc::Future>,
     cx: &mut Context<'_>,

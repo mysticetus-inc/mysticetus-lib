@@ -147,6 +147,33 @@ impl<Svc> AuthChannel<Svc> {
         }
     }
 
+    #[inline]
+    /// Attaches a pre-parsed [`http::HeaderValue`] for 'x-goog-request-params'
+    pub fn goog_request_param(
+        self,
+        value: http::HeaderValue,
+    ) -> AuthChannel<headers::GoogRequestParams<Svc>> {
+        self.wrap_service(|svc| headers::GoogRequestParams::new(svc, value))
+    }
+
+    #[inline]
+    /// Parses a [`http::HeaderValue`] for 'x-goog-request-params'. Defers to
+    /// [headers::GoogRequestParams::new_parse]
+    pub fn parse_goog_request_param(
+        self,
+        pairs: &[(&str, &str)],
+    ) -> Result<
+        AuthChannel<headers::GoogRequestParams<Svc>>,
+        (Self, http::header::InvalidHeaderValue),
+    > {
+        let Self { svc, auth } = self;
+
+        match headers::GoogRequestParams::new_parse(svc, pairs) {
+            Ok(svc) => Ok(AuthChannel { svc, auth }),
+            Err((svc, error)) => Err((Self { svc, auth }, error)),
+        }
+    }
+
     /// Wraps the inner [`Svc`], replacing it with the returned value of 'f'.
     ///
     /// Similar to [`apply_layer`], but is a bit more flexible.
