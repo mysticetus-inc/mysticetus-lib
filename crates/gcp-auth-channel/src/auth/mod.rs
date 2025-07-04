@@ -158,6 +158,7 @@ fn build_header(token: &str) -> HeaderValue {
     header
 }
 
+#[derive(Debug)]
 pub enum GetHeaderResult {
     Cached(HeaderValue),
     Refreshing(RefreshHeaderFuture),
@@ -437,7 +438,7 @@ impl Auth {
         // while we were waiting to acquire the write guard, see if
         // another thread already finished polling + updating the token
         match &guard.cached {
-            Some((header, expires_at)) => match TokenStatus::new(*expires_at) {
+            Some((header, expires_at)) => match dbg!(TokenStatus::new(*expires_at)) {
                 TokenStatus::Valid { valid_for } => {
                     tracing::info!(message = "returning newly cached token", auth = ?self, %valid_for, project_id = self.project_id);
                     return GetHeaderResult::Cached(header.clone());
@@ -463,6 +464,7 @@ impl Auth {
     }
 }
 
+#[derive(Debug)]
 enum TokenStatus {
     Expired,
     Valid { valid_for: Duration },
@@ -488,6 +490,7 @@ impl TokenStatus {
 }
 
 pin_project_lite::pin_project! {
+    #[derive(Debug)]
     pub struct RefreshHeaderFuture {
         auth: Auth,
         retries_left: usize,
@@ -521,18 +524,14 @@ impl Future for RefreshHeaderFuture {
                 _ => (),
             }
 
-            if !guard.pending_request.is_request_pending() {
-                guard
-                    .pending_request
-                    .start_request(&this.auth.provider, this.auth.scope);
-            }
-
             match std::task::ready!(guard.pending_request.poll(cx)) {
                 Ok(Some((header, expires_at))) => {
                     guard.cached = Some((header.clone(), expires_at));
                     return Poll::Ready(Ok(header));
                 }
-                Ok(None) => unreachable!(),
+                Ok(None) => guard
+                    .pending_request
+                    .start_request(&this.auth.provider, this.auth.scope),
                 Err(err) if *this.retries_left == 0 => return Poll::Ready(Err(err.into())),
                 Err(err) => {
                     *this.retries_left -= 1;
@@ -541,6 +540,72 @@ impl Future for RefreshHeaderFuture {
                         .pending_request
                         .start_request(&this.auth.provider, this.auth.scope);
                 }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Instant;
+
+    use super::*;
+
+    #[test]
+    fn test_expired_checks() {
+        let now = Timestamp::now();
+
+        let now_plus_1_hr = now + Duration::from_seconds(3600);
+
+        assert!(TokenStatus::new(now + Duration::from_seconds(20)).is_expired());
+        assert!(!TokenStatus::new(now_plus_1_hr).is_expired());
+    }
+
+    #[tokio::test]
+    async fn test_long_running() -> Result<(), crate::Error> {
+        tracing_subscriber::fmt().init();
+
+        let (svc, proj_id) = gcp_auth_provider::service_account::ServiceAccount::new_from_env()
+            .await?
+            .expect("GOOGLE_APPLICATION_CREDENTIALS not set");
+
+        assert_eq!(proj_id.0.as_ref(), "mysticetus-oncloud");
+
+        let provider = Arc::new(Provider {
+            new: Some(Arc::new(gcp_auth_provider::TokenProvider::ServiceAccount(
+                svc,
+            ))),
+            use_fallback: AtomicBool::new(false),
+            fallback: tokio::sync::OnceCell::new(),
+        });
+
+        let auth =
+            Auth::new_from_provider("mysticetus-oncloud", provider, Scope::CloudPlatformReadOnly);
+
+        let header = auth.get_header().await?;
+        tracing::info!("initial header: {header:#?}");
+
+        let start = Instant::now();
+
+        let mut new_count = 0;
+
+        loop {
+            tokio::time::sleep(Duration::from_seconds(5 * 60).into()).await;
+            let elapsed = Duration::from(start.elapsed());
+            tracing::info!("elapsed: {elapsed:?}");
+
+            match dbg!(auth.get_header()) {
+                GetHeaderResult::Cached(cached) => tracing::info!("got cached token: {cached:?}"),
+                GetHeaderResult::Refreshing(pending) => {
+                    let new = pending.await?;
+                    new_count += 1;
+                    tracing::info!("got new token ({new_count}): {new:?}");
+                }
+            }
+
+            if Duration::from(elapsed) >= Duration::from_seconds(3660) {
+                assert_ne!(0, new_count, "we should have gotten at least 1 new token");
+                return Ok(());
             }
         }
     }

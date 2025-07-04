@@ -27,8 +27,70 @@ pub enum TokenProvider {
     ApplicationDefault(application_default::ApplicationDefault),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ProjectId(pub Arc<str>);
+#[derive(Debug, Clone)]
+pub struct ProjectId(shared::Shared<str>);
+
+impl<S> From<S> for ProjectId
+where
+    shared::Shared<str>: From<S>,
+{
+    #[inline]
+    fn from(value: S) -> Self {
+        Self(From::from(value))
+    }
+}
+
+impl std::fmt::Display for ProjectId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self)
+    }
+}
+
+impl<S: AsRef<str>> PartialEq<S> for ProjectId {
+    #[inline]
+    fn eq(&self, other: &S) -> bool {
+        str::eq(self, other.as_ref())
+    }
+}
+
+impl Eq for ProjectId {}
+
+impl<S: AsRef<str>> PartialOrd<S> for ProjectId {
+    #[inline]
+    fn partial_cmp(&self, other: &S) -> Option<std::cmp::Ordering> {
+        str::partial_cmp(self, other.as_ref())
+    }
+}
+
+impl Ord for ProjectId {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        str::cmp(self, other)
+    }
+}
+
+impl std::borrow::Borrow<str> for ProjectId {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self
+    }
+}
+
+impl std::ops::Deref for ProjectId {
+    type Target = str;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AsRef<str> for ProjectId {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
 
 impl TokenProvider {
     pub async fn detect() -> Result<(Self, ProjectId)> {

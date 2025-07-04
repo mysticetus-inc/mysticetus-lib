@@ -28,6 +28,9 @@ tokio-util = "0.7.11"
 memchr.workspace = true
 gcp-auth-provider = { path = "../gcp-auth-provider" }
 
+[dev-dependencies]
+tracing-subscriber.workspace = true
+
 [features]
 channel = ["dep:tower-service", "dep:tonic"]
 retry = ["tower/retry"]

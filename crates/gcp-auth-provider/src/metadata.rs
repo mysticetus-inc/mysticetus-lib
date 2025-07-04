@@ -68,7 +68,9 @@ impl MetadataServer {
                     ))
                 })?;
 
-                Ok(Some(crate::ProjectId(Arc::from(project_id_str))))
+                Ok(Some(crate::ProjectId(From::from(Arc::from(
+                    project_id_str,
+                )))))
             }
             // if the metadata server doesnt exist, we expect to get a connection error.
             Err(crate::Error::Hyper(crate::error::HyperError::HyperUtil(err)))

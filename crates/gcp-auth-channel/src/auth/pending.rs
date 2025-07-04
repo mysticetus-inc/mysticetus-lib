@@ -10,38 +10,40 @@ use crate::Scope;
 
 pub(super) struct PendingRequest {
     // use a join handle, that way we can let other threads make progress on this.
-    handle: JoinHandle<crate::Result<(HeaderValue, Timestamp)>>,
+    handle: Option<JoinHandle<crate::Result<(HeaderValue, Timestamp)>>>,
 }
 
 impl PendingRequest {
     pub(super) fn new(provider: &Arc<super::Provider>, scope: Scope) -> Self {
         let handle = tokio::spawn(provider.get_token(scope));
-        Self { handle }
+        Self {
+            handle: Some(handle),
+        }
     }
 
     pub(super) fn is_request_pending(&self) -> bool {
-        !self.handle.is_finished()
+        self.handle.is_some()
     }
 
     pub(super) fn start_request(&mut self, provider: &Arc<super::Provider>, scope: Scope) {
-        if !self.handle.is_finished() {
-            self.handle.abort();
+        if let Some(old) = self.handle.replace(tokio::spawn(provider.get_token(scope))) {
+            old.abort();
         }
-
-        let new_handle = tokio::spawn(provider.get_token(scope));
-        let old_handle = std::mem::replace(&mut self.handle, new_handle);
-        old_handle.abort();
     }
 
     pub(super) fn poll(
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<crate::Result<Option<(HeaderValue, Timestamp)>>> {
-        if self.handle.is_finished() {
-            return Poll::Ready(Ok(None));
-        }
+        let result = match self.handle {
+            Some(ref mut handle) => std::task::ready!(Pin::new(handle).poll(cx)),
+            None => return Poll::Ready(Ok(None)),
+        };
 
-        match std::task::ready!(Pin::new(&mut self.handle).poll(cx)) {
+        // if we finished, remove the handle
+        self.handle = None;
+
+        match dbg!(result) {
             Ok(result) => Poll::Ready(result.map(Some)),
             Err(error) if error.is_cancelled() => unreachable!("we never cancel these handles"),
             Err(error) => std::panic::resume_unwind(error.into_panic()),

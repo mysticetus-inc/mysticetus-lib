@@ -46,6 +46,20 @@ impl ServiceAccount {
             .and_then(Self::new_from_key)
     }
 
+    pub async fn new_from_env() -> Result<Option<(Self, ProjectId)>, Error> {
+        let Some(path) = std::env::var_os("GOOGLE_APPLICATION_CREDENTIALS") else {
+            return Ok(None);
+        };
+
+        if path.is_empty() {
+            return Ok(None);
+        }
+
+        Self::new_from_json_file(Path::new(path.as_os_str()))
+            .await
+            .map(Some)
+    }
+
     pub async fn new_from_json_file(path: &Path) -> Result<(Self, ProjectId), Error> {
         ServiceAccountKey::from_path(path, Self::new_from_key).await?
     }
@@ -64,7 +78,7 @@ impl ServiceAccount {
             Err(err) => return Err((err.into(), client)),
         };
 
-        let project_id = ProjectId(Arc::from(key.project_id));
+        let project_id = ProjectId(From::from(Arc::from(key.project_id)));
         Ok((
             ServiceAccount {
                 client,

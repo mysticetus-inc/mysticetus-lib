@@ -146,7 +146,7 @@ impl super::RawTokenProvider for ApplicationDefault {
                 refresh_token: Box::from(creds.refresh_token),
             };
 
-            Ok(Some((new, crate::ProjectId(proj_id))))
+            Ok(Some((new, crate::ProjectId(From::from(proj_id)))))
         }
     }
 
