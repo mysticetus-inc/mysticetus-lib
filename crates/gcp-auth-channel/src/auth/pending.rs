@@ -43,7 +43,7 @@ impl PendingRequest {
         // if we finished, remove the handle
         self.handle = None;
 
-        match dbg!(result) {
+        match result {
             Ok(result) => Poll::Ready(result.map(Some)),
             Err(error) if error.is_cancelled() => unreachable!("we never cancel these handles"),
             Err(error) => std::panic::resume_unwind(error.into_panic()),

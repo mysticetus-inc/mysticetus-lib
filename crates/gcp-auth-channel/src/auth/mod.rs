@@ -429,7 +429,7 @@ impl Auth {
 
     pub fn get_header(&self) -> GetHeaderResult {
         if let Some((token, valid_for)) = self.get_cached_header() {
-            tracing::info!(message = "returning cached token", auth = ?self, %valid_for, project_id = self.project_id);
+            tracing::debug!(message = "returning cached token", auth = ?self, %valid_for, project_id = self.project_id);
             return GetHeaderResult::Cached(token);
         }
 
@@ -438,9 +438,9 @@ impl Auth {
         // while we were waiting to acquire the write guard, see if
         // another thread already finished polling + updating the token
         match &guard.cached {
-            Some((header, expires_at)) => match dbg!(TokenStatus::new(*expires_at)) {
+            Some((header, expires_at)) => match TokenStatus::new(*expires_at) {
                 TokenStatus::Valid { valid_for } => {
-                    tracing::info!(message = "returning newly cached token", auth = ?self, %valid_for, project_id = self.project_id);
+                    tracing::debug!(message = "returning newly cached token", auth = ?self, %valid_for, project_id = self.project_id);
                     return GetHeaderResult::Cached(header.clone());
                 }
                 TokenStatus::Expired => guard.cached = None,
@@ -449,7 +449,7 @@ impl Auth {
         }
 
         if !guard.pending_request.is_request_pending() {
-            tracing::info!(message = "starting request for new token", auth = ?self, project_id = self.project_id);
+            tracing::debug!(message = "starting request for new token", auth = ?self, project_id = self.project_id);
             guard
                 .pending_request
                 .start_request(&self.provider, self.scope);
@@ -513,7 +513,7 @@ impl Future for RefreshHeaderFuture {
             match guard.cached {
                 Some((ref header, expires_at)) => match TokenStatus::new(expires_at) {
                     TokenStatus::Valid { valid_for } => {
-                        tracing::info!(
+                        tracing::debug!(
                             "got {} byte token, valid for {valid_for}",
                             header.as_bytes().len()
                         );
