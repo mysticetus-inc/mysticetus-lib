@@ -146,38 +146,3 @@ pub(super) mod google {
         }
     }
 }
-/*
-
-#[cfg(any(
-    feature = "mysticetus-common",
-    feature = "mysticetus-config",
-    feature = "mysticetus-validation",
-    feature = "mysticetus-video",
-))]
-#[path = ""]
-pub mod mysticetus {
-    #[cfg(feature = "mysticetus-common")]
-    #[path = "mysticetus.common.rs"]
-    pub mod common;
-
-    #[cfg(feature = "mysticetus-config")]
-    #[path = "mysticetus.config.rs"]
-    pub mod config;
-
-    #[cfg(feature = "mysticetus-validation")]
-    #[path = "mysticetus.validation.rs"]
-    pub mod validation;
-
-    #[cfg(feature = "mysticetus-video")]
-    #[path = "mysticetus.video.rs"]
-    pub mod video;
-
-    #[cfg(feature = "mysticetus-video-rpc")]
-    #[path = ""]
-    pub mod rpc {
-        #[cfg(feature = "mysticetus-video-rpc")]
-        #[path = "mysticetus.rpc.video.rs"]
-        pub mod video;
-    }
-}
-*/

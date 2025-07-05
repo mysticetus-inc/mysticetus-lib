@@ -36,19 +36,6 @@ type = []
 longrunning = ["rpc"]
 api = ["protobuf"]
 rpc = ["protobuf", "tonic", "serde_json"]
-mysticetus-common = []
-mysticetus-config = ["mysticetus-validation", "mysticetus-common"]
-mysticetus-validation = ["protobuf", "mysticetus-common"]
-mysticetus-video = ["protobuf", "mysticetus-common"]
-mysticetus-video-rpc = ["mysticetus-video"]
-
-
-mysticetus = [
-    "mysticetus-config",
-    "mysticetus-validation",
-    "mysticetus-video",
-    "mysticetus-video-rpc",
-]
 
 # specific features
 bigquery = ["rpc"]
