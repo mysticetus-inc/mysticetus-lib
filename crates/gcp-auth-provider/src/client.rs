@@ -4,15 +4,13 @@ use std::task::{Context, Poll};
 use bytes::Bytes;
 use http::HeaderValue;
 use http_body::{Body, Frame};
-use hyper::body::Incoming;
 use hyper_rustls::HttpsConnector;
 use hyper_util::client::legacy::Client as HyperClient;
 use hyper_util::client::legacy::connect::dns::GaiResolver;
-use hyper_util::client::legacy::connect::{Connect, HttpConnector};
+use hyper_util::client::legacy::connect::{self, HttpConnector};
 use hyper_util::rt;
-use tower::Service;
 
-use crate::Error;
+pub mod future;
 
 const USER_AGENT: HeaderValue =
     HeaderValue::from_static(concat!("gcp-auth-provider ", env!("CARGO_PKG_VERSION")));
@@ -30,32 +28,6 @@ pub(crate) struct Client<Connector> {
 
 pub(crate) type HttpClient<R = GaiResolver> = Client<HttpConnector<R>>;
 pub(crate) type HttpsClient<R = GaiResolver> = Client<HttpsConnector<HttpConnector<R>>>;
-
-fn make_https_connection<R>(resolver: R) -> std::io::Result<HttpsConnector<HttpConnector<R>>> {
-    static INIT_RUSTLS: std::sync::Once = std::sync::Once::new();
-
-    INIT_RUSTLS.call_once(|| {
-        _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
-    });
-
-    let builder = {
-        #[cfg(feature = "webpki-roots")]
-        {
-            hyper_rustls::HttpsConnectorBuilder::new().with_webpki_roots()
-        }
-        #[cfg(not(feature = "webpki-roots"))]
-        {
-            hyper_rustls::HttpsConnectorBuilder::new().with_native_roots()?
-        }
-    };
-
-    let mut connector = HttpConnector::new_with_resolver(resolver);
-    connector.enforce_http(false);
-    Ok(builder
-        .https_only()
-        .enable_all_versions()
-        .wrap_connector(connector))
-}
 
 impl Client<HttpConnector<GaiResolver>> {
     #[inline]
@@ -95,108 +67,42 @@ fn insert_headers_for_request(request: &mut http::Request<BytesBody>) {
     });
 }
 
-impl<Connector> Client<Connector>
+/// Trait alias for connectors that allow [`&'_ Client<C: Connector, B>`] to
+/// implement: [`tower::Service<http::Request<B>>`]
+pub(crate) trait Connector: connect::Connect + Clone + Send + Sync + 'static {}
+
+impl<C> Connector for C where C: connect::Connect + Clone + Send + Sync + 'static {}
+
+impl<Conn> Client<Conn>
 where
-    Connector: Clone + Connect,
-    for<'a> &'a HyperClient<Connector, BytesBody>:
-        Service<http::Request<BytesBody>, Response = hyper::Response<Incoming>, Error: Into<Error>>,
+    Conn: Connector,
 {
     #[inline]
-    pub fn new_from_connector(connector: Connector) -> Self {
+    pub fn new_from_connector(connector: Conn) -> Self {
         Self {
             client: HyperClient::builder(rt::TokioExecutor::new()).build(connector),
         }
     }
 
-    pub async fn request(&self, mut request: http::Request<BytesBody>) -> Result<Bytes, Error> {
+    pub fn request(
+        &self,
+        mut request: http::Request<BytesBody>,
+    ) -> future::RequestCollect<'_, Conn> {
         insert_headers_for_request(&mut request);
 
-        let mut response = self.request_with_retry(&request).await?;
-
-        // handle at most 1 redirect
-        if response.status().is_redirection() {
-            *request.uri_mut() = get_redirect_uri(request.uri(), response)?;
-            response = self.request_with_retry(&request).await?;
+        future::RequestCollect::Requesting {
+            request: future::Request::new(&self.client, request),
         }
-
-        if !response.status().is_success() {
-            let error =
-                crate::ResponseError::from_response(request.uri().clone(), response).await?;
-            return Err(Error::Response(error));
-        }
-
-        crate::util::collect_body(response.into_body())
-            .await
-            .map_err(Error::from)
     }
 
-    pub async fn request_json<T>(&self, request: http::Request<BytesBody>) -> Result<T, Error>
+    pub fn request_json<T>(
+        &self,
+        request: http::Request<BytesBody>,
+    ) -> future::RequestJson<'_, Conn, T>
     where
         T: serde::de::DeserializeOwned,
     {
-        let bytes = self.request(request).await?;
-
-        path_aware_serde::json::deserialize_slice(&bytes).map_err(Error::Json)
-    }
-
-    async fn request_with_retry(
-        &self,
-        request: &http::Request<BytesBody>,
-    ) -> Result<hyper::Response<Incoming>, Error> {
-        enum ErrorKind {
-            Response(http::Response<Incoming>),
-            Error(Error),
-        }
-
-        macro_rules! make_request {
-            () => {{
-                match self.request_inner(request.clone()).await {
-                    Ok(resp) if resp.status().is_server_error() => ErrorKind::Response(resp),
-                    Ok(resp) => return Ok(resp),
-                    Err(error) => ErrorKind::Error(error),
-                }
-            }};
-        }
-
-        // make an initial request before building any retry stuff up,
-        // since it's likely to work first try (assuming a valid request)
-        let mut error = make_request!();
-
-        if cfg!(debug_assertions) {
-            return match error {
-                ErrorKind::Error(error) => Err(error),
-                ErrorKind::Response(resp) => {
-                    let response_error =
-                        crate::ResponseError::from_response(request.uri().clone(), resp).await?;
-                    Err(Error::Response(response_error))
-                }
-            };
-        }
-
-        let mut backoff = net_utils::backoff::Backoff::default();
-
-        while let Some(backoff_delay) = backoff.backoff_once() {
-            backoff_delay.await;
-            error = make_request!();
-        }
-
-        match error {
-            ErrorKind::Error(error) => Err(error),
-            ErrorKind::Response(resp) => {
-                let response_error =
-                    crate::ResponseError::from_response(request.uri().clone(), resp).await?;
-                Err(Error::Response(response_error))
-            }
-        }
-    }
-
-    async fn request_inner(
-        &self,
-        request: http::Request<BytesBody>,
-    ) -> Result<hyper::Response<Incoming>, Error> {
-        tower::Service::call(&mut &self.client, request)
-            .await
-            .map_err(Into::into)
+        self.request(request).json()
     }
 }
 
@@ -242,26 +148,28 @@ impl Body for BytesBody {
     }
 }
 
-fn get_redirect_uri(uri: &http::Uri, resp: http::Response<Incoming>) -> Result<http::Uri, Error> {
-    debug_assert!(resp.status().is_redirection());
+fn make_https_connection<R>(resolver: R) -> std::io::Result<HttpsConnector<HttpConnector<R>>> {
+    static INIT_RUSTLS: std::sync::Once = std::sync::Once::new();
 
-    let uri_header = match resp.headers().get(&http::header::LOCATION) {
-        Some(header) => header,
-        None => {
-            return Err(Error::Response(crate::ResponseError::from_parts(
-                uri.clone(),
-                resp.into_parts().0,
-                Bytes::from_static(b"recieved redirect response with no 'location' header"),
-            )));
+    INIT_RUSTLS.call_once(|| {
+        _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    });
+
+    let builder = {
+        #[cfg(feature = "webpki-roots")]
+        {
+            hyper_rustls::HttpsConnectorBuilder::new().with_webpki_roots()
+        }
+        #[cfg(not(feature = "webpki-roots"))]
+        {
+            hyper_rustls::HttpsConnectorBuilder::new().with_native_roots()?
         }
     };
 
-    match http::Uri::try_from(uri_header.as_bytes()) {
-        Ok(uri) => Ok(uri),
-        Err(error) => Err(Error::Response(crate::ResponseError::from_parts(
-            uri.clone(),
-            resp.into_parts().0,
-            Bytes::from(error.to_string()),
-        ))),
-    }
+    let mut connector = HttpConnector::new_with_resolver(resolver);
+    connector.enforce_http(false);
+    Ok(builder
+        .https_only()
+        .enable_all_versions()
+        .wrap_connector(connector))
 }

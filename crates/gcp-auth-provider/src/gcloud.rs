@@ -2,13 +2,16 @@ use std::ffi::OsString;
 use std::future::Future;
 use std::os::unix::ffi::OsStringExt;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::process::Stdio;
 use std::sync::Arc;
+use std::task::{Context, Poll};
+
+use crate::{Error, ProjectId};
 
 #[derive(Debug, Clone)]
-pub(super) struct GCloudProvider {
+pub struct GCloudProvider {
     cmd_path: Arc<Path>,
-    project_id: Arc<str>,
 }
 
 impl GCloudProvider {
@@ -19,31 +22,29 @@ impl GCloudProvider {
     }
 }
 
-// spawning async processes for simple tasks is significantly slower than the std/blocking
-// variants, so run them in a blocking task to avoid the overhead
-#[inline]
-async fn spawn_blocking<T>(
-    blocking_op: impl FnOnce() -> crate::Result<T> + Send + 'static,
-) -> crate::Result<T>
-where
-    T: Send + 'static,
-{
-    use std::io::{Error, ErrorKind};
+// since this shells out to a new process, blocking impls are actually preferred
+// so run them in a task.
+pub struct GCloudFuture<T>(tokio::task::JoinHandle<crate::Result<T>>);
 
-    match tokio::task::spawn_blocking(blocking_op).await {
-        Ok(result) => result,
-        Err(err) if err.is_cancelled() => {
-            Err(crate::Error::Io(Error::from(ErrorKind::Interrupted)))
+impl<T> Future for GCloudFuture<T> {
+    type Output = Result<T, Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        use std::io::{self, ErrorKind};
+
+        match std::task::ready!(Pin::new(&mut self.get_mut().0).poll(cx)) {
+            Ok(result) => Poll::Ready(result),
+            Err(err) if err.is_cancelled() => {
+                Poll::Ready(Err(Error::Io(io::Error::from(ErrorKind::Interrupted))))
+            }
+            Err(err) => Poll::Ready(Err(Error::Io(io::Error::new(ErrorKind::Other, err)))),
         }
-        Err(err) => Err(crate::Error::Io(Error::new(ErrorKind::Other, err))),
     }
 }
 
-impl super::RawTokenProvider for GCloudProvider {
-    const NAME: &'static str = "gcloud";
-
-    fn try_load() -> impl Future<Output = crate::Result<Option<Self>>> + Send + 'static {
-        spawn_blocking(|| {
+impl GCloudProvider {
+    pub fn try_load() -> GCloudFuture<Option<(Self, ProjectId)>> {
+        GCloudFuture(tokio::task::spawn_blocking(|| {
             let cmd_path = match find_gcloud()? {
                 Some(cmd_path) => cmd_path,
                 None => return Ok(None),
@@ -57,22 +58,29 @@ impl super::RawTokenProvider for GCloudProvider {
                 .stdout(Stdio::piped())
                 .output()?;
 
-            let project_id = get_relevant_gcloud_output(output)?;
+            let project_id = ProjectId::new_shared_owned(get_relevant_gcloud_output(output)?);
 
-            Ok(Self {
-                project_id: Arc::from(project_id),
+            let prov = Self {
                 cmd_path: Arc::from(cmd_path),
-            })
-        })
-    }
+            };
 
-    fn get_token(
-        &self,
-        _scope: crate::Scopes,
-    ) -> impl Future<Output = crate::Result<crate::Token>> + Send + 'static {
+            Ok(Some((prov, project_id)))
+        }))
+    }
+}
+
+impl super::BaseTokenProvider for GCloudProvider {
+    #[inline]
+    fn name(&self) -> &'static str {
+        "gcloud"
+    }
+}
+
+impl super::TokenProvider for GCloudProvider {
+    fn get_token(&self) -> crate::GetTokenFuture<'_> {
         let mut cmd = std::process::Command::new(&*self.cmd_path);
 
-        spawn_blocking(move || {
+        crate::GetTokenFuture::new_gcloud(GCloudFuture(tokio::task::spawn_blocking(move || {
             let output = cmd
                 .arg("auth")
                 .arg("print-access-token")
@@ -81,14 +89,12 @@ impl super::RawTokenProvider for GCloudProvider {
                 .stdout(Stdio::piped())
                 .output()?;
 
-            let access_token = get_relevant_gcloud_output(output)?.into_boxed_str();
+            let access_token = get_relevant_gcloud_output(output)?;
 
-            Ok(crate::Token::new_with_default_expiry_time(access_token))
-        })
-    }
-
-    fn project_id(&self) -> &Arc<str> {
-        &self.project_id
+            crate::Token::new_with_default_expiry_time(&access_token).map_err(|err| {
+                crate::Error::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+            })
+        })))
     }
 }
 

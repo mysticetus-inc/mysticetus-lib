@@ -1,51 +1,91 @@
 use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use bytes::{BufMut, Bytes, BytesMut};
 use http_body::Body;
 use hyper::body::Incoming;
 
-pub(crate) async fn collect_body(body: Incoming) -> Result<Bytes, hyper::Error> {
-    async fn wait_for_data(body: &mut Pin<&mut Incoming>) -> Result<Option<Bytes>, hyper::Error> {
+pin_project_lite::pin_project! {
+    #[project = CollectBodyProjection]
+    pub(crate) struct CollectBody {
+        #[pin]
+        body: Option<Incoming>,
+        state: State,
+    }
+}
+
+pub(crate) fn collect_body(body: Incoming) -> CollectBody {
+    CollectBody {
+        body: Some(body),
+        state: State::Pending,
+    }
+}
+
+enum State {
+    Pending,
+    FirstChunk { buf: Bytes },
+    CopyingRemaining { dst: BytesMut },
+}
+
+impl Future for CollectBody {
+    type Output = Result<Bytes, hyper::Error>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let mut this = self.project();
+
         loop {
-            match std::future::poll_fn(|cx| body.as_mut().poll_frame(cx)).await {
-                None => return Ok(None),
-                Some(result) => match result?.into_data() {
-                    Ok(data) => return Ok(Some(data)),
-                    Err(_trailers) => continue,
-                },
+            let maybe_chunk = std::task::ready!(this.poll_frame(cx))?;
+
+            *this.state = match (&mut *this.state, maybe_chunk) {
+                (State::Pending, None) => return Poll::Ready(Ok(Bytes::new())),
+                (State::Pending, Some(buf)) => State::FirstChunk { buf },
+                (State::FirstChunk { buf }, None) => return Poll::Ready(Ok(std::mem::take(buf))),
+                (State::FirstChunk { buf }, Some(second_chunk)) => {
+                    let first_chunk = std::mem::take(buf);
+                    let mut dst = match first_chunk.try_into_mut() {
+                        Ok(dst) => dst,
+                        Err(bytes) => {
+                            let mut dst = BytesMut::with_capacity(bytes.len() + second_chunk.len());
+                            dst.put(bytes);
+                            dst
+                        }
+                    };
+
+                    dst.put(second_chunk);
+
+                    State::CopyingRemaining { dst }
+                }
+                (State::CopyingRemaining { dst }, Some(chunk)) => {
+                    dst.put(chunk);
+                    continue;
+                }
+                (State::CopyingRemaining { dst }, None) => {
+                    let buf = std::mem::take(dst).freeze();
+                    return Poll::Ready(Ok(buf));
+                }
             }
         }
     }
+}
 
-    let mut body = std::pin::pin!(body);
+impl CollectBodyProjection<'_> {
+    fn poll_frame(&mut self, cx: &mut Context<'_>) -> Poll<Result<Option<Bytes>, hyper::Error>> {
+        let Some(mut body) = self.body.as_mut().as_pin_mut() else {
+            return Poll::Ready(Ok(None));
+        };
 
-    let Some(first_chunk) = wait_for_data(&mut body).await? else {
-        // don't error on an empty body, let the caller handle that.
-        return Ok(Bytes::new());
-    };
+        loop {
+            let frame = match std::task::ready!(body.as_mut().poll_frame(cx)) {
+                Some(frame) => frame?,
+                None => {
+                    self.body.set(None);
+                    return Poll::Ready(Ok(None));
+                }
+            };
 
-    let second_chunk = match wait_for_data(&mut body).await? {
-        // if we only get one chunk, return it so we dont need to allocate more
-        None => return Ok(first_chunk),
-        Some(second_chunk) => second_chunk,
-    };
-
-    // if we didnt return, we need to concatenate buffers
-    // and continue polling for the rest of the data
-    let mut dst = match first_chunk.try_into_mut() {
-        Ok(dst) => dst,
-        Err(bytes) => {
-            let mut dst = BytesMut::with_capacity(bytes.len() + second_chunk.len());
-            dst.put(bytes);
-            dst
+            if let Ok(data) = frame.into_data() {
+                return Poll::Ready(Ok(Some(data)));
+            }
         }
-    };
-
-    dst.put(second_chunk);
-
-    while let Some(next_chunk) = wait_for_data(&mut body).await? {
-        dst.put(next_chunk);
     }
-
-    Ok(dst.freeze())
 }

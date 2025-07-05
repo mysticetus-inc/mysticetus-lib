@@ -17,6 +17,7 @@ serde-helpers = { path = "../serde-helpers" }
 thiserror.workspace = true
 net-utils = { path = "../net-utils" }
 timestamp = { path = "../timestamp" }
+futures.workspace = true
 tower.workspace = true
 memchr.workspace = true
 tokio = { workspace = true, features = [
@@ -55,5 +56,8 @@ rustls = "0.23.28"
 tracing-subscriber.workspace = true
 
 [features]
+default = []
 gcloud = []
+application-default = []
+emulator = []
 webpki-roots = ["hyper-rustls/webpki-roots"]

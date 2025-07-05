@@ -3,6 +3,8 @@
 use std::cmp::Ordering;
 use std::fmt;
 
+use bitflags::Flags;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AccessLevel {
     ReadOnly,
@@ -132,7 +134,12 @@ macro_rules! define_scope_enum {
             }
 
             #[inline]
-            pub const fn from_int(int: u16) -> Option<Self> {
+            const fn from_int(int: u16) -> Option<Self> {
+                #[cfg(debug_assertions)]
+                if int.count_ones() != 1 {
+                    panic!("Scope::from_int should only be given an int with a single bit");
+                }
+
                 match int {
                     $(
                         $int => Some(Self::$variant),
@@ -299,28 +306,6 @@ impl Scope {
             RealtimeDatabase => "FirestoreRealtimeDatabase",
         }
     }
-
-    #[inline]
-    pub const fn scope_uri(&self) -> &'static str {
-        use Scope::*;
-
-        match self {
-            CloudPlatformAdmin => urls::CLOUD_PLATFORM_ADMIN,
-            CloudPlatformReadOnly => urls::CLOUD_PLATFORM_READ_ONLY,
-            BigQueryAdmin => urls::BIG_QUERY_ADMIN,
-            BigQueryReadWrite => urls::BIG_QUERY_READ_WRITE,
-            BigQueryReadOnly => urls::BIG_QUERY_READ_ONLY,
-            CloudTasks => urls::CLOUD_TASKS,
-            Firestore => urls::FIRESTORE,
-            GcsAdmin => urls::GCS_ADMIN,
-            GcsReadWrite => urls::GCS_READ_WRITE,
-            GcsReadOnly => urls::GCS_READ_ONLY,
-            PubSub => urls::PUB_SUB,
-            SpannerAdmin => urls::SPANNER_ADMIN,
-            SpannerData => urls::SPANNER_DATA,
-            RealtimeDatabase => urls::REALTIME_DATABASE,
-        }
-    }
 }
 
 // Ensures that Scope::ALL is sorted at compile time, without needing to run a test.
@@ -360,15 +345,18 @@ const _: () = {
 
 impl Scopes {
     #[inline]
-    pub fn iter_scopes(self) -> ScopeIter {
+    pub fn iter_scopes(mut self) -> ScopeIter {
+        // truncate any unknown bits before iterating, that way
+        // size_hint (and by extension ExactSizeIterator) can be accurate.
+        self.truncate();
         ScopeIter {
-            inner_iter: self.into_iter(),
+            iter: self.iter_names(),
         }
     }
 }
 
 pub struct ScopeIter {
-    inner_iter: bitflags::iter::Iter<Scopes>,
+    iter: bitflags::iter::IterNames<Scopes>,
 }
 
 impl Iterator for ScopeIter {
@@ -376,7 +364,7 @@ impl Iterator for ScopeIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let scope = self.inner_iter.next()?;
+            let (_, scope) = self.iter.next()?;
             if let Some(scope) = Scope::from_int(scope.bits()) {
                 return Some(scope);
             }
@@ -384,9 +372,13 @@ impl Iterator for ScopeIter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner_iter.size_hint()
+        let len = self.iter.remaining().bits().count_ones() as usize;
+
+        (len, Some(len))
     }
 }
+
+impl ExactSizeIterator for ScopeIter {}
 
 pub(crate) fn serialize_scope_urls<S>(scopes: &Scopes, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -401,7 +393,7 @@ where
                     f.write_str(" ")?;
                 }
 
-                f.write_str(scope.scope_uri())?;
+                f.write_str(scope.scope_url())?;
             }
 
             Ok(())
@@ -409,23 +401,4 @@ where
     }
 
     serializer.collect_str(&ConcatScopeUrls(*scopes))
-}
-
-pub(crate) fn serialize_scope_urls_as_array<S>(
-    scopes: &Scopes,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    use serde::ser::SerializeSeq;
-
-    let count = scopes.bits().count_ones() as usize;
-    let mut seq = serializer.serialize_seq(Some(count))?;
-
-    for scope in scopes.iter_scopes() {
-        seq.serialize_element(scope.scope_uri())?;
-    }
-
-    seq.end()
 }

@@ -1,7 +1,6 @@
 use aws_lc_rs::error::{KeyRejected, Unspecified};
 use bytes::Bytes;
 use http::{HeaderMap, StatusCode};
-use hyper::body::Incoming;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -31,12 +30,6 @@ pub enum RsaError {
     KeyRejected(#[from] KeyRejected),
     #[error(transparent)]
     Unspecified(#[from] Unspecified),
-}
-
-impl Error {
-    pub(crate) fn io(io: impl Into<std::io::Error>) -> Self {
-        Self::Io(io.into())
-    }
 }
 
 /// Groups together [`hyper`] and [`hyper_util`] errors, since they
@@ -84,6 +77,7 @@ pub struct ResponseError {
     #[allow(unused)] // mainly around for debug logging
     headers: HeaderMap,
     content: ResponseErrorKind,
+    json_error: Option<path_aware_serde::Error<serde_json::Error>>,
 }
 
 impl ResponseError {
@@ -106,22 +100,19 @@ impl ResponseError {
             status: parts.status,
             headers: parts.headers,
             content,
+            json_error: None,
         }
     }
 
-    pub(crate) async fn from_response(
+    pub fn from_parts_with_json_error(
         uri: http::Uri,
-        response: http::Response<Incoming>,
-    ) -> Result<Self, Error> {
-        debug_assert!(
-            !response.status().is_success(),
-            "shouldn't be called on responses with a successful code"
-        );
-
-        let (parts, body) = response.into_parts();
-        let bytes = crate::util::collect_body(body).await?;
-
-        Ok(Self::from_parts(uri, parts, bytes))
+        parts: http::response::Parts,
+        content: Bytes,
+        error: path_aware_serde::Error<serde_json::Error>,
+    ) -> Self {
+        let mut new = Self::from_parts(uri, parts, content);
+        new.json_error = Some(error);
+        new
     }
 }
 
@@ -169,6 +160,10 @@ impl std::fmt::Display for ResponseError {
         // write the common uri/status
         write!(f, "{} - {}", self.uri, self.status)?;
 
+        if let Some(ref json_err) = self.json_error {
+            write!(f, " {json_err}")?;
+        }
+
         match self.content {
             ResponseErrorKind::Json(ref json) => match try_extract_json_error_string(json) {
                 Some(message) => write!(f, ": {message}"),
@@ -182,7 +177,13 @@ impl std::fmt::Display for ResponseError {
     }
 }
 
-impl std::error::Error for ResponseError {}
+impl std::error::Error for ResponseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.json_error
+            .as_ref()
+            .map(|err| err as &(dyn std::error::Error + 'static))
+    }
+}
 
 #[derive(Debug)]
 enum ResponseErrorKind {

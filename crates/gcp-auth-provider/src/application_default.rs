@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use bytes::{BufMut, BytesMut};
 use http::HeaderValue;
+use serde::ser::SerializeSeq;
 
 use crate::client::BytesBody;
-use crate::{Error, Scopes};
+use crate::{Error, ProjectId, Scopes};
 
 const JSON_TYPE: HeaderValue = HeaderValue::from_static("application/json");
 
@@ -72,94 +72,117 @@ impl ApplicationDefault {
     }
 }
 
-impl super::RawTokenProvider for ApplicationDefault {
-    const NAME: &'static str = "application default";
+impl ApplicationDefault {
+    pub fn load_from_credentials_file_bytes(
+        bytes: &[u8],
+    ) -> crate::Result<(Self, crate::ProjectId)> {
+        Self::load_from_credentials_file_bytes_with_client(&mut None, bytes)
+    }
 
-    fn try_load(
-        ctx: &mut crate::InitContext,
-    ) -> impl Future<Output = crate::Result<Option<(Self, crate::ProjectId)>>> + Send + '_ {
-        async move {
-            let Some(mut file) = dirs::config_dir() else {
-                return Ok(None);
+    pub(crate) fn load_from_credentials_file_bytes_with_client(
+        https: &mut Option<crate::client::HttpsClient>,
+        bytes: &[u8],
+    ) -> crate::Result<(Self, crate::ProjectId)> {
+        let (delegates, service_account_url, mut creds) =
+            if memchr::memmem::find(&bytes, "\"source_credentials\"".as_bytes()).is_some() {
+                let ImpersonatedCredentials {
+                    source_credentials,
+                    service_account_impersonation_url,
+                    delegates,
+                } = path_aware_serde::json::deserialize_slice(&bytes)?;
+                (
+                    delegates,
+                    Some(Box::from(service_account_impersonation_url)),
+                    source_credentials,
+                )
+            } else {
+                let creds: ApplicationCredentials =
+                    path_aware_serde::json::deserialize_slice(&bytes)?;
+
+                (Vec::new(), None, creds)
             };
 
-            file.push("gcloud/application_default_credentials.json");
-
-            let bytes = match tokio::fs::read(&file).await {
-                Ok(bytes) => bytes,
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-                Err(err) => return Err(err.into()),
-            };
-
-            let (delegates, service_account_url, creds) =
-                if memchr::memmem::find(&bytes, "\"source_credentials\"".as_bytes()).is_some() {
-                    let ImpersonatedCredentials {
-                        source_credentials,
-                        service_account_impersonation_url,
-                        delegates,
-                    } = path_aware_serde::json::deserialize_slice(&bytes)?;
-                    (
-                        delegates,
-                        Some(Box::from(service_account_impersonation_url)),
-                        source_credentials,
-                    )
-                } else {
-                    let creds: ApplicationCredentials =
-                        path_aware_serde::json::deserialize_slice(&bytes)?;
-
-                    (Vec::new(), None, creds)
-                };
-
-            let proj_id: Arc<str> = match (
-                service_account_url.as_deref(),
-                creds.quota_project_id.as_ref(),
-            ) {
-                (_, Some(project_id)) => Arc::from(&**project_id),
-                (Some(uri), None) => match find_project_id_in_impersonated_uri(uri) {
-                    Some(project_id) => Arc::from(project_id),
-                    None => {
-                        return Err(Error::Io(std::io::Error::new(
-                            std::io::ErrorKind::NotFound,
-                            "no project id found",
-                        )));
-                    }
-                },
-                (None, None) => {
+        let proj_id = match (
+            service_account_url.as_deref(),
+            creds.quota_project_id.take(),
+        ) {
+            (_, Some(project_id)) => ProjectId::new_cow(project_id),
+            (Some(uri), None) => match find_project_id_in_impersonated_uri(uri) {
+                Some(project_id) => ProjectId::new_shared(project_id),
+                None => {
                     return Err(Error::Io(std::io::Error::new(
                         std::io::ErrorKind::NotFound,
                         "no project id found",
                     )));
                 }
-            };
+            },
+            (None, None) => {
+                return Err(Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "no project id found",
+                )));
+            }
+        };
 
-            let client = match ctx.https.take() {
-                Some(client) => client,
-                None => crate::client::Client::new_https()?,
-            };
+        let client = match https.take() {
+            Some(client) => client,
+            None => crate::client::Client::new_https()?,
+        };
 
-            let new = Self {
-                client,
-                delegates,
-                service_account_url,
-                client_id: Box::from(creds.client_id),
-                client_secret: Box::from(creds.client_secret),
-                refresh_token: Box::from(creds.refresh_token),
-            };
+        let new = Self {
+            client,
+            delegates,
+            service_account_url,
+            client_id: Box::from(creds.client_id),
+            client_secret: Box::from(creds.client_secret),
+            refresh_token: Box::from(creds.refresh_token),
+        };
 
-            Ok(Some((new, crate::ProjectId(From::from(proj_id)))))
-        }
+        Ok((new, proj_id))
     }
 
-    fn get_token(
-        &self,
-        scopes: crate::Scopes,
-    ) -> impl Future<Output = crate::Result<crate::Token>> + Send + 'static {
-        let request_result = self.make_request(scopes);
-        let client = self.client.clone();
+    async fn try_load_inner(
+        https: &mut Option<crate::client::HttpsClient>,
+    ) -> crate::Result<Option<(Self, crate::ProjectId)>> {
+        let Some(mut file) = dirs::config_dir() else {
+            return Ok(None);
+        };
 
-        async move {
-            let request = request_result?;
-            client.request_json(request).await
+        file.push("gcloud/application_default_credentials.json");
+
+        let bytes = match tokio::fs::read(&file).await {
+            Ok(bytes) => bytes,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
+
+        Self::load_from_credentials_file_bytes_with_client(https, &bytes).map(Some)
+    }
+
+    pub(super) async fn try_load(
+        ctx: &mut crate::InitContext,
+    ) -> crate::Result<Option<(Self, crate::ProjectId)>> {
+        Self::try_load_inner(&mut ctx.https).await
+    }
+
+    pub async fn try_load_new() -> crate::Result<Option<(Self, crate::ProjectId)>> {
+        Self::try_load_inner(&mut None).await
+    }
+}
+
+impl super::BaseTokenProvider for ApplicationDefault {
+    #[inline]
+    fn name(&self) -> &'static str {
+        "application default"
+    }
+}
+
+impl super::ScopedTokenProvider for ApplicationDefault {
+    #[inline]
+    fn get_scoped_token(&self, scopes: crate::Scopes) -> crate::GetTokenFuture<'_> {
+        match self.make_request(scopes) {
+            Ok(request) => crate::GetTokenFuture::new_https(&self.client, request),
+            Err(error) => crate::GetTokenFuture::new_error(error),
         }
     }
 }
@@ -197,7 +220,7 @@ struct RefreshRequest<'a> {
 #[derive(serde::Serialize)]
 struct ImpersonateRequest<'a> {
     delegates: &'a Vec<Box<str>>,
-    #[serde(serialize_with = "crate::scope::serialize_scope_urls_as_array")]
+    #[serde(serialize_with = "serialize_scope_urls_as_array")]
     scope: Scopes,
 }
 
@@ -210,10 +233,25 @@ fn find_project_id_in_impersonated_uri(uri: &str) -> Option<&str> {
     remaining.get(..len)
 }
 
+fn serialize_scope_urls_as_array<S>(scopes: &Scopes, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let iter = scopes.iter_scopes();
+
+    let mut seq = serializer.serialize_seq(Some(iter.len()))?;
+
+    for scope in iter {
+        seq.serialize_element(scope.scope_url())?;
+    }
+
+    seq.end()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{RawTokenProvider, Scopes};
+    use crate::{ScopedTokenProvider, Scopes};
 
     #[tokio::test]
     async fn test_application_default() -> Result<(), Error> {
@@ -222,7 +260,7 @@ mod tests {
             .unwrap();
         println!("{proj_id:?}");
 
-        let token = app.get_token(Scopes::GCS_READ_ONLY).await?;
+        let token = app.get_scoped_token(Scopes::GCS_READ_ONLY).await?;
         println!("{token:#?}");
         Ok(())
     }

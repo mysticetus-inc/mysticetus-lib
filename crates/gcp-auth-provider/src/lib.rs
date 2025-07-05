@@ -1,98 +1,45 @@
+#[cfg(feature = "application-default")]
 mod application_default;
 mod client;
+#[cfg(feature = "emulator")]
+pub mod emulator;
 mod error;
+mod future;
 #[cfg(feature = "gcloud")]
 pub mod gcloud;
 pub mod metadata;
+mod project_id;
 mod scope;
 pub mod service_account;
-mod state;
 mod token;
 mod util;
-use std::future::Future;
-use std::sync::Arc;
 
 pub use error::{Error, ResponseError};
+pub use future::GetTokenFuture;
+pub use project_id::ProjectId;
 pub use scope::{Scope, Scopes};
 pub use token::Token;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug)]
-pub enum TokenProvider {
+pub enum Provider {
+    #[cfg(feature = "application-default")]
+    ApplicationDefault(application_default::ApplicationDefault),
+    #[cfg(feature = "emulator")]
+    Emulator(emulator::EmulatorProvider),
     #[cfg(feature = "gcloud")]
     GCloud(gcloud::GCloudProvider),
     MetadataServer(metadata::MetadataServer),
     ServiceAccount(service_account::ServiceAccount),
-    ApplicationDefault(application_default::ApplicationDefault),
 }
 
-#[derive(Debug, Clone)]
-pub struct ProjectId(shared::Shared<str>);
-
-impl<S> From<S> for ProjectId
-where
-    shared::Shared<str>: From<S>,
-{
-    #[inline]
-    fn from(value: S) -> Self {
-        Self(From::from(value))
+impl Provider {
+    #[cfg(feature = "emulator")]
+    pub const fn new_emulator() -> Self {
+        Self::Emulator(emulator::EmulatorProvider)
     }
-}
 
-impl std::fmt::Display for ProjectId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self)
-    }
-}
-
-impl<S: AsRef<str>> PartialEq<S> for ProjectId {
-    #[inline]
-    fn eq(&self, other: &S) -> bool {
-        str::eq(self, other.as_ref())
-    }
-}
-
-impl Eq for ProjectId {}
-
-impl<S: AsRef<str>> PartialOrd<S> for ProjectId {
-    #[inline]
-    fn partial_cmp(&self, other: &S) -> Option<std::cmp::Ordering> {
-        str::partial_cmp(self, other.as_ref())
-    }
-}
-
-impl Ord for ProjectId {
-    #[inline]
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        str::cmp(self, other)
-    }
-}
-
-impl std::borrow::Borrow<str> for ProjectId {
-    #[inline]
-    fn borrow(&self) -> &str {
-        self
-    }
-}
-
-impl std::ops::Deref for ProjectId {
-    type Target = str;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl AsRef<str> for ProjectId {
-    #[inline]
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
-impl TokenProvider {
     pub async fn detect() -> Result<(Self, ProjectId)> {
         let mut ctx = InitContext::default();
 
@@ -106,6 +53,7 @@ impl TokenProvider {
             return Ok((Self::MetadataServer(metadata), project_id));
         }
 
+        #[cfg(feature = "application-default")]
         if let Some((app, project_id)) =
             application_default::ApplicationDefault::try_load(&mut ctx).await?
         {
@@ -113,7 +61,7 @@ impl TokenProvider {
         }
 
         #[cfg(feature = "gcloud")]
-        if let Some((gcloud, project_id)) = gcloud::GCloudProvider::try_load(&mut ctx).await? {
+        if let Some((gcloud, project_id)) = gcloud::GCloudProvider::try_load().await? {
             return Ok((Self::GCloud(gcloud), project_id));
         }
 
@@ -122,39 +70,129 @@ impl TokenProvider {
 
     pub fn token_provider_name(&self) -> &'static str {
         match self {
+            #[cfg(feature = "application-default")]
+            Self::ApplicationDefault(app) => app.name(),
+            #[cfg(feature = "emulator")]
+            Self::Emulator(emulator) => emulator.name(),
             #[cfg(feature = "gcloud")]
-            Self::GCloud(_) => gcloud::GCloud::NAME,
-            Self::MetadataServer(_) => metadata::MetadataServer::NAME,
-            Self::ServiceAccount(_) => service_account::ServiceAccount::NAME,
-            Self::ApplicationDefault(_) => application_default::ApplicationDefault::NAME,
+            Self::GCloud(gcloud) => gcloud.name(),
+            Self::MetadataServer(ms) => ms.name(),
+            Self::ServiceAccount(svc) => svc.name(),
         }
     }
 
-    pub fn get_token(
-        self: &Arc<Self>,
-        scopes: Scopes,
-    ) -> impl Future<Output = Result<Token>> + Send + 'static {
-        let this = Arc::clone(self);
-        async move {
-            match *this {
-                #[cfg(feature = "gcloud")]
-                Self::GCloud(ref gcloud) => gcloud.get_token(scopes).await,
-                Self::MetadataServer(ref meta) => meta.get_token(scopes).await,
-                Self::ServiceAccount(ref acct) => acct.get_token(scopes).await,
-                Self::ApplicationDefault(ref app) => app.get_token(scopes).await,
-            }
+    pub fn as_token_provider(&self) -> Option<&dyn TokenProvider> {
+        match self {
+            #[cfg(feature = "gcloud")]
+            Self::GCloud(gcloud) => Some(gcloud),
+            #[cfg(feature = "emulator")]
+            Self::Emulator(emulator) => Some(emulator),
+            Self::MetadataServer(meta) => Some(meta),
+            _ => None,
+        }
+    }
+
+    pub fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_> {
+        match self {
+            #[cfg(feature = "application-default")]
+            Self::ApplicationDefault(app) => app.get_scoped_token(scopes),
+            #[cfg(feature = "gcloud")]
+            Self::GCloud(gcloud) => gcloud.get_token(),
+            #[cfg(feature = "emulator")]
+            Self::Emulator(emulator) => emulator.get_token(),
+            Self::MetadataServer(meta) => meta.get_token(),
+            Self::ServiceAccount(acct) => acct.get_scoped_token(scopes),
         }
     }
 }
 
-trait RawTokenProvider: std::fmt::Debug + Sized + Send + Sync + 'static {
-    const NAME: &'static str;
+/// Base trait for token providers. Actual provider impls
+/// are defined by the supertraits [`ScopedTokenProvider`] and [`TokenProvider`].
+pub trait BaseTokenProvider: std::fmt::Debug + Send + Sync {
+    fn name(&self) -> &'static str;
+}
 
-    fn try_load(
-        init_ctx: &mut InitContext,
-    ) -> impl Future<Output = Result<Option<(Self, ProjectId)>>> + Send + '_;
+impl<B: BaseTokenProvider> BaseTokenProvider for &B {
+    #[inline]
+    fn name(&self) -> &'static str {
+        B::name(self)
+    }
+}
 
-    fn get_token(&self, scopes: Scopes) -> impl Future<Output = Result<Token>> + Send + 'static;
+impl BaseTokenProvider for Provider {
+    fn name(&self) -> &'static str {
+        self.token_provider_name()
+    }
+}
+
+impl ScopedTokenProvider for Provider {
+    #[inline]
+    fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_> {
+        self.get_scoped_token(scopes)
+    }
+}
+
+pub trait ScopedTokenProvider: BaseTokenProvider {
+    fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_>;
+
+    fn into_scoped(self, scopes: Scopes) -> ScopedProvider<Self>
+    where
+        Self: Sized,
+    {
+        ScopedProvider {
+            provider: self,
+            scopes,
+        }
+    }
+}
+
+impl<S> ScopedTokenProvider for &S
+where
+    S: ScopedTokenProvider,
+{
+    #[inline]
+    fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_> {
+        S::get_scoped_token(self, scopes)
+    }
+}
+
+fn _assert_scoped_token_provider_dyn(_: &dyn ScopedTokenProvider) {}
+
+/// For providers that don't need any scopes to generate a token.
+pub trait TokenProvider: BaseTokenProvider {
+    fn get_token(&self) -> GetTokenFuture<'_>;
+}
+
+impl<S> TokenProvider for &S
+where
+    S: TokenProvider,
+{
+    #[inline]
+    fn get_token(&self) -> GetTokenFuture<'_> {
+        <S as TokenProvider>::get_token(self)
+    }
+}
+
+fn _assert_token_provider_dyn(_: &dyn TokenProvider) {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScopedProvider<P> {
+    provider: P,
+    scopes: Scopes,
+}
+
+impl<B: BaseTokenProvider> BaseTokenProvider for ScopedProvider<B> {
+    #[inline]
+    fn name(&self) -> &'static str {
+        self.provider.name()
+    }
+}
+
+impl<P: ScopedTokenProvider> TokenProvider for ScopedProvider<P> {
+    #[inline]
+    fn get_token(&self) -> GetTokenFuture<'_> {
+        self.provider.get_scoped_token(self.scopes)
+    }
 }
 
 #[derive(Debug, Default)]

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{fmt, io};
 
@@ -15,15 +14,16 @@ use http::HeaderValue;
 use rustls_pki_types::pem::PemObject;
 use timestamp::Timestamp;
 
-use crate::token::Bearer;
-use crate::{Error, ProjectId, Scopes, Token};
+use crate::{Error, ProjectId, Scopes};
 
 const FORM_URL_ENCODED: HeaderValue = HeaderValue::from_static("application/x-www-form-urlencoded");
 
-#[derive(Clone)]
 pub struct ServiceAccount {
     client: crate::client::HttpsClient,
-    shared: Arc<Shared>,
+    signer: Signer,
+    token_uri: http::Uri,
+    client_email: Box<str>,
+    private_key_id: Box<str>,
     subject: Option<Box<str>>,
     audience: Option<Box<str>>,
 }
@@ -31,8 +31,8 @@ pub struct ServiceAccount {
 impl fmt::Debug for ServiceAccount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ServiceAccount")
-            .field("client_email", &self.shared.client_email)
-            .field("token_uri", &self.shared.token_uri)
+            .field("client_email", &self.client_email)
+            .field("token_uri", &self.token_uri)
             .field("subject", &self.subject)
             .field("audience", &self.audience)
             .finish_non_exhaustive()
@@ -64,6 +64,27 @@ impl ServiceAccount {
         ServiceAccountKey::from_path(path, Self::new_from_key).await?
     }
 
+    pub(super) async fn try_load(
+        ctx: &mut crate::InitContext,
+    ) -> crate::Result<Option<(Self, ProjectId)>> {
+        ServiceAccountKey::from_env(move |key| {
+            let client = match ctx.https.take() {
+                Some(client) => client,
+                None => crate::client::HttpsClient::new_https()?,
+            };
+
+            match Self::from_parts(client, key) {
+                Ok(parts) => Ok(parts),
+                Err((error, client)) => {
+                    ctx.https = Some(client);
+                    Err(error)
+                }
+            }
+        })
+        .await?
+        .transpose()
+    }
+
     pub fn new_from_key(key: ServiceAccountKey<'_>) -> Result<(Self, ProjectId), Error> {
         let client = crate::client::HttpsClient::new_https()?;
         Self::from_parts(client, key).map_err(|(error, _)| error)
@@ -78,22 +99,19 @@ impl ServiceAccount {
             Err(err) => return Err((err.into(), client)),
         };
 
-        let project_id = ProjectId(From::from(Arc::from(key.project_id)));
+        let project_id = ProjectId::new_cow(key.project_id);
         Ok((
             ServiceAccount {
                 client,
                 subject: None,
                 audience: None,
-
-                shared: Arc::new(Shared {
-                    private_key_id: Box::from(key.private_key_id),
-                    client_email: Box::from(key.client_email),
-                    token_uri: key.token_uri,
-                    signer: Signer {
-                        key: private_key,
-                        rng: SystemRandom::new(),
-                    },
-                }),
+                private_key_id: Box::from(key.private_key_id),
+                client_email: Box::from(key.client_email),
+                token_uri: key.token_uri,
+                signer: Signer {
+                    key: private_key,
+                    rng: SystemRandom::new(),
+                },
             },
             project_id,
         ))
@@ -103,7 +121,7 @@ impl ServiceAccount {
         const GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:jwt-bearer";
         static MAX_URL_ENCODED_LEN: AtomicUsize = AtomicUsize::new(0);
 
-        let jwt = Claims::new(self, scopes).encode_jwt(&self.shared)?;
+        let jwt = Claims::new(self, scopes).encode_jwt(self)?;
 
         let cap = MAX_URL_ENCODED_LEN.load(Ordering::Relaxed);
         let dst = String::with_capacity(if cap == 0 {
@@ -120,60 +138,34 @@ impl ServiceAccount {
         MAX_URL_ENCODED_LEN.fetch_max(body.len(), Ordering::Relaxed);
         Ok(Bytes::from(body))
     }
-}
 
-struct Shared {
-    signer: Signer,
-    token_uri: http::Uri,
-    client_email: Box<str>,
-    private_key_id: Box<str>,
-}
-
-impl crate::RawTokenProvider for ServiceAccount {
-    const NAME: &'static str = "service account";
-    fn try_load(
-        ctx: &mut crate::InitContext,
-    ) -> impl Future<Output = crate::Result<Option<(Self, ProjectId)>>> + Send + '_ {
-        async move {
-            ServiceAccountKey::from_env(move |key| {
-                let client = match ctx.https.take() {
-                    Some(client) => client,
-                    None => crate::client::HttpsClient::new_https()?,
-                };
-
-                match Self::from_parts(client, key) {
-                    Ok(parts) => Ok(parts),
-                    Err((error, client)) => {
-                        ctx.https = Some(client);
-                        Err(error)
-                    }
-                }
-            })
-            .await?
-            .transpose()
-        }
-    }
-
-    fn get_token(
+    fn encode_request(
         &self,
-        scopes: crate::Scopes,
-    ) -> impl Future<Output = crate::Result<crate::Token>> + Send + 'static {
-        let encode_body_res = self.encode_body(scopes);
-        let client = self.client.clone();
-        let shared = self.shared.clone();
+        scopes: Scopes,
+    ) -> Result<http::Request<crate::client::BytesBody>, Error> {
+        let body = self.encode_body(scopes)?;
 
-        async move {
-            let body = encode_body_res?;
-            let request = http::Request::builder()
-                .uri(shared.token_uri.clone())
-                .method(http::Method::POST)
-                .header(http::header::CONTENT_TYPE, FORM_URL_ENCODED)
-                .body(crate::client::BytesBody::new(body))
-                .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        http::Request::builder()
+            .uri(self.token_uri.clone())
+            .method(http::Method::POST)
+            .header(http::header::CONTENT_TYPE, FORM_URL_ENCODED)
+            .body(crate::client::BytesBody::new(body))
+            .map_err(|err| Error::Io(io::Error::new(io::ErrorKind::InvalidData, err)))
+    }
+}
+impl crate::BaseTokenProvider for ServiceAccount {
+    #[inline]
+    fn name(&self) -> &'static str {
+        "service account"
+    }
+}
 
-            let token = client.request_json::<Token<Bearer>>(request).await?;
-
-            Ok(token.into_unit_token_type())
+impl crate::ScopedTokenProvider for ServiceAccount {
+    #[inline]
+    fn get_scoped_token(&self, scopes: crate::Scopes) -> crate::GetTokenFuture<'_> {
+        match self.encode_request(scopes) {
+            Ok(request) => crate::GetTokenFuture::new_https(&self.client, request),
+            Err(error) => crate::GetTokenFuture::new_error(error),
         }
     }
 }
@@ -252,25 +244,10 @@ impl Signer {
     }
 }
 
-impl Signer {
-    fn from_private_key(key: &[u8]) -> Result<Self, Error> {
-        let pem = rustls_pki_types::PrivateKeyDer::pem_slice_iter(key)
-            .next()
-            .unwrap()
-            .unwrap();
-        let key = KeyPair::from_pkcs8(pem.secret_der())?;
-        Ok(Self {
-            key,
-            rng: SystemRandom::new(),
-        })
-    }
-}
-
 impl<'a> ServiceAccountKey<'a> {
     pub fn from_json_bytes(
         bytes: &'a [u8],
     ) -> Result<Self, path_aware_serde::Error<serde_json::Error>> {
-        // serde_json::from_slice(bytes).map_err(path_aware_serde::Error::from)
         path_aware_serde::json::deserialize_slice(bytes)
     }
 
@@ -333,10 +310,10 @@ impl<'a> Claims<'a> {
         let now = Timestamp::now();
 
         Self {
-            iss: &service_acct.shared.client_email,
+            iss: &service_acct.client_email,
             aud: match service_acct.audience.as_deref() {
                 Some(aud) => Audience::Str(aud),
-                None => Audience::Uri(&service_acct.shared.token_uri),
+                None => Audience::Uri(&service_acct.token_uri),
             },
             iat: now.as_seconds(),
             exp: now
@@ -346,13 +323,13 @@ impl<'a> Claims<'a> {
                 service_acct
                     .subject
                     .as_deref()
-                    .unwrap_or(&service_acct.shared.client_email),
+                    .unwrap_or(&service_acct.client_email),
             ),
             scope,
         }
     }
 
-    fn encode_jwt(&self, shared: &Shared) -> crate::Result<String> {
+    fn encode_jwt(&self, svc: &ServiceAccount) -> crate::Result<String> {
         static MAX_JWT_CAPACITY: AtomicUsize = AtomicUsize::new(0);
 
         thread_local! {
@@ -369,7 +346,7 @@ impl<'a> Claims<'a> {
             let header = Header {
                 alg: "RS256",
                 typ: "JWT",
-                kid: &shared.private_key_id,
+                kid: &svc.private_key_id,
             };
 
             serde_json::to_writer(&mut *buf, &header).map_err(|err| Error::Json(err.into()))?;
@@ -382,7 +359,7 @@ impl<'a> Claims<'a> {
 
             URL_SAFE_NO_PAD.encode_string(&*buf, &mut jwt);
 
-            shared.signer.sign(jwt.as_bytes(), &mut *buf)?;
+            svc.signer.sign(jwt.as_bytes(), &mut *buf)?;
             jwt.push('.');
             URL_SAFE_NO_PAD.encode_string(&*buf, &mut jwt);
 
@@ -411,7 +388,7 @@ struct Header<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RawTokenProvider;
+    use crate::ScopedTokenProvider;
 
     #[tokio::test]
     async fn test_service_account() -> Result<(), Error> {
@@ -422,7 +399,7 @@ mod tests {
         println!("{project_id:?}");
         println!("{service_acct:#?}");
 
-        let token = service_acct.get_token(Scopes::GCS_READ_ONLY).await?;
+        let token = service_acct.get_scoped_token(Scopes::GCS_READ_ONLY).await?;
 
         println!("{token:#?}");
 
