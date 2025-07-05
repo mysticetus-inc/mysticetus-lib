@@ -510,9 +510,9 @@ where
     }
 
     #[inline]
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize,
+        T: serde::Serialize + ?Sized,
     {
         T::serialize(value, self)
     }
@@ -547,13 +547,13 @@ where
     }
 
     #[inline]
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize,
+        T: serde::Serialize + ?Sized,
     {
         self.seed.serialize_newtype_struct(name, value)
     }
@@ -583,7 +583,7 @@ where
     }
 
     #[inline]
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         name: &'static str,
         variant_index: u32,
@@ -591,7 +591,7 @@ where
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize,
+        T: serde::Serialize + ?Sized,
     {
         self.seed
             .serialize_newtype_variant(name, variant_index, variant, value)
@@ -601,7 +601,7 @@ where
 impl<T, D> Serialize for SeededKeyCapture<T, &Cell<D>>
 where
     T: Serialize,
-    D: StringDst + Default + ?Sized,
+    D: StringDst + Default,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

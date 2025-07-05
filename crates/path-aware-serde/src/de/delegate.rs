@@ -126,10 +126,9 @@ where
     where
         E: de::Error,
     {
-        self.inner_access.visit_none().map_err(|err| {
-            self.error_path.set(self.track);
-            err
-        })
+        self.inner_access
+            .visit_none()
+            .inspect_err(|_| self.error_path.set(self.track))
     }
 
     fn visit_seq<S>(self, seq: S) -> Result<Self::Value, S::Error>
@@ -152,10 +151,9 @@ where
     where
         E: de::Error,
     {
-        self.inner_access.visit_unit().map_err(|err| {
-            self.error_path.set(self.track);
-            err
-        })
+        self.inner_access
+            .visit_unit()
+            .inspect_err(|_| self.error_path.set(self.track))
     }
 }
 
@@ -186,14 +184,11 @@ where
     {
         self.inner_access
             .next_key_seed(SeededKeyCapture::new(seed, &mut self.key))
-            .map_err(|err| {
-                let err_track = match self.key.take() {
+            .inspect_err(|_| {
+                self.error_path.set(&match self.key.take() {
                     Some(key) => self.track.add_map_child(key),
                     None => self.track.add_unknown_child(),
-                };
-
-                self.error_path.set(&err_track);
-                err
+                })
             })
     }
 
@@ -219,10 +214,7 @@ where
 
         self.inner_access
             .next_value_seed(wrapped_seed)
-            .map_err(|err| {
-                self.error_path.set(&child_seg_track);
-                err
-            })
+            .inspect_err(|_| self.error_path.set(&child_seg_track))
     }
 
     fn size_hint(&self) -> Option<usize> {
@@ -250,16 +242,14 @@ where
             key: self.key,
         };
 
-        match self.inner_access.next_element_seed(nested_wrapper) {
-            Ok(element) => {
-                self.key += 1;
-                Ok(element)
-            }
-            Err(error) => {
-                self.error_path.set(&nested_child);
-                Err(error)
-            }
-        }
+        let element = self
+            .inner_access
+            .next_element_seed(nested_wrapper)
+            .inspect_err(|_| self.error_path.set(&nested_child))?;
+
+        self.key += 1;
+
+        Ok(element)
     }
 
     fn size_hint(&self) -> Option<usize> {
@@ -316,10 +306,9 @@ where
     type Error = A::Error;
 
     fn unit_variant(self) -> Result<(), Self::Error> {
-        self.inner_access.unit_variant().map_err(|err| {
-            self.error_path.set(self.track);
-            err
-        })
+        self.inner_access
+            .unit_variant()
+            .inspect_err(|_| self.error_path.set(self.track))
     }
 
     fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>

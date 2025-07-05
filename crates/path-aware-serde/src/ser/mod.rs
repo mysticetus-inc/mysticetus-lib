@@ -124,9 +124,9 @@ where
         ))
     }
 
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         let delegated = build_delegate!(self, value, map_error: Identity);
         self.serializer
@@ -174,13 +174,13 @@ where
         Ok(build_delegate!(self, delegated, key: 0))
     }
 
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         let delegated = build_delegate!(self, value, map_error: Identity);
 
@@ -230,7 +230,7 @@ where
         Ok(build_delegate!(self, delegated, key: ""))
     }
 
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         name: &'static str,
         variant_index: u32,
@@ -238,7 +238,7 @@ where
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         let wrapped = build_delegate!(self, value, map_error: Identity);
         self.serializer

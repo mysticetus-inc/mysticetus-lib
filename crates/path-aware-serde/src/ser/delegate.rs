@@ -166,21 +166,21 @@ where
     }
 
     #[inline]
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         T::serialize(value, self)
     }
 
     #[inline]
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.delegated
             .serialize_newtype_struct(name, value)
@@ -188,7 +188,7 @@ where
     }
 
     #[inline]
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         name: &'static str,
         variant_index: u32,
@@ -196,7 +196,7 @@ where
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.delegated
             .serialize_newtype_variant(name, variant_index, variant, value)
@@ -356,9 +356,9 @@ where
     type Ok = S::Ok;
     type Error = F::Out;
 
-    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error>
+    fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         let delegated = Delegate {
             track: Cow::Borrowed(&*self.track),
@@ -375,9 +375,9 @@ where
             .map_err(err_handler!(self, map: self.key.borrow()))
     }
 
-    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         let delegated = Delegate {
             track: Cow::Borrowed(&*self.track),
@@ -405,9 +405,9 @@ where
     type Ok = S::Ok;
     type Error = F::Out;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.delegated
             .serialize_element(&wrap_delegated!(self, value))
@@ -430,9 +430,9 @@ where
     type Ok = D::Ok;
     type Error = F::Out;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.delegated
             .serialize_element(&wrap_delegated!(self, value))
@@ -455,13 +455,9 @@ where
     type Ok = D::Ok;
     type Error = F::Out;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        key: &'static str,
-        value: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.key = key;
 
@@ -483,9 +479,9 @@ where
     type Ok = D::Ok;
     type Error = F::Out;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.delegated
             .serialize_field(&wrap_delegated!(self, value))
@@ -508,9 +504,9 @@ where
     type Ok = D::Ok;
     type Error = F::Out;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.delegated
             .serialize_field(&wrap_delegated!(self, value))
@@ -533,13 +529,9 @@ where
     type Ok = D::Ok;
     type Error = F::Out;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        field: &'static str,
-        value: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, field: &'static str, value: &T) -> Result<(), Self::Error>
     where
-        T: Serialize,
+        T: Serialize + ?Sized,
     {
         self.key = field;
 

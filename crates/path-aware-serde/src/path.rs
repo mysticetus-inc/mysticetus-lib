@@ -236,7 +236,7 @@ impl FromStr for Path {
                     }
 
                     let closing_offset = path[sep_idx..]
-                        .find(|ch: char| matches!(ch, ']'))
+                        .find(']')
                         .ok_or(ParsePathError::NoClosingBracket(sep_idx))?;
 
                     let closing_idx = sep_idx + closing_offset;
@@ -292,8 +292,16 @@ impl Segment {
             Self::Unknown => SegmentRef::Unknown,
         }
     }
+}
 
-    fn inner_cmp(&self, other: &Self) -> Ordering {
+impl PartialOrd for Segment {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Segment {
+    fn cmp(&self, other: &Self) -> Ordering {
         fn cmp_idx_and_key(index: usize, key: &str) -> Ordering {
             // if the string key is a number, try and parse it and compare as a number.
             // if it errors out, dont worry about it, and treat the index as less than the
@@ -318,18 +326,6 @@ impl Segment {
             (_, Self::Unknown) => Ordering::Less,
             (Self::Unknown, _) => Ordering::Greater,
         }
-    }
-}
-
-impl PartialOrd for Segment {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.inner_cmp(other))
-    }
-}
-
-impl Ord for Segment {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.inner_cmp(other)
     }
 }
 

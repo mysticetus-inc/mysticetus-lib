@@ -159,6 +159,7 @@ where
 }
 
 #[inline]
+#[allow(clippy::ptr_arg)] // needed to make serdes 'serialize_with' attrs happy
 pub fn serialize<T, S>(value: &Cow<'_, T>, serializer: S) -> Result<S::Ok, S::Error>
 where
     T: serde::Serialize + ToOwned + ?Sized,

@@ -39,10 +39,10 @@ impl<V> DebugVisitor<V, Tracing> {
 }
 
 pub trait DebugTarget {
-    fn log<V: ?Sized, E: ?Sized>(value: &V, error: &E)
+    fn log<V, E>(value: &V, error: &E)
     where
-        V: fmt::Debug,
-        E: std::error::Error;
+        V: fmt::Debug + ?Sized,
+        E: std::error::Error + ?Sized;
 }
 
 pub enum Stdout {}
@@ -50,30 +50,30 @@ pub enum Stderr {}
 pub enum Tracing {}
 
 impl DebugTarget for Stdout {
-    fn log<V: ?Sized, E: ?Sized>(value: &V, error: &E)
+    fn log<V, E>(value: &V, error: &E)
     where
-        V: fmt::Debug,
-        E: std::error::Error,
+        V: fmt::Debug + ?Sized,
+        E: std::error::Error + ?Sized,
     {
         println!("{error}: {value:?}")
     }
 }
 
 impl DebugTarget for Stderr {
-    fn log<V: ?Sized, E: ?Sized>(value: &V, error: &E)
+    fn log<V, E>(value: &V, error: &E)
     where
-        V: fmt::Debug,
-        E: std::error::Error,
+        V: fmt::Debug + ?Sized,
+        E: std::error::Error + ?Sized,
     {
         eprintln!("{error}: {value:?}")
     }
 }
 
 impl DebugTarget for Tracing {
-    fn log<V: ?Sized, E: ?Sized>(value: &V, error: &E)
+    fn log<V, E>(value: &V, error: &E)
     where
-        V: fmt::Debug,
-        E: std::error::Error,
+        V: fmt::Debug + ?Sized,
+        E: std::error::Error + ?Sized,
     {
         tracing::error!(message = "debug serde error", ?error, ?value);
     }

@@ -11,6 +11,12 @@ pub struct InlineStrDst<const CAP: usize> {
     len: usize,
 }
 
+impl<const CAP: usize> Default for InlineStrDst<CAP> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const CAP: usize> InlineStrDst<CAP> {
     #[inline(always)]
     pub const fn new() -> Self {
