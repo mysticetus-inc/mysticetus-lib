@@ -389,29 +389,28 @@ impl Date {
     pub const MIN: Self = Self {
         year: MIN_YEAR,
         month: Month::January,
-        day: unsafe { NonZeroU8::new_unchecked(1) },
+        day: NonZeroU8::MIN,
     };
 
     /// The first day with a non-negative year, '0000-01-01'.
     pub const ZERO: Self = Self {
         year: 0,
         month: Month::January,
-        day: unsafe { NonZeroU8::new_unchecked(1) },
+        day: NonZeroU8::MIN,
     };
 
     /// [`time::Date::MAX`], wrapped in [`Self`].
     pub const MAX: Self = Self {
         year: MAX_YEAR,
         month: Month::December,
-        // SAFETY: days_in always returns a non-zero int.
-        day: unsafe { NonZeroU8::new_unchecked(Month::December.days_in(MAX_YEAR)) },
+        day: NonZeroU8::new(Month::December.days_in(MAX_YEAR)).unwrap(),
     };
 
     /// The Day of the unix epoch.
     pub const UNIX_EPOCH: Self = Self {
         year: 1970,
         month: Month::January,
-        day: unsafe { NonZeroU8::new_unchecked(1) },
+        day: NonZeroU8::MIN,
     };
 
     /// Returns an empty builder instance to assemble a [`Date`].
