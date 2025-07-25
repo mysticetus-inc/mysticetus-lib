@@ -1,0 +1,22 @@
+pub trait MakeWriter: Send + Sync + 'static {
+    type Writer<'a>: std::io::Write
+    where
+        Self: 'a;
+
+    const NEEDS_BUFFERING: bool;
+
+    fn make_writer(&self) -> Self::Writer<'_>;
+}
+
+pub struct StdoutWriter;
+
+impl MakeWriter for StdoutWriter {
+    type Writer<'a> = std::io::StdoutLock<'static>;
+
+    const NEEDS_BUFFERING: bool = false;
+
+    #[inline]
+    fn make_writer(&self) -> Self::Writer<'_> {
+        std::io::stdout().lock()
+    }
+}

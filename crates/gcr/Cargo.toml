@@ -15,7 +15,7 @@ tower-service = "0.3.2"
 http.workspace = true
 http-body.workspace = true
 pin-project-lite.workspace = true
-
+gcp-logging = { path = "../gcp-logging" }
 tracing.workspace = true
 futures.workspace = true
 timestamp = { path = "../timestamp" }

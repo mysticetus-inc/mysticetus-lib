@@ -40,7 +40,7 @@ threadpool = "1.8"
 small-gcs = { version = "0.1.0", path = "../small-gcs" }
 arrayvec = "0.7.2"
 tracing.workspace = true
-gcp-auth-channel = { version = "0.0.0", path = "../gcp-auth-channel" }
+gcp-auth-provider.path = "../gcp-auth-provider"
 axum = { workspace = true, optional = true, features = [] }
 serde_json = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive"] }

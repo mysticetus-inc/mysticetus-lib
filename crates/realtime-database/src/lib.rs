@@ -97,18 +97,15 @@ pub struct RealtimeDatabase {
 }
 
 impl RealtimeDatabase {
-    pub fn builder<'a>(project_id: &'static str) -> builder::RealtimeDbBuilder<'a> {
-        builder::RealtimeDbBuilder::new(project_id)
+    pub fn builder<'a>() -> builder::RealtimeDbBuilder<'a> {
+        builder::RealtimeDbBuilder::new()
     }
 
-    pub async fn from_database_url<'a, D>(
-        project_id: &'static str,
-        database_url: D,
-    ) -> Result<Self, Error>
+    pub async fn from_database_url<'a, D>(database_url: D) -> Result<Self, Error>
     where
         D: Into<Cow<'a, str>>,
     {
-        builder::RealtimeDbBuilder::new(project_id)
+        builder::RealtimeDbBuilder::new()
             .database_url(database_url.into())
             .build()
             .await
@@ -178,13 +175,10 @@ where
 mod tests {
     use std::collections::HashMap;
 
-    use gcp_auth_channel::Auth;
+    use gcp_auth_provider::Auth;
 
     use super::*;
 
-    const PROJECT_ID: &str = "mysticetus-command-center";
-    const CERT: &str =
-        "/home/mrudisel/src/firebasecmdcenter/certs/mysticetus-command-center-service-creds.json";
     const GUID: &str = "0ed284b2-c9a8-41fe-a846-2fce914a2d50";
 
     lazy_static::lazy_static! {
@@ -196,7 +190,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_stations() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder(PROJECT_ID)
+        let db = RealtimeDatabase::builder()
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -234,7 +228,7 @@ mod tests {
     async fn test_event_stream() -> Result<(), Error> {
         use futures::StreamExt;
 
-        let db = RealtimeDatabase::builder(PROJECT_ID)
+        let db = RealtimeDatabase::builder()
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -252,7 +246,7 @@ mod tests {
 
     #[tokio::test]
     async fn test() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder(PROJECT_ID)
+        let db = RealtimeDatabase::builder()
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -281,7 +275,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_key_helpers() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder(PROJECT_ID)
+        let db = RealtimeDatabase::builder()
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;
@@ -300,7 +294,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query() -> Result<(), Error> {
-        let db = RealtimeDatabase::builder(PROJECT_ID)
+        let db = RealtimeDatabase::builder()
             .with_auth_manager(AUTH.clone())
             .build()
             .await?;

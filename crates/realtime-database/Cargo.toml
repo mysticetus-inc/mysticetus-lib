@@ -36,4 +36,4 @@ timestamp = { path = "../timestamp" }
 tokio = { workspace = true, features = ["macros"] }
 tracing.workspace = true
 url = { version = "2.2.2", features = ["serde"], default-features = false }
-gcp-auth-channel = { path = "../gcp-auth-channel" }
+gcp-auth-provider.path = "../gcp-auth-provider"

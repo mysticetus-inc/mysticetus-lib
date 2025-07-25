@@ -90,11 +90,11 @@ impl HttpRequestBuilder<(), ()> {
     pub fn oauth_token_with_scope(
         self,
         service_account_email: impl Into<String>,
-        scope: gcp_auth_channel::Scope,
+        scope: gcp_auth_provider::Scope,
     ) -> HttpRequestBuilder<http_request::AuthorizationHeader, ()> {
         self.with_auth(http_request::AuthorizationHeader::OauthToken(OAuthToken {
             service_account_email: service_account_email.into(),
-            scope: scope.scope_uri().to_owned(),
+            scope: scope.scope_url().to_owned(),
         }))
     }
 

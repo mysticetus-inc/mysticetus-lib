@@ -4,6 +4,7 @@ use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 
 use protos::spanner::spanner_client::SpannerClient;
 use protos::spanner::{self};
+use timestamp::Timestamp;
 use tokio::sync::Notify;
 use tokio::task::{JoinHandle, JoinSet};
 
@@ -49,17 +50,16 @@ pub const MAX_SESSION_COUNT: u8 = 100;
 /// Static session pool that all clients use.
 pub(crate) static SESSION_POOL: SessionPool = SessionPool {
     closed: AtomicBool::new(false),
+    recovered: AtomicBool::new(false),
     nofify_returned: Notify::const_new(),
-    state: Mutex::new(State {
-        sessions: SessionTracker::new(),
-        next_key: SessionKey::MIN,
-    }),
+    tracker: Mutex::new(SessionTracker::new()),
 };
 
 pub(crate) struct SessionPool {
     closed: AtomicBool,
+    recovered: AtomicBool,
     nofify_returned: Notify,
-    state: Mutex<State>,
+    tracker: Mutex<SessionTracker>,
 }
 
 #[derive(Debug, PartialEq, thiserror::Error)]
@@ -72,11 +72,6 @@ pub enum PoolError {
     PoolClosed,
 }
 
-struct State {
-    sessions: SessionTracker,
-    next_key: SessionKey,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) struct Stats {
     pub(super) total: usize,
@@ -86,14 +81,70 @@ pub(super) struct Stats {
 impl SessionPool {
     pub(super) fn stats() -> Stats {
         let guard = SESSION_POOL
-            .state
+            .tracker
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
 
         Stats {
-            total: guard.sessions.total_sessions(),
-            available: guard.sessions.available(),
+            total: guard.total_sessions(),
+            available: guard.available(),
         }
+    }
+
+    pub(crate) async fn recover_existing_sessions(
+        &self,
+        parts: &ClientParts,
+    ) -> crate::Result<usize> {
+        // only allow this to be run once, that way we don't get duplicate sessions
+        if self
+            .recovered
+            .compare_exchange_weak(false, true, Ordering::AcqRel, Ordering::Relaxed)
+            .is_err()
+        {
+            return Ok(0);
+        }
+
+        let mut client = SpannerClient::new(parts.channel.clone());
+
+        let mut page_token = None;
+
+        let mut sessions_added = 0;
+
+        while !self.closed.load(Ordering::Relaxed) {
+            let req = spanner::ListSessionsRequest {
+                database: parts.info.qualified_database().to_owned(),
+                page_token: page_token.take().unwrap_or_default(),
+                ..Default::default()
+            };
+
+            let sessions = client.list_sessions(req).await?.into_inner();
+
+            if sessions.sessions.is_empty() {
+                break;
+            }
+
+            let mut guard = self.tracker.lock().unwrap_or_else(PoisonError::into_inner);
+
+            for session in sessions.sessions {
+                let created = match session.create_time {
+                    Some(ts) => {
+                        std::time::Instant::now()
+                            - std::time::Duration::from(Timestamp::now() - Timestamp::from(ts))
+                    }
+                    None => std::time::Instant::now(),
+                };
+
+                guard.insert_new(created, Borrowed::No, session);
+            }
+
+            if sessions.next_page_token.is_empty() {
+                break;
+            }
+
+            page_token = Some(sessions.next_page_token);
+        }
+
+        Ok(sessions_added)
     }
 
     fn try_borrow_session(&self) -> Result<Result<Arc<Session>, TryBorrowError>, PoolError> {
@@ -102,10 +153,9 @@ impl SessionPool {
         }
 
         Ok(self
-            .state
+            .tracker
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .sessions
             .borrow())
     }
 
@@ -209,7 +259,7 @@ impl SessionPool {
             .next()
             .expect("we should always be given an iterator that creates at least 1 session");
 
-        let mut guard = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut guard = self.tracker.lock().unwrap_or_else(PoisonError::into_inner);
 
         let session = guard.insert_new(created, Borrowed::Yes, first_session);
         let to_return = Arc::clone(session);
@@ -268,22 +318,6 @@ impl SessionPool {
         }
 
         if set.is_empty() { None } else { Some(set) }
-    }
-}
-
-impl State {
-    fn insert_new(
-        &mut self,
-        created: std::time::Instant,
-        borrowed: Borrowed,
-        session: spanner::Session,
-    ) -> &Arc<Session> {
-        let key = self.next_key;
-        self.next_key = self.next_key.next();
-
-        let session = Session::new(created, key, session);
-
-        self.sessions.insert(borrowed, Arc::new(session))
     }
 }
 

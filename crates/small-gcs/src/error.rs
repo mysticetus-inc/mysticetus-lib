@@ -15,7 +15,7 @@ pub enum Error {
     #[error(transparent)]
     BadRequest(ErrorPayload),
     #[error(transparent)]
-    Auth(#[from] gcp_auth_channel::Error),
+    Auth(#[from] gcp_auth_provider::Error),
     #[error(transparent)]
     PreconditionFailed(ErrorPayload),
     #[error(transparent)]

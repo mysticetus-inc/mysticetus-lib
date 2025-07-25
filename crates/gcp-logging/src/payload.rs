@@ -1,30 +1,50 @@
+use std::sync::Arc;
+
+use serde::Deserialize;
 use serde::ser::SerializeMap;
 use tracing::field::{Field, Visit};
-use tracing_subscriber::fmt::{FmtContext, FormatFields, FormattedFields};
 use tracing_subscriber::registry::LookupSpan;
 
-use super::types::LABEL_PREFIX;
+pub mod label;
+
+pub(crate) use label::LABEL_PREFIX;
+
+use crate::Stage;
+use crate::records::{Data, Records};
 
 const ALERT: &str = "alert";
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct EventInfo {
-    pub labels: u8,
-    pub alert_found: bool,
+#[derive(Debug, Default)]
+pub struct ScopeStorage {
+    request_trace_index: Option<usize>,
+    scopes: Vec<Arc<Data>>,
 }
 
-pub(crate) fn serialize_event_payload<M, L, N, O>(
+impl ScopeStorage {
+    pub fn clear(&mut self) {
+        self.request_trace_index = None;
+        self.scopes.clear();
+    }
+}
+
+/*
+#[derive(Debug, Default)]
+pub struct EventInfo {
+    labels: u8,
+    alert: bool,
+}
+
+pub(crate) fn serialize_event_payload<M, S>(
     map: &mut M,
-    ctx: &FmtContext<'_, L, N>,
+    ctx: &tracing_subscriber::layer::Context<'_, S>,
     event: &tracing::Event<'_>,
-    options: &O,
+    options: impl crate::LogOptions,
+    records: &Records,
+    stage: Stage,
 ) -> Result<EventInfo, M::Error>
 where
-    L: tracing::Subscriber,
-    for<'b> L: LookupSpan<'b>,
-    for<'b> N: FormatFields<'b> + 'static,
-    M: SerializeMap,
-    O: crate::LogOptions,
+    for<'b> S: LookupSpan<'b> + tracing::Subscriber,
+    M: SerializeMap + ?Sized,
 {
     let mut visitor = Visitor {
         map,
@@ -40,103 +60,259 @@ where
         return Err(error);
     }
 
-    let Some(scope) = ctx.event_scope() else {
+    let Some(current) = ctx.lookup_current() else {
         return Ok(visitor.event_info);
     };
 
-    let mut buf = itoa::Buffer::new();
+    let read_records = records.read();
 
-    for span in scope {
-        if let Some(fields) = span.extensions().get::<FormattedFields<N>>() {
-            let span_id = span.id().into_non_zero_u64();
+    let parent_spans_nested = visitor
+        .options
+        .nest_parent_span_fields(stage, event.metadata());
 
-            let span_id_str = buf.format(span_id.get());
-
-            if let Err(error) = visitor.map.serialize_entry(&span_id_str, &fields.fields) {
-                return Err(error);
-            }
+    for span_ref in current.scope() {
+        if let Some(data) = read_records.get(span_ref.id()) {
+            data.emit_body(
+                visitor.map,
+                &mut visitor.event_info.labels,
+                &mut visitor.event_info.alert,
+                parent_spans_nested,
+            )?;
         }
     }
 
     Ok(visitor.event_info)
 }
 
-struct Visitor<'a, M: SerializeMap, O = crate::DefaultLogOptions> {
+enum SerMapState {
+    PendingMap,
+    PendingKey,
+    PendingValue,
+}
+
+impl SerMapState {
+    fn next(&self) -> Self {
+        match self {
+            Self::PendingKey => Self::PendingValue,
+            Self::PendingValue | Self::PendingMap => Self::PendingKey,
+        }
+    }
+}
+
+struct MapVisitor<'a, M: SerializeMap + ?Sized> {
+    state: SerMapState,
     map: &'a mut M,
-    event_info: EventInfo,
-    options: &'a O,
-    metadata: &'a tracing::Metadata<'a>,
-    error: Option<M::Error>,
+    error: &'a mut Option<M::Error>,
 }
 
-macro_rules! impl_simple_record_fns {
-    ($($fn_name:ident($arg_ty:ty)),* $(,)?) => {
-        $(
-            fn $fn_name(&mut self, field: &Field, value: $arg_ty) {
-                if field.name().starts_with(LABEL_PREFIX) {
-                    self.event_info.labels = self.event_info.labels.saturating_add(1);
-                } else if self.error.is_none() {
-                    self.error = self.map.serialize_entry(field.name(), &value).err();
+impl<'de, M: SerializeMap + ?Sized> serde::de::DeserializeSeed<'de> for &mut MapVisitor<'_, M> {
+    type Value = ();
+
+    #[inline]
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(&mut *self)?;
+        self.state = self.state.next();
+        Ok(())
+    }
+}
+
+macro_rules! visit_non_key_value {
+    ($self:expr; $variant:ident -> $value:expr) => {{
+        match $self.state {
+            SerMapState::PendingMap => Ok(()),
+            SerMapState::PendingKey => Err(serde::de::Error::invalid_value(
+                serde::de::Unexpected::$variant($value),
+                &$self,
+            )),
+            SerMapState::PendingValue => {
+                if let Err(error) = $self.map.serialize_value(&$value) {
+                    *$self.error = Some(error);
                 }
+                Ok(())
             }
-        )*
-    };
+        }
+    }};
+    ($self:expr; $variant:ident) => {{
+        match $self.state {
+            SerMapState::PendingMap => Ok(()),
+            SerMapState::PendingKey => Err(serde::de::Error::invalid_value(
+                serde::de::Unexpected::$variant,
+                &$self,
+            )),
+            SerMapState::PendingValue => {
+                if let Err(error) = $self.map.serialize_value(&()) {
+                    *$self.error = Some(error);
+                }
+                Ok(())
+            }
+        }
+    }};
 }
 
-impl<M: SerializeMap, O: crate::LogOptions> Visit for Visitor<'_, M, O> {
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        if field.name().starts_with(LABEL_PREFIX) {
-            self.event_info.labels = self.event_info.labels.saturating_add(1);
-        } else if self.error.is_none() {
-            self.error = self
-                .map
-                .serialize_entry(field.name(), &crate::utils::SerializeDebug(value))
-                .err();
+macro_rules! visit_key_or_value {
+    ($self:expr; $value:expr) => {{
+        visit_key_or_value!($self; $value => $value)
+    }};
+    ($self:expr; $value:expr => $key_value:expr) => {{
+        match $self.state {
+            SerMapState::PendingMap => Ok(()),
+            SerMapState::PendingKey => {
+                if let Err(error) = $self.map.serialize_value(&$key_value) {
+                    *$self.error = Some(error);
+                }
+                Ok(())
+            }
+            SerMapState::PendingValue => {
+                if let Err(error) = $self.map.serialize_value(&$value) {
+                    *$self.error = Some(error);
+                }
+                Ok(())
+            }
+        }
+    }};
+}
+
+impl<'de, M: SerializeMap + ?Sized> serde::de::Visitor<'de> for &mut MapVisitor<'_, M> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self.state {
+            SerMapState::PendingMap => formatter.write_str("a json object"),
+            SerMapState::PendingKey => formatter.write_str("a json map key"),
+            SerMapState::PendingValue => formatter.write_str("a json map value"),
         }
     }
 
-    impl_simple_record_fns! {
-        record_u64(u64),
-        record_u128(u128),
-        record_i64(i64),
-        record_i128(i128),
-        record_str(&str),
+    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        serde::de::IgnoredAny::deserialize(serde::de::value::SeqAccessDeserializer::new(seq))?;
+
+        visit_non_key_value!(self; Seq)
     }
 
-    fn record_bool(&mut self, field: &Field, value: bool) {
-        if field.name() == ALERT && value {
-            self.event_info.alert_found = true;
-        } else if field.name().starts_with(LABEL_PREFIX) {
-            self.event_info.labels = self.event_info.labels.saturating_add(1);
-        } else if self.error.is_none() {
-            self.error = self.map.serialize_entry(field.name(), &value).err();
-        }
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_non_key_value!(self; Float -> v)
     }
 
-    fn record_f64(&mut self, field: &Field, value: f64) {
-        if field.name().starts_with(LABEL_PREFIX) {
-            self.event_info.labels = self.event_info.labels.saturating_add(1);
-        } else if self.error.is_none() {
-            self.error = self
-                .map
-                .serialize_entry(field.name(), &crate::utils::JsonFloat(value))
-                .err();
-        }
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_key_or_value!(self; v => itoa::Buffer::new().format(v))
     }
 
-    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
-        if field.name().starts_with(LABEL_PREFIX) {
-            self.event_info.labels = self.event_info.labels.saturating_add(1);
-        } else if self.error.is_none() {
-            let try_get_bt = self.options.try_get_backtrace(self.metadata, value);
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_key_or_value!(self; v => itoa::Buffer::new().format(v))
+    }
 
-            self.error = self
-                .map
-                .serialize_entry(
-                    field.name(),
-                    &crate::utils::SerializeErrorReprs::new(value, try_get_bt),
-                )
-                .err();
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_key_or_value!(self; v)
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_key_or_value!(self; v => std::str::from_utf8(v).map_err(E::custom)?)
+    }
+
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_key_or_value!(self; v => if v { "true" } else { "false" })
+    }
+
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_non_key_value!(self; Unit)
+    }
+
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+
+    fn visit_i128<E>(self, v: i128) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_key_or_value!(self; v => itoa::Buffer::new().format(v))
+    }
+
+    fn visit_u128<E>(self, v: u128) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_key_or_value!(self; v => itoa::Buffer::new().format(v))
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        visit_non_key_value!(self; Unit)
+    }
+
+    fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        match self.state {
+            // we're only in this state right as we start a map
+            SerMapState::PendingMap => self.state = SerMapState::PendingKey,
+            // ignore any nested maps
+            _ => {
+                let _ = serde::de::IgnoredAny::deserialize(
+                    serde::de::value::MapAccessDeserializer::new(map),
+                )?;
+                return Ok(());
+            }
         }
+
+        while map.next_key_seed(&mut *self)?.is_some() {
+            match self.state {
+                SerMapState::PendingValue => map.next_value_seed(&mut *self)?,
+                _ => _ = map.next_value::<serde::de::IgnoredAny>()?,
+            }
+
+            if self.error.is_some() {
+                // drain the map if we get an error
+                while map
+                    .next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?
+                    .is_some()
+                {}
+
+                break;
+            }
+        }
+
+        Ok(())
     }
 }
+ */

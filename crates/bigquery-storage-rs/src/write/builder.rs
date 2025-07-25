@@ -1,6 +1,6 @@
 use std::fmt;
 
-use gcp_auth_channel::Scope;
+use gcp_auth_provider::Scope;
 use protos::bigquery_storage::big_query_write_client::BigQueryWriteClient;
 use protos::bigquery_storage::write_stream::WriteMode;
 use protos::bigquery_storage::{CreateWriteStreamRequest, WriteStream};
@@ -119,12 +119,7 @@ where
             }),
         };
 
-        let mut client = BigQueryWriteClient::new(
-            self.client
-                .channel
-                .clone()
-                .with_scope(Scope::BigQueryReadWrite),
-        );
+        let mut client = BigQueryWriteClient::new(self.client.channel.clone());
 
         let write_stream = client.create_write_stream(request).await?.into_inner();
         Ok(write_stream)

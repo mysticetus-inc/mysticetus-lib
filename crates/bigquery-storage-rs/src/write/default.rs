@@ -27,7 +27,7 @@ use serde::Deserialize;
 /// [`Auth`]: [`gcp_auth_channel::Auth`]
 pub async fn load_default_schema(
     qualified_path: &str,
-    auth: &gcp_auth_channel::Auth,
+    auth: &gcp_auth_provider::Auth,
     client: Option<&reqwest::Client>,
 ) -> Result<TableSchema, crate::Error> {
     async fn get_schema(
@@ -56,7 +56,7 @@ pub async fn load_default_schema(
         qualified_path
     );
 
-    let token = auth.get_header().await?;
+    let token = auth.get_header().into_header().await?.header;
 
     get_schema(url, token, client)
         .await

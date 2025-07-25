@@ -4,9 +4,10 @@ use std::future::IntoFuture;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use timestamp::Duration;
-use tokio::time::Sleep;
+use tokio::time::{Instant, Sleep};
 
 /// Default base delay of 100 milliseconds.
 pub const DEFAULT_BASE_DELAY: Duration = Duration::from_millis(100);
@@ -19,15 +20,70 @@ pub const DEFAULT_RETRIES: u32 = 5;
 
 pub use builder::BackoffBuilder;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Backoff<C = u32> {
+/// Config for a [Backoff].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BackoffConfig {
     max_retries: u32,
-    retries: C,
     // opting to have these be u32s, rather than full on [`Duration`]s.
     // their added complexity isn't needed, and having to deal with the signed
     // output values to do math on is no fun.
     base_delay_ms: u32,
     max_timeout_ms: u32,
+}
+
+impl BackoffConfig {
+    pub const fn new(max_retries: u32, base_delay: Duration, max_timeout: Duration) -> Self {
+        const fn max_duration(dur: Duration, min: u32) -> u32 {
+            let dur = dur.whole_milliseconds() as u32;
+
+            if dur > min { dur } else { min }
+        }
+
+        Self {
+            max_retries,
+            base_delay_ms: max_duration(base_delay, 25),
+            max_timeout_ms: max_duration(max_timeout, 25),
+        }
+    }
+
+    #[inline]
+    fn compute_backoff<R>(&self, retries: u32, rng: &mut R) -> Duration
+    where
+        R: Rng + ?Sized,
+    {
+        let slots = 2_u32.saturating_pow(retries);
+        let full_delay_ms = slots * self.base_delay_ms;
+
+        let sleep_ms = rng.random_range(self.base_delay_ms..=full_delay_ms);
+
+        Duration::from_millis(sleep_ms.min(self.max_timeout_ms) as _)
+    }
+
+    #[inline]
+    const fn is_spent(&self, retries: u32) -> bool {
+        retries > self.max_retries
+    }
+
+    pub fn make_backoff<C: Default, R: SeedableRng>(&self) -> Backoff<C, R> {
+        Backoff {
+            config: *self,
+            rng: R::from_os_rng(),
+            retries: C::default(),
+        }
+    }
+}
+
+impl Default for BackoffConfig {
+    fn default() -> Self {
+        Self::new(DEFAULT_RETRIES, DEFAULT_BASE_DELAY, DEFAULT_MAX_TIMEOUT)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Backoff<C = u32, R = SmallRng> {
+    retries: C,
+    rng: R,
+    config: BackoffConfig,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -45,10 +101,27 @@ impl BackoffOnce {
     pub const fn max_retries(&self) -> u32 {
         self.max_retries
     }
-}
 
-fn get_within_range(range: std::ops::RangeInclusive<u32>) -> u32 {
-    rand::rng().random_range(range)
+    pub fn waiting(&self) -> Duration {
+        self.waiting
+    }
+
+    pub fn reset_existing(self, sleep: std::pin::Pin<&mut tokio::time::Sleep>) {
+        sleep.reset(Instant::now() + self.waiting.into());
+    }
+
+    pub fn insert_or_reset(
+        self,
+        sleep_opt: &mut Option<std::pin::Pin<Box<tokio::time::Sleep>>>,
+    ) -> std::pin::Pin<&mut tokio::time::Sleep> {
+        match sleep_opt {
+            Some(sleep) => {
+                self.reset_existing(sleep.as_mut());
+                sleep.as_mut()
+            }
+            None => sleep_opt.insert(Box::pin(self.into_future())).as_mut(),
+        }
+    }
 }
 
 impl Default for Backoff {
@@ -58,10 +131,16 @@ impl Default for Backoff {
     }
 }
 
-impl<C: Default> Backoff<C> {
+impl<C: Default, R: Rng + SeedableRng> Backoff<C, R> {
     #[inline]
     pub fn new(max_retries: u32, base_delay: Duration, max_timeout: Duration) -> Self {
-        Self::new_inner(C::default(), max_retries, base_delay, max_timeout)
+        Self::new_inner(
+            C::default(),
+            R::from_os_rng(),
+            max_retries,
+            base_delay,
+            max_timeout,
+        )
     }
 
     pub const fn builder() -> BackoffBuilder<C> {
@@ -81,24 +160,18 @@ impl Backoff<AtomicU32> {
     }
 }
 
-impl<C> Backoff<C> {
+impl<C, R> Backoff<C, R> {
     const fn new_inner(
         retries: C,
+        rng: R,
         max_retries: u32,
         base_delay: Duration,
         max_timeout: Duration,
     ) -> Self {
-        const fn max_duration(dur: Duration, min: u32) -> u32 {
-            let dur = dur.whole_milliseconds() as u32;
-
-            if dur > min { dur } else { min }
-        }
-
         Self {
-            max_retries,
             retries,
-            base_delay_ms: max_duration(base_delay, 25),
-            max_timeout_ms: max_duration(max_timeout, 25),
+            rng,
+            config: BackoffConfig::new(max_retries, base_delay, max_timeout),
         }
     }
 
@@ -110,33 +183,9 @@ impl<C> Backoff<C> {
         self.retries
     }
 
-    /// Returns 'true' if we've hit the maximum retry count.
     #[inline]
-    pub const fn is_spent(&self, retries: u32) -> bool {
-        retries > self.max_retries
-    }
-
-    #[inline]
-    fn compute_backoff(&self, retries: u32) -> Duration {
-        let slots = 2_u32.saturating_pow(retries);
-        let full_delay_ms = slots * self.base_delay_ms;
-
-        let sleep_ms = get_within_range(self.base_delay_ms..=full_delay_ms);
-
-        Duration::from_millis(sleep_ms.min(self.max_timeout_ms) as _)
-    }
-
-    fn backoff_inner(&self, retries: u32) -> Option<BackoffOnce> {
-        // bail if out of retries
-        if self.is_spent(retries) {
-            None
-        } else {
-            Some(BackoffOnce {
-                on_retry: retries,
-                max_retries: self.max_retries,
-                waiting: self.compute_backoff(retries),
-            })
-        }
+    pub const fn config(&self) -> BackoffConfig {
+        self.config
     }
 
     pub fn backoff_once<'a>(&'a mut self) -> Option<BackoffOnce>
@@ -162,21 +211,37 @@ pub trait DoBackoff: Sized {
     fn backoff_once(takes: Self::Takes<'_>) -> Option<BackoffOnce>;
 }
 
+fn backoff_once_inner<R: Rng + ?Sized>(
+    config: &BackoffConfig,
+    retries: u32,
+    rng: &mut R,
+) -> Option<BackoffOnce> {
+    if config.is_spent(retries) {
+        None
+    } else {
+        Some(BackoffOnce {
+            on_retry: retries,
+            max_retries: config.max_retries,
+            waiting: config.compute_backoff(retries, rng),
+        })
+    }
+}
+
 impl DoBackoff for Backoff<u32> {
     type Takes<'a> = &'a mut Self;
     #[inline]
     fn backoff_once(takes: &mut Self) -> Option<BackoffOnce> {
         takes.retries += 1;
-        takes.backoff_inner(takes.retries)
+        backoff_once_inner(&takes.config, takes.retries, &mut takes.rng)
     }
 }
 
-impl DoBackoff for Backoff<Arc<AtomicU32>> {
+impl DoBackoff for Backoff<Arc<AtomicU32>, ()> {
     type Takes<'a> = &'a Self;
     #[inline]
     fn backoff_once(takes: &Self) -> Option<BackoffOnce> {
         let retries = takes.retries.fetch_add(1, Ordering::SeqCst) + 1;
-        takes.backoff_inner(retries)
+        backoff_once_inner(&takes.config, retries, &mut rand::rng())
     }
 }
 
@@ -193,6 +258,9 @@ mod builder {
     use std::marker::PhantomData;
     use std::sync::Arc;
     use std::sync::atomic::AtomicU32;
+
+    use rand::SeedableRng;
+    use rand::rngs::SmallRng;
 
     pub struct BackoffBuilder<C> {
         max_retries: u32,
@@ -228,15 +296,22 @@ mod builder {
     }
 
     impl BackoffBuilder<u32> {
-        pub const fn build_local(&mut self) -> super::Backoff<u32> {
-            super::Backoff::new_inner(0, self.max_retries, self.base_delay, self.max_timeout)
+        pub fn build_local(&mut self) -> super::Backoff<u32> {
+            super::Backoff::new_inner(
+                0,
+                SmallRng::from_os_rng(),
+                self.max_retries,
+                self.base_delay,
+                self.max_timeout,
+            )
         }
     }
 
     impl BackoffBuilder<Arc<AtomicU32>> {
-        pub fn build_shared(&mut self) -> super::Backoff<Arc<AtomicU32>> {
+        pub fn build_shared(&mut self) -> super::Backoff<Arc<AtomicU32>, ()> {
             super::Backoff::new_inner(
                 Arc::new(AtomicU32::new(0)),
+                (),
                 self.max_retries,
                 self.base_delay,
                 self.max_timeout,

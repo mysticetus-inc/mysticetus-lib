@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use gcp_auth_channel::Auth;
+use gcp_auth_provider::Auth;
 use tiny_skia::Pixmap;
 use tokio::sync::Semaphore;
 use tokio::sync::mpsc::{self, UnboundedSender};
@@ -224,9 +224,12 @@ async fn test_basic_render() -> crate::Result<()> {
     let geom = MapGeometry::from_region(SIZE, region);
 
     let client = reqwest::Client::new();
-    let auth = gcp_auth_channel::Auth::new("mysticetus-oncloud", gcp_auth_channel::Scope::GcsAdmin)
+    let auth = Auth::new_detect()
+        .with_scopes(gcp_auth_provider::Scope::GcsAdmin)
         .await
         .unwrap();
+
+    assert_eq!(auth.project_id().as_str(), "mysticetus-oncloud");
 
     let mut base = TileLoader::new(client, auth, CONFIG, geom)
         .build_base_map()

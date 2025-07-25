@@ -2,11 +2,12 @@ use std::marker::PhantomData;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use gcp_auth_channel::AuthChannel;
+use gcp_auth_provider::service::AuthSvc;
 use net_utils::bidi2::{RequestSink, RequestStream};
 use protos::bigquery_storage::append_rows_request::{ProtoData, Rows};
 use protos::bigquery_storage::{AppendRowsRequest, AppendRowsResponse, ProtoSchema, WriteStream};
 use protos::protobuf::Int64Value;
+use tonic::transport::Channel;
 
 use super::append::RequestState;
 use super::missing_value::MissingValueInterpretations;
@@ -15,7 +16,7 @@ use super::{DefaultStream, Schema, StreamType};
 use crate::{BigQueryStorageClient, Error};
 
 pub struct WriteSession<R, Type: StreamType = DefaultStream> {
-    pub(super) channel: AuthChannel,
+    pub(super) channel: AuthSvc<Channel>,
     shared: Arc<WriteSessionShared<Type>>,
     _marker: PhantomData<fn(R)>,
 }
@@ -93,7 +94,7 @@ pub(super) fn make_base_message<'a, Type: StreamType>(
 
 impl<R, Type: StreamType> WriteSession<R, Type> {
     pub(super) fn new(
-        channel: AuthChannel,
+        channel: AuthSvc<Channel>,
         stream_type: Type,
         schema: Schema,
         missing_values: Option<MissingValueInterpretations>,

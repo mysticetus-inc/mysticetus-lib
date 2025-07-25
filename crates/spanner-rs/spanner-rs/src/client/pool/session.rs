@@ -1,23 +1,14 @@
+use std::hash::BuildHasher;
 use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use std::time::Instant;
 
+use gcp_auth_channel::AuthChannel;
 use protos::spanner::spanner_client::SpannerClient;
 use protos::spanner::{self, DeleteSessionRequest};
 
 use crate::client::ClientParts;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(transparent)]
-pub(super) struct SessionKey(NonZeroUsize);
-
-impl SessionKey {
-    pub(super) const MIN: Self = Self(NonZeroUsize::MIN);
-
-    pub(super) fn next(self) -> Self {
-        Self(self.0.checked_add(1).expect("session key overflow"))
-    }
-}
+use crate::client::pool::tracker::SessionKey;
 
 const SESSION_ALIVE: u8 = 0;
 const SESSION_PENDING_DELETION: u8 = 1;
@@ -70,14 +61,30 @@ impl Session {
         self.mark_for_deletion();
 
         if self.pending_deletion() {
-            SpannerClient::new(parts.channel.clone())
-                .delete_session(DeleteSessionRequest {
-                    name: self.raw.name.clone(),
-                })
-                .await?;
+            let mut channel = parts.channel.clone();
 
-            self.state.store(SESSION_DELETED, Ordering::Release);
+            match self.delete_inner(&mut channel).await {
+                Ok(()) => return Ok(()),
+                Err(err) if err.code() == tonic::Code::Unauthenticated => {
+                    // force refresh the token if we get an auth error, then try again once
+                    parts.channel.auth().revoke_token(true);
+                    self.delete_inner(&mut channel).await?;
+                }
+                Err(err) => return Err(err.into()),
+            }
         }
+
+        Ok(())
+    }
+
+    async fn delete_inner(&self, channel: &mut AuthChannel) -> Result<(), tonic::Status> {
+        SpannerClient::new(channel)
+            .delete_session(DeleteSessionRequest {
+                name: self.raw.name.clone(),
+            })
+            .await?;
+
+        self.state.store(SESSION_DELETED, Ordering::Release);
 
         Ok(())
     }

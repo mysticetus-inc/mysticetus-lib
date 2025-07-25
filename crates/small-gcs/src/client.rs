@@ -1,4 +1,5 @@
-use gcp_auth_channel::{Auth, Scope};
+use gcp_auth_provider::scope::AccessLevel;
+use gcp_auth_provider::{Auth, Scope};
 use reqwest::header;
 use shared::Shared;
 
@@ -14,10 +15,28 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
-        let auth = Auth::new(project_id, scope).await?;
+    pub async fn new_admin() -> Result<Self, Error> {
+        Self::new_with_scope(Scope::GcsAdmin).await
+    }
+
+    pub async fn new_read_only() -> Result<Self, Error> {
+        Self::new_with_scope(Scope::GcsReadOnly).await
+    }
+
+    pub async fn new_with_scope(scope: Scope) -> Result<Self, Error> {
+        let auth = Auth::new_detect().with_scopes(scope).await?;
+
         let client = reqwest::Client::new();
         Ok(Self { client, auth })
+    }
+
+    pub async fn new_with_access_level(access: AccessLevel) -> Result<Self, Error> {
+        Self::new_with_scope(match access {
+            AccessLevel::Admin => Scope::GcsAdmin,
+            AccessLevel::ReadOnly => Scope::GcsReadOnly,
+            AccessLevel::ReadWrite => Scope::GcsReadWrite,
+        })
+        .await
     }
 
     pub const fn into_bucket(self, bucket: Shared<str>) -> BucketClient {
@@ -46,7 +65,10 @@ impl Client {
         bucket: &str,
         path: &str,
     ) -> Result<(), Error> {
-        let auth_header = self.auth.get_header().await?;
+        let auth_header = match self.auth.get_header() {
+            gcp_auth_provider::GetHeaderResult::Cached(cache) => cache.header,
+            gcp_auth_provider::GetHeaderResult::Refreshing(fut) => fut.await?.header,
+        };
 
         crate::url::UrlBuilder::new(bucket)
             .name(path)
@@ -113,15 +135,11 @@ impl BucketClient {
         }
     }
 
-    pub async fn new<B>(
-        project_id: &'static str,
-        bucket_name: B,
-        scope: Scope,
-    ) -> Result<Self, Error>
+    pub async fn new_with_scope<B>(scope: Scope, bucket_name: B) -> Result<Self, Error>
     where
         Shared<str>: From<B>,
     {
-        Client::new(project_id, scope)
+        Client::new_with_scope(scope)
             .await
             .map(|client| client.into_bucket(From::from(bucket_name)))
     }
@@ -162,11 +180,16 @@ impl BucketClient {
     }
 
     pub async fn list_notification_configs(&self) -> Result<serde_json::Value, Error> {
-        let header = self.auth().get_header().await?;
+        let header = match self.auth().get_header() {
+            gcp_auth_provider::GetHeaderResult::Cached(cache) => cache.header,
+            gcp_auth_provider::GetHeaderResult::Refreshing(fut) => fut.await?.header,
+        };
+
         let url = format!(
             "https://storage.googleapis.com/storage/v1/b/{}/notificationConfigs",
             self.bucket
         );
+
         let request = self
             .client
             .client
@@ -182,7 +205,9 @@ impl BucketClient {
 
 #[tokio::test]
 async fn test_list_notifications() -> Result<(), Error> {
-    let auth = gcp_auth_channel::Auth::new_gcloud("mysticetus-oncloud", Scope::GcsReadOnly);
+    let auth = gcp_auth_provider::Auth::new_detect()
+        .with_scopes(Scope::GcsReadOnly)
+        .await?;
     let client = Client::from_parts(Default::default(), auth)
         .into_bucket("mysticetus-replicated-data".into());
 

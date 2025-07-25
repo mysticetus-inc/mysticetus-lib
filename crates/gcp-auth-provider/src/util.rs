@@ -1,26 +1,30 @@
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use bytes::{BufMut, Bytes, BytesMut};
 use http_body::Body;
 use hyper::body::Incoming;
+use tokio::task::JoinHandle;
 
 pin_project_lite::pin_project! {
     #[project = CollectBodyProjection]
+    #[derive(Debug)]
     pub(crate) struct CollectBody {
         #[pin]
-        body: Option<Incoming>,
+        body: Incoming,
         state: State,
     }
 }
 
 pub(crate) fn collect_body(body: Incoming) -> CollectBody {
     CollectBody {
-        body: Some(body),
+        body,
         state: State::Pending,
     }
 }
 
+#[derive(Debug)]
 enum State {
     Pending,
     FirstChunk { buf: Bytes },
@@ -70,17 +74,10 @@ impl Future for CollectBody {
 
 impl CollectBodyProjection<'_> {
     fn poll_frame(&mut self, cx: &mut Context<'_>) -> Poll<Result<Option<Bytes>, hyper::Error>> {
-        let Some(mut body) = self.body.as_mut().as_pin_mut() else {
-            return Poll::Ready(Ok(None));
-        };
-
         loop {
-            let frame = match std::task::ready!(body.as_mut().poll_frame(cx)) {
+            let frame = match std::task::ready!(self.body.as_mut().poll_frame(cx)) {
                 Some(frame) => frame?,
-                None => {
-                    self.body.set(None);
-                    return Poll::Ready(Ok(None));
-                }
+                None => return Poll::Ready(Ok(None)),
             };
 
             if let Ok(data) = frame.into_data() {
@@ -89,3 +86,72 @@ impl CollectBodyProjection<'_> {
         }
     }
 }
+
+pub struct ReadFuture {
+    handle: JoinHandle<std::io::Result<Vec<u8>>>,
+}
+
+impl ReadFuture {
+    pub fn read(path: impl Into<PathBuf>) -> Self {
+        fn spawn(path: PathBuf) -> JoinHandle<std::io::Result<Vec<u8>>> {
+            tokio::task::spawn_blocking(move || std::fs::read(path))
+        }
+
+        Self {
+            handle: spawn(path.into()),
+        }
+    }
+}
+
+impl Future for ReadFuture {
+    type Output = std::io::Result<Vec<u8>>;
+    #[inline]
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        use std::io;
+
+        match std::task::ready!(Pin::new(&mut self.get_mut().handle).poll(cx)) {
+            Ok(result) => Poll::Ready(result),
+            Err(err) => Poll::Ready(Err(io::Error::other(err))),
+        }
+    }
+}
+
+pub(crate) enum CowMut<'a, T> {
+    RefMut(&'a mut T),
+    Owned(T),
+}
+
+impl<T> CowMut<'_, Option<T>> {
+    pub fn take_into_static(self) -> CowMut<'static, Option<T>> {
+        match self {
+            Self::Owned(owned) => CowMut::Owned(owned),
+            Self::RefMut(refer) => CowMut::Owned(refer.take()),
+        }
+    }
+}
+
+impl<T> std::ops::Deref for CowMut<'_, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Owned(o) => o,
+            Self::RefMut(r) => r,
+        }
+    }
+}
+
+impl<T> std::ops::DerefMut for CowMut<'_, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Owned(o) => o,
+            Self::RefMut(r) => r,
+        }
+    }
+}
+
+
+
+
