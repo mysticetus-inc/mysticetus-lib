@@ -750,7 +750,7 @@ pub mod model {
             /// The F1 score is an average of recall and precision. For multiclass this
             /// is a macro-averaged metric.
             F1Score = 10,
-            /// Logarithmic Loss. For multiclass this is a macro-averaged metric.
+            /// Logorithmic Loss. For multiclass this is a macro-averaged metric.
             LogLoss = 11,
             /// Area Under an ROC Curve. For multiclass this is a macro-averaged
             /// metric.
@@ -870,7 +870,7 @@ pub mod model {
         pub accuracy: ::core::option::Option<super::super::super::super::protobuf::DoubleValue>,
         /// Threshold at which the metrics are computed. For binary
         /// classification models this is the positive class threshold.
-        /// For multi-class classification models this is the confidence
+        /// For multi-class classfication models this is the confidence
         /// threshold.
         #[prost(message, optional, tag = "4")]
         pub threshold: ::core::option::Option<super::super::super::super::protobuf::DoubleValue>,
@@ -1587,7 +1587,7 @@ pub mod model {
             /// rows (from smallest to largest) in the corresponding column are used
             /// as training data, and the rest are eval data. It respects the order
             /// in Orderable data types:
-            /// <https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_properties>
+            /// <https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data-type-properties>
             #[prost(string, tag = "12")]
             pub data_split_column: ::prost::alloc::string::String,
             /// The strategy to determine learn rate for the current iteration.
@@ -1748,15 +1748,6 @@ pub mod model {
             /// The time series id columns that were used during ARIMA model training.
             #[prost(string, repeated, tag = "51")]
             pub time_series_id_columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-            /// The forecast limit lower bound that was used during ARIMA model
-            /// training with limits. To see more details of the algorithm:
-            /// <https://otexts.com/fpp2/limits.html>
-            #[prost(double, tag = "99")]
-            pub forecast_limit_lower_bound: f64,
-            /// The forecast limit upper bound that was used during ARIMA model
-            /// training with limits.
-            #[prost(double, tag = "100")]
-            pub forecast_limit_upper_bound: f64,
             /// The number of periods ahead that need to be forecasted.
             #[prost(int64, tag = "44")]
             pub horizon: i64,
@@ -2868,7 +2859,7 @@ pub mod model {
         Us = 65,
         /// Venezuela
         Ve = 66,
-        /// Vietnam
+        /// Viet Nam
         Vn = 67,
         /// South Africa
         Za = 68,

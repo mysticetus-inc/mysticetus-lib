@@ -347,3 +347,181 @@ pub(crate) fn with_buffer<O>(with_buf_fn: impl FnOnce(&mut Vec<u8>) -> O) -> O {
         }
     }
 }
+
+#[derive(Default, Debug)]
+pub struct IdHasher(u64);
+
+impl std::hash::Hasher for IdHasher {
+    fn write(&mut self, _: &[u8]) {
+        unreachable!("SpanId calls write_u64");
+    }
+
+    #[inline]
+    fn write_u64(&mut self, id: u64) {
+        self.0 = id;
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
+
+/// Newtype to ensure the Hash impl only calls write_u64
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct SpanId(pub tracing::span::Id);
+
+impl From<tracing::span::Id> for SpanId {
+    fn from(value: tracing::span::Id) -> Self {
+        Self(value)
+    }
+}
+
+impl std::hash::Hash for SpanId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_u64(self.0.into_u64());
+    }
+}
+
+/// Used to pass data through tracing::Visit impls by hijacking
+/// error downcasting.
+#[derive(Debug)]
+pub struct ErrorPassthrough<T>(pub T);
+
+impl<T> std::fmt::Display for ErrorPassthrough<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ErrorPassthrough({})", std::any::type_name::<T>())
+    }
+}
+
+impl<T: std::fmt::Debug> std::error::Error for ErrorPassthrough<T> {}
+
+impl<T: std::fmt::Debug + 'static> ErrorPassthrough<T> {
+    pub fn as_dyn(&self) -> &(dyn std::error::Error + 'static) {
+        self as &(dyn std::error::Error + 'static)
+    }
+
+    pub fn try_cast_from<'t>(error: &'t (dyn std::error::Error + 'static)) -> Option<&'t T> {
+        error
+            .downcast_ref::<Self>()
+            .map(|ErrorPassthrough(value)| value)
+    }
+}
+
+#[cfg(feature = "valuable")]
+impl<T: std::fmt::Debug + 'static> valuable::Valuable for ErrorPassthrough<T> {
+    fn visit(&self, visit: &mut dyn valuable::Visit) {
+        visit.visit_value(self.as_value());
+    }
+
+    fn as_value(&self) -> valuable::Value<'_> {
+        valuable::Value::Error(self.as_dyn())
+    }
+}
+
+pub(crate) struct ErrorPassthroughVisitor<F, T, Out> {
+    f: F,
+    out: Option<Out>,
+    _marker: std::marker::PhantomData<T>,
+}
+
+impl<F, T, Out> ErrorPassthroughVisitor<F, T, Out> {
+    pub fn new(f: F) -> Self {
+        Self {
+            f,
+            out: None,
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    pub fn take_output(&mut self) -> Option<Out> {
+        self.out.take()
+    }
+
+    pub fn into_output(self) -> Option<Out> {
+        self.out
+    }
+}
+
+#[cfg(feature = "valuable")]
+impl<F, T, Out> valuable::Visit for ErrorPassthroughVisitor<F, T, Out>
+where
+    for<'a> F: FnMut(&'a T) -> Out,
+    ErrorPassthrough<T>: std::error::Error,
+    T: 'static,
+{
+    fn visit_value(&mut self, value: valuable::Value<'_>) {
+        if let Some(ErrorPassthrough(value)) = value
+            .as_error()
+            .and_then(|err| err.downcast_ref::<ErrorPassthrough<T>>())
+        {
+            self.out = Some((self.f)(value));
+        }
+    }
+}
+
+impl<F, T, Out> tracing::field::Visit for ErrorPassthroughVisitor<F, T, Out>
+where
+    for<'a> F: FnMut(&'a tracing_core::Field, &'a T) -> Out,
+    ErrorPassthrough<T>: std::error::Error,
+    T: 'static,
+{
+    fn record_debug(&mut self, _: &tracing_core::Field, _: &dyn fmt::Debug) {}
+
+    fn record_error(
+        &mut self,
+        field: &tracing_core::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        if let Some(ErrorPassthrough(value)) = value.downcast_ref::<ErrorPassthrough<T>>() {
+            self.out = Some((self.f)(field, value));
+        }
+    }
+
+    #[cfg(feature = "valuable")]
+    fn record_value(&mut self, field: &tracing_core::Field, value: valuable::Value<'_>) {
+        if let Some(ErrorPassthrough(value)) = value
+            .as_error()
+            .and_then(|err| err.downcast_ref::<ErrorPassthrough<T>>())
+        {
+            self.out = Some((self.f)(field, value));
+        }
+    }
+}
+
+pub struct ErrorVisitor<F>(pub F);
+
+impl<F> tracing::field::Visit for ErrorVisitor<F>
+where
+    for<'a> F: FnMut(&'a tracing_core::Field, &'a (dyn std::error::Error + 'static)),
+{
+    fn record_debug(&mut self, _: &tracing_core::Field, _: &dyn fmt::Debug) {}
+
+    fn record_error(
+        &mut self,
+        field: &tracing_core::Field,
+        value: &(dyn std::error::Error + 'static),
+    ) {
+        (self.0)(field, value);
+    }
+
+    #[cfg(feature = "valuable")]
+    fn record_value(&mut self, field: &tracing_core::Field, value: valuable::Value<'_>) {
+        if let Some(error) = value.as_error() {
+            (self.0)(field, error);
+        }
+    }
+}
+
+pub(crate) struct HexBytes<'a>(pub(crate) &'a [u8]);
+
+impl fmt::Debug for HexBytes<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for byte in self.0.iter().copied() {
+            f.write_fmt(format_args!("{byte:02x}"))?;
+        }
+
+        Ok(())
+    }
+}

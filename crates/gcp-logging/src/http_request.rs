@@ -5,7 +5,9 @@ use timestamp::Duration;
 
 pub const TRACE_CTX_HEADER: HeaderName = HeaderName::from_static("x-cloud-trace-context");
 
-const SIZE_OF: usize = std::mem::size_of::<HttpRequest>();
+pub(crate) const RESPONSE_STATUS_KEY: &str = "__resp_status__";
+pub(crate) const RESPONSE_SIZE_KEY: &str = "__resp_size__";
+pub(crate) const RESPONSE_LATENCY_KEY: &str = "__resp_latency__";
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -64,27 +66,16 @@ impl HttpRequest {
             latency: None,
         }
     }
+}
 
-    pub fn update_from_response<B: Body>(
-        &mut self,
-        latency: Duration,
-        response: &http::Response<B>,
-    ) {
-        self.status = Some(response.status());
-        self.latency = Some(latency);
-
-        let response_size = response
-            .body()
-            .size_hint()
-            .exact()
-            .and_then(Size::new)
-            .or_else(|| try_read_content_len(response.headers()))
-            .unwrap_or(Size::unknown());
-
-        if !response_size.is_unknown() {
-            self.response_size = response_size;
-        }
-    }
+pub(crate) fn get_response_size<B: Body>(response: &http::Response<B>) -> Size {
+    response
+        .body()
+        .size_hint()
+        .exact()
+        .and_then(Size::new)
+        .or_else(|| try_read_content_len(response.headers()))
+        .unwrap_or(Size::unknown())
 }
 
 fn try_read_content_len(headers: &HeaderMap) -> Option<Size> {

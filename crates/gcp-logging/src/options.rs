@@ -28,7 +28,7 @@ pub enum ParentSpanFields {
     Flattened,
 }
 
-pub trait LogOptions: Send + Sync + Copy + 'static {
+pub trait LogOptions: std::fmt::Debug + Send + Sync {
     fn include_http_info(&self, meta: &Metadata<'_>) -> bool;
 
     fn treat_as_error(&self, meta: &Metadata<'_>) -> bool;
@@ -122,12 +122,10 @@ macro_rules! impl_log_options_deref {
     };
 }
 
-impl<O: LogOptions> LogOptions for &'static O {
+impl<O: LogOptions> LogOptions for &O {
     impl_log_options_deref!(O);
 }
 
-/*
 impl<O: LogOptions> LogOptions for std::sync::Arc<O> {
     impl_log_options_deref!(O);
 }
-*/

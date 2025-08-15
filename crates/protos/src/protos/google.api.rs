@@ -637,18 +637,6 @@ pub mod python_settings {
         /// feature in preview packages.
         #[prost(bool, tag = "1")]
         pub rest_async_io_enabled: bool,
-        /// Enables generation of protobuf code using new types that are more
-        /// Pythonic which are included in `protobuf>=5.29.x`. This feature will be
-        /// enabled by default 1 month after launching the feature in preview
-        /// packages.
-        #[prost(bool, tag = "2")]
-        pub protobuf_pythonic_types_enabled: bool,
-        /// Disables generation of an unversioned Python package for this client
-        /// library. This means that the module names will need to be versioned in
-        /// import statements. For example `import google.cloud.library_v2` instead
-        /// of `import google.cloud.library`.
-        #[prost(bool, tag = "3")]
-        pub unversioned_package_disabled: bool,
     }
 }
 /// Settings for Node client libraries.
@@ -718,17 +706,6 @@ pub struct GoSettings {
     /// Some settings.
     #[prost(message, optional, tag = "1")]
     pub common: ::core::option::Option<CommonLanguageSettings>,
-    /// Map of service names to renamed services. Keys are the package relative
-    /// service names and values are the name to be used for the service client
-    /// and call options.
-    ///
-    /// publishing:
-    ///    go_settings:
-    ///      renamed_services:
-    ///        Publisher: TopicAdmin
-    #[prost(map = "string, string", tag = "2")]
-    pub renamed_services:
-        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Describes the generator configuration for a method.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -812,14 +789,6 @@ pub struct SelectiveGapicGeneration {
     /// on public client surfaces.
     #[prost(string, repeated, tag = "1")]
     pub methods: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// Setting this to true indicates to the client generators that methods
-    /// that would be excluded from the generation should instead be generated
-    /// in a way that indicates these methods should not be consumed by
-    /// end users. How this is expressed is up to individual language
-    /// implementations to decide. Some examples may be: added annotations,
-    /// obfuscated identifiers, or other language idiomatic patterns.
-    #[prost(bool, tag = "2")]
-    pub generate_omitted_as_internal: bool,
 }
 /// The organization for which the client libraries are being published.
 /// Affects the url where generated docs are published, etc.
@@ -1255,441 +1224,6 @@ pub struct ResourceReference {
     ///      }
     #[prost(string, tag = "2")]
     pub child_type: ::prost::alloc::string::String,
-}
-/// Specifies the routing information that should be sent along with the request
-/// in the form of routing header.
-/// **NOTE:** All service configuration rules follow the "last one wins" order.
-///
-/// The examples below will apply to an RPC which has the following request type:
-///
-/// Message Definition:
-///
-///      message Request {
-///        // The name of the Table
-///        // Values can be of the following formats:
-///        // - `projects/<project>/tables/<table>`
-///        // - `projects/<project>/instances/<instance>/tables/<table>`
-///        // - `region/<region>/zones/<zone>/tables/<table>`
-///        string table_name = 1;
-///
-///        // This value specifies routing for replication.
-///        // It can be in the following formats:
-///        // - `profiles/<profile_id>`
-///        // - a legacy `profile_id` that can be any string
-///        string app_profile_id = 2;
-///      }
-///
-/// Example message:
-///
-///      {
-///        table_name: projects/proj_foo/instances/instance_bar/table/table_baz,
-///        app_profile_id: profiles/prof_qux
-///      }
-///
-/// The routing header consists of one or multiple key-value pairs. Every key
-/// and value must be percent-encoded, and joined together in the format of
-/// `key1=value1&key2=value2`.
-/// The examples below skip the percent-encoding for readability.
-///
-/// Example 1
-///
-/// Extracting a field from the request to put into the routing header
-/// unchanged, with the key equal to the field name.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // Take the `app_profile_id`.
-///        routing_parameters {
-///          field: "app_profile_id"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params: app_profile_id=profiles/prof_qux
-///
-/// Example 2
-///
-/// Extracting a field from the request to put into the routing header
-/// unchanged, with the key different from the field name.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // Take the `app_profile_id`, but name it `routing_id` in the header.
-///        routing_parameters {
-///          field: "app_profile_id"
-///          path_template: "{routing_id=**}"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params: routing_id=profiles/prof_qux
-///
-/// Example 3
-///
-/// Extracting a field from the request to put into the routing
-/// header, while matching a path template syntax on the field's value.
-///
-/// NB: it is more useful to send nothing than to send garbage for the purpose
-/// of dynamic routing, since garbage pollutes cache. Thus the matching.
-///
-/// Sub-example 3a
-///
-/// The field matches the template.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // Take the `table_name`, if it's well-formed (with project-based
-///        // syntax).
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{table_name=projects/*/instances/*/**}"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params:
-///      table_name=projects/proj_foo/instances/instance_bar/table/table_baz
-///
-/// Sub-example 3b
-///
-/// The field does not match the template.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // Take the `table_name`, if it's well-formed (with region-based
-///        // syntax).
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{table_name=regions/*/zones/*/**}"
-///        }
-///      };
-///
-/// result:
-///
-///      <no routing header will be sent>
-///
-/// Sub-example 3c
-///
-/// Multiple alternative conflictingly named path templates are
-/// specified. The one that matches is used to construct the header.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // Take the `table_name`, if it's well-formed, whether
-///        // using the region- or projects-based syntax.
-///
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{table_name=regions/*/zones/*/**}"
-///        }
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{table_name=projects/*/instances/*/**}"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params:
-///      table_name=projects/proj_foo/instances/instance_bar/table/table_baz
-///
-/// Example 4
-///
-/// Extracting a single routing header key-value pair by matching a
-/// template syntax on (a part of) a single request field.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // Take just the project id from the `table_name` field.
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{routing_id=projects/*}/**"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params: routing_id=projects/proj_foo
-///
-/// Example 5
-///
-/// Extracting a single routing header key-value pair by matching
-/// several conflictingly named path templates on (parts of) a single request
-/// field. The last template to match "wins" the conflict.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // If the `table_name` does not have instances information,
-///        // take just the project id for routing.
-///        // Otherwise take project + instance.
-///
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{routing_id=projects/*}/**"
-///        }
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{routing_id=projects/*/instances/*}/**"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params:
-///      routing_id=projects/proj_foo/instances/instance_bar
-///
-/// Example 6
-///
-/// Extracting multiple routing header key-value pairs by matching
-/// several non-conflicting path templates on (parts of) a single request field.
-///
-/// Sub-example 6a
-///
-/// Make the templates strict, so that if the `table_name` does not
-/// have an instance information, nothing is sent.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // The routing code needs two keys instead of one composite
-///        // but works only for the tables with the "project-instance" name
-///        // syntax.
-///
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{project_id=projects/*}/instances/*/**"
-///        }
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "projects/*/{instance_id=instances/*}/**"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params:
-///      project_id=projects/proj_foo&instance_id=instances/instance_bar
-///
-/// Sub-example 6b
-///
-/// Make the templates loose, so that if the `table_name` does not
-/// have an instance information, just the project id part is sent.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // The routing code wants two keys instead of one composite
-///        // but will work with just the `project_id` for tables without
-///        // an instance in the `table_name`.
-///
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{project_id=projects/*}/**"
-///        }
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "projects/*/{instance_id=instances/*}/**"
-///        }
-///      };
-///
-/// result (is the same as 6a for our example message because it has the instance
-/// information):
-///
-///      x-goog-request-params:
-///      project_id=projects/proj_foo&instance_id=instances/instance_bar
-///
-/// Example 7
-///
-/// Extracting multiple routing header key-value pairs by matching
-/// several path templates on multiple request fields.
-///
-/// NB: note that here there is no way to specify sending nothing if one of the
-/// fields does not match its template. E.g. if the `table_name` is in the wrong
-/// format, the `project_id` will not be sent, but the `routing_id` will be.
-/// The backend routing code has to be aware of that and be prepared to not
-/// receive a full complement of keys if it expects multiple.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // The routing needs both `project_id` and `routing_id`
-///        // (from the `app_profile_id` field) for routing.
-///
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{project_id=projects/*}/**"
-///        }
-///        routing_parameters {
-///          field: "app_profile_id"
-///          path_template: "{routing_id=**}"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params:
-///      project_id=projects/proj_foo&routing_id=profiles/prof_qux
-///
-/// Example 8
-///
-/// Extracting a single routing header key-value pair by matching
-/// several conflictingly named path templates on several request fields. The
-/// last template to match "wins" the conflict.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // The `routing_id` can be a project id or a region id depending on
-///        // the table name format, but only if the `app_profile_id` is not set.
-///        // If `app_profile_id` is set it should be used instead.
-///
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{routing_id=projects/*}/**"
-///        }
-///        routing_parameters {
-///           field: "table_name"
-///           path_template: "{routing_id=regions/*}/**"
-///        }
-///        routing_parameters {
-///          field: "app_profile_id"
-///          path_template: "{routing_id=**}"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params: routing_id=profiles/prof_qux
-///
-/// Example 9
-///
-/// Bringing it all together.
-///
-/// annotation:
-///
-///      option (google.api.routing) = {
-///        // For routing both `table_location` and a `routing_id` are needed.
-///        //
-///        // table_location can be either an instance id or a region+zone id.
-///        //
-///        // For `routing_id`, take the value of `app_profile_id`
-///        // - If it's in the format `profiles/<profile_id>`, send
-///        // just the `<profile_id>` part.
-///        // - If it's any other literal, send it as is.
-///        // If the `app_profile_id` is empty, and the `table_name` starts with
-///        // the project_id, send that instead.
-///
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "projects/*/{table_location=instances/*}/tables/*"
-///        }
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{table_location=regions/*/zones/*}/tables/*"
-///        }
-///        routing_parameters {
-///          field: "table_name"
-///          path_template: "{routing_id=projects/*}/**"
-///        }
-///        routing_parameters {
-///          field: "app_profile_id"
-///          path_template: "{routing_id=**}"
-///        }
-///        routing_parameters {
-///          field: "app_profile_id"
-///          path_template: "profiles/{routing_id=*}"
-///        }
-///      };
-///
-/// result:
-///
-///      x-goog-request-params:
-///      table_location=instances/instance_bar&routing_id=prof_qux
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RoutingRule {
-    /// A collection of Routing Parameter specifications.
-    /// **NOTE:** If multiple Routing Parameters describe the same key
-    /// (via the `path_template` field or via the `field` field when
-    /// `path_template` is not provided), "last one wins" rule
-    /// determines which Parameter gets used.
-    /// See the examples for more details.
-    #[prost(message, repeated, tag = "2")]
-    pub routing_parameters: ::prost::alloc::vec::Vec<RoutingParameter>,
-}
-/// A projection from an input message to the GRPC or REST header.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RoutingParameter {
-    /// A request field to extract the header key-value pair from.
-    #[prost(string, tag = "1")]
-    pub field: ::prost::alloc::string::String,
-    /// A pattern matching the key-value field. Optional.
-    /// If not specified, the whole field specified in the `field` field will be
-    /// taken as value, and its name used as key. If specified, it MUST contain
-    /// exactly one named segment (along with any number of unnamed segments) The
-    /// pattern will be matched over the field specified in the `field` field, then
-    /// if the match is successful:
-    /// - the name of the single named segment will be used as a header name,
-    /// - the match value of the segment will be used as a header value;
-    /// if the match is NOT successful, nothing will be sent.
-    ///
-    /// Example:
-    ///
-    ///                -- This is a field in the request message
-    ///               |   that the header value will be extracted from.
-    ///               |
-    ///               |                     -- This is the key name in the
-    ///               |                    |   routing header.
-    ///               V                    |
-    ///      field: "table_name"           v
-    ///      path_template: "projects/*/{table_location=instances/*}/tables/*"
-    ///                                                 ^            ^
-    ///                                                 |            |
-    ///        In the {} brackets is the pattern that --             |
-    ///        specifies what to extract from the                    |
-    ///        field as a value to be sent.                          |
-    ///                                                              |
-    ///       The string in the field must match the whole pattern --
-    ///       before brackets, inside brackets, after brackets.
-    ///
-    /// When looking at this specific example, we can see that:
-    /// - A key-value pair with the key `table_location` and the value matching `instances/*`
-    ///   should be added to the x-goog-request-params routing header.
-    /// - The value is extracted from the request message's `table_name` field if it matches the
-    ///   full pattern specified: `projects/*/instances/*/tables/*`.
-    ///
-    /// **NB:** If the `path_template` field is not provided, the key name is
-    /// equal to the field name, and the whole field should be sent as a value.
-    /// This makes the pattern for the field and the value functionally equivalent
-    /// to `**`, and the configuration
-    ///
-    ///      {
-    ///        field: "table_name"
-    ///      }
-    ///
-    /// is a functionally equivalent shorthand to:
-    ///
-    ///      {
-    ///        field: "table_name"
-    ///        path_template: "{table_name=**}"
-    ///      }
-    ///
-    /// See Example 1 for more details.
-    #[prost(string, tag = "2")]
-    pub path_template: ::prost::alloc::string::String,
 }
 /// `Distribution` contains summary statistics for a population of values. It
 /// optionally contains a histogram representing the distribution of those values
@@ -2428,97 +1962,438 @@ pub struct Metric {
     pub labels:
         ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
-/// Rich semantic information of an API field beyond basic typing.
+/// Specifies the routing information that should be sent along with the request
+/// in the form of routing header.
+/// **NOTE:** All service configuration rules follow the "last one wins" order.
+///
+/// The examples below will apply to an RPC which has the following request type:
+///
+/// Message Definition:
+///
+///      message Request {
+///        // The name of the Table
+///        // Values can be of the following formats:
+///        // - `projects/<project>/tables/<table>`
+///        // - `projects/<project>/instances/<instance>/tables/<table>`
+///        // - `region/<region>/zones/<zone>/tables/<table>`
+///        string table_name = 1;
+///
+///        // This value specifies routing for replication.
+///        // It can be in the following formats:
+///        // - `profiles/<profile_id>`
+///        // - a legacy `profile_id` that can be any string
+///        string app_profile_id = 2;
+///      }
+///
+/// Example message:
+///
+///      {
+///        table_name: projects/proj_foo/instances/instance_bar/table/table_baz,
+///        app_profile_id: profiles/prof_qux
+///      }
+///
+/// The routing header consists of one or multiple key-value pairs. Every key
+/// and value must be percent-encoded, and joined together in the format of
+/// `key1=value1&key2=value2`.
+/// In the examples below I am skipping the percent-encoding for readablity.
+///
+/// Example 1
+///
+/// Extracting a field from the request to put into the routing header
+/// unchanged, with the key equal to the field name.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // Take the `app_profile_id`.
+///        routing_parameters {
+///          field: "app_profile_id"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params: app_profile_id=profiles/prof_qux
+///
+/// Example 2
+///
+/// Extracting a field from the request to put into the routing header
+/// unchanged, with the key different from the field name.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // Take the `app_profile_id`, but name it `routing_id` in the header.
+///        routing_parameters {
+///          field: "app_profile_id"
+///          path_template: "{routing_id=**}"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params: routing_id=profiles/prof_qux
+///
+/// Example 3
+///
+/// Extracting a field from the request to put into the routing
+/// header, while matching a path template syntax on the field's value.
+///
+/// NB: it is more useful to send nothing than to send garbage for the purpose
+/// of dynamic routing, since garbage pollutes cache. Thus the matching.
+///
+/// Sub-example 3a
+///
+/// The field matches the template.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // Take the `table_name`, if it's well-formed (with project-based
+///        // syntax).
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{table_name=projects/*/instances/*/**}"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params:
+///      table_name=projects/proj_foo/instances/instance_bar/table/table_baz
+///
+/// Sub-example 3b
+///
+/// The field does not match the template.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // Take the `table_name`, if it's well-formed (with region-based
+///        // syntax).
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{table_name=regions/*/zones/*/**}"
+///        }
+///      };
+///
+/// result:
+///
+///      <no routing header will be sent>
+///
+/// Sub-example 3c
+///
+/// Multiple alternative conflictingly named path templates are
+/// specified. The one that matches is used to construct the header.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // Take the `table_name`, if it's well-formed, whether
+///        // using the region- or projects-based syntax.
+///
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{table_name=regions/*/zones/*/**}"
+///        }
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{table_name=projects/*/instances/*/**}"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params:
+///      table_name=projects/proj_foo/instances/instance_bar/table/table_baz
+///
+/// Example 4
+///
+/// Extracting a single routing header key-value pair by matching a
+/// template syntax on (a part of) a single request field.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // Take just the project id from the `table_name` field.
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{routing_id=projects/*}/**"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params: routing_id=projects/proj_foo
+///
+/// Example 5
+///
+/// Extracting a single routing header key-value pair by matching
+/// several conflictingly named path templates on (parts of) a single request
+/// field. The last template to match "wins" the conflict.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // If the `table_name` does not have instances information,
+///        // take just the project id for routing.
+///        // Otherwise take project + instance.
+///
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{routing_id=projects/*}/**"
+///        }
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{routing_id=projects/*/instances/*}/**"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params:
+///      routing_id=projects/proj_foo/instances/instance_bar
+///
+/// Example 6
+///
+/// Extracting multiple routing header key-value pairs by matching
+/// several non-conflicting path templates on (parts of) a single request field.
+///
+/// Sub-example 6a
+///
+/// Make the templates strict, so that if the `table_name` does not
+/// have an instance information, nothing is sent.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // The routing code needs two keys instead of one composite
+///        // but works only for the tables with the "project-instance" name
+///        // syntax.
+///
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{project_id=projects/*}/instances/*/**"
+///        }
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "projects/*/{instance_id=instances/*}/**"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params:
+///      project_id=projects/proj_foo&instance_id=instances/instance_bar
+///
+/// Sub-example 6b
+///
+/// Make the templates loose, so that if the `table_name` does not
+/// have an instance information, just the project id part is sent.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // The routing code wants two keys instead of one composite
+///        // but will work with just the `project_id` for tables without
+///        // an instance in the `table_name`.
+///
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{project_id=projects/*}/**"
+///        }
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "projects/*/{instance_id=instances/*}/**"
+///        }
+///      };
+///
+/// result (is the same as 6a for our example message because it has the instance
+/// information):
+///
+///      x-goog-request-params:
+///      project_id=projects/proj_foo&instance_id=instances/instance_bar
+///
+/// Example 7
+///
+/// Extracting multiple routing header key-value pairs by matching
+/// several path templates on multiple request fields.
+///
+/// NB: note that here there is no way to specify sending nothing if one of the
+/// fields does not match its template. E.g. if the `table_name` is in the wrong
+/// format, the `project_id` will not be sent, but the `routing_id` will be.
+/// The backend routing code has to be aware of that and be prepared to not
+/// receive a full complement of keys if it expects multiple.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // The routing needs both `project_id` and `routing_id`
+///        // (from the `app_profile_id` field) for routing.
+///
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{project_id=projects/*}/**"
+///        }
+///        routing_parameters {
+///          field: "app_profile_id"
+///          path_template: "{routing_id=**}"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params:
+///      project_id=projects/proj_foo&routing_id=profiles/prof_qux
+///
+/// Example 8
+///
+/// Extracting a single routing header key-value pair by matching
+/// several conflictingly named path templates on several request fields. The
+/// last template to match "wins" the conflict.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // The `routing_id` can be a project id or a region id depending on
+///        // the table name format, but only if the `app_profile_id` is not set.
+///        // If `app_profile_id` is set it should be used instead.
+///
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{routing_id=projects/*}/**"
+///        }
+///        routing_parameters {
+///           field: "table_name"
+///           path_template: "{routing_id=regions/*}/**"
+///        }
+///        routing_parameters {
+///          field: "app_profile_id"
+///          path_template: "{routing_id=**}"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params: routing_id=profiles/prof_qux
+///
+/// Example 9
+///
+/// Bringing it all together.
+///
+/// annotation:
+///
+///      option (google.api.routing) = {
+///        // For routing both `table_location` and a `routing_id` are needed.
+///        //
+///        // table_location can be either an instance id or a region+zone id.
+///        //
+///        // For `routing_id`, take the value of `app_profile_id`
+///        // - If it's in the format `profiles/<profile_id>`, send
+///        // just the `<profile_id>` part.
+///        // - If it's any other literal, send it as is.
+///        // If the `app_profile_id` is empty, and the `table_name` starts with
+///        // the project_id, send that instead.
+///
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "projects/*/{table_location=instances/*}/tables/*"
+///        }
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{table_location=regions/*/zones/*}/tables/*"
+///        }
+///        routing_parameters {
+///          field: "table_name"
+///          path_template: "{routing_id=projects/*}/**"
+///        }
+///        routing_parameters {
+///          field: "app_profile_id"
+///          path_template: "{routing_id=**}"
+///        }
+///        routing_parameters {
+///          field: "app_profile_id"
+///          path_template: "profiles/{routing_id=*}"
+///        }
+///      };
+///
+/// result:
+///
+///      x-goog-request-params:
+///      table_location=instances/instance_bar&routing_id=prof_qux
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct FieldInfo {
-    /// The standard format of a field value. This does not explicitly configure
-    /// any API consumer, just documents the API's format for the field it is
-    /// applied to.
-    #[prost(enumeration = "field_info::Format", tag = "1")]
-    pub format: i32,
-    /// The type(s) that the annotated, generic field may represent.
-    ///
-    /// Currently, this must only be used on fields of type `google.protobuf.Any`.
-    /// Supporting other generic types may be considered in the future.
+pub struct RoutingRule {
+    /// A collection of Routing Parameter specifications.
+    /// **NOTE:** If multiple Routing Parameters describe the same key
+    /// (via the `path_template` field or via the `field` field when
+    /// `path_template` is not provided), "last one wins" rule
+    /// determines which Parameter gets used.
+    /// See the examples for more details.
     #[prost(message, repeated, tag = "2")]
-    pub referenced_types: ::prost::alloc::vec::Vec<TypeReference>,
+    pub routing_parameters: ::prost::alloc::vec::Vec<RoutingParameter>,
 }
-/// Nested message and enum types in `FieldInfo`.
-pub mod field_info {
-    /// The standard format of a field value. The supported formats are all backed
-    /// by either an RFC defined by the IETF or a Google-defined AIP.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Format {
-        /// Default, unspecified value.
-        Unspecified = 0,
-        /// Universally Unique Identifier, version 4, value as defined by
-        /// <https://datatracker.ietf.org/doc/html/rfc4122.> The value may be
-        /// normalized to entirely lowercase letters. For example, the value
-        /// `F47AC10B-58CC-0372-8567-0E02B2C3D479` would be normalized to
-        /// `f47ac10b-58cc-0372-8567-0e02b2c3d479`.
-        Uuid4 = 1,
-        /// Internet Protocol v4 value as defined by [RFC
-        /// 791](<https://datatracker.ietf.org/doc/html/rfc791>). The value may be
-        /// condensed, with leading zeros in each octet stripped. For example,
-        /// `001.022.233.040` would be condensed to `1.22.233.40`.
-        Ipv4 = 2,
-        /// Internet Protocol v6 value as defined by [RFC
-        /// 2460](<https://datatracker.ietf.org/doc/html/rfc2460>). The value may be
-        /// normalized to entirely lowercase letters with zeros compressed, following
-        /// [RFC 5952](<https://datatracker.ietf.org/doc/html/rfc5952>). For example,
-        /// the value `2001:0DB8:0::0` would be normalized to `2001:db8::`.
-        Ipv6 = 3,
-        /// An IP address in either v4 or v6 format as described by the individual
-        /// values defined herein. See the comments on the IPV4 and IPV6 types for
-        /// allowed normalizations of each.
-        Ipv4OrIpv6 = 4,
-    }
-    impl Format {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "FORMAT_UNSPECIFIED",
-                Self::Uuid4 => "UUID4",
-                Self::Ipv4 => "IPV4",
-                Self::Ipv6 => "IPV6",
-                Self::Ipv4OrIpv6 => "IPV4_OR_IPV6",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "FORMAT_UNSPECIFIED" => Some(Self::Unspecified),
-                "UUID4" => Some(Self::Uuid4),
-                "IPV4" => Some(Self::Ipv4),
-                "IPV6" => Some(Self::Ipv6),
-                "IPV4_OR_IPV6" => Some(Self::Ipv4OrIpv6),
-                _ => None,
-            }
-        }
-    }
-}
-/// A reference to a message type, for use in [FieldInfo][google.api.FieldInfo].
+/// A projection from an input message to the GRPC or REST header.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TypeReference {
-    /// The name of the type that the annotated, generic field may represent.
-    /// If the type is in the same protobuf package, the value can be the simple
-    /// message name e.g., `"MyMessage"`. Otherwise, the value must be the
-    /// fully-qualified message name e.g., `"google.library.v1.Book"`.
-    ///
-    /// If the type(s) are unknown to the service (e.g. the field accepts generic
-    /// user input), use the wildcard `"*"` to denote this behavior.
-    ///
-    /// See [AIP-202](<https://google.aip.dev/202#type-references>) for more details.
+pub struct RoutingParameter {
+    /// A request field to extract the header key-value pair from.
     #[prost(string, tag = "1")]
-    pub type_name: ::prost::alloc::string::String,
+    pub field: ::prost::alloc::string::String,
+    /// A pattern matching the key-value field. Optional.
+    /// If not specified, the whole field specified in the `field` field will be
+    /// taken as value, and its name used as key. If specified, it MUST contain
+    /// exactly one named segment (along with any number of unnamed segments) The
+    /// pattern will be matched over the field specified in the `field` field, then
+    /// if the match is successful:
+    /// - the name of the single named segment will be used as a header name,
+    /// - the match value of the segment will be used as a header value;
+    /// if the match is NOT successful, nothing will be sent.
+    ///
+    /// Example:
+    ///
+    ///                -- This is a field in the request message
+    ///               |   that the header value will be extracted from.
+    ///               |
+    ///               |                     -- This is the key name in the
+    ///               |                    |   routing header.
+    ///               V                    |
+    ///      field: "table_name"           v
+    ///      path_template: "projects/*/{table_location=instances/*}/tables/*"
+    ///                                                 ^            ^
+    ///                                                 |            |
+    ///        In the {} brackets is the pattern that --             |
+    ///        specifies what to extract from the                    |
+    ///        field as a value to be sent.                          |
+    ///                                                              |
+    ///       The string in the field must match the whole pattern --
+    ///       before brackets, inside brackets, after brackets.
+    ///
+    /// When looking at this specific example, we can see that:
+    /// - A key-value pair with the key `table_location` and the value matching `instances/*`
+    ///   should be added to the x-goog-request-params routing header.
+    /// - The value is extracted from the request message's `table_name` field if it matches the
+    ///   full pattern specified: `projects/*/instances/*/tables/*`.
+    ///
+    /// **NB:** If the `path_template` field is not provided, the key name is
+    /// equal to the field name, and the whole field should be sent as a value.
+    /// This makes the pattern for the field and the value functionally equivalent
+    /// to `**`, and the configuration
+    ///
+    ///      {
+    ///        field: "table_name"
+    ///      }
+    ///
+    /// is a functionally equivalent shorthand to:
+    ///
+    ///      {
+    ///        field: "table_name"
+    ///        path_template: "{table_name=**}"
+    ///      }
+    ///
+    /// See Example 1 for more details.
+    #[prost(string, tag = "2")]
+    pub path_template: ::prost::alloc::string::String,
 }

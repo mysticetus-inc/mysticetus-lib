@@ -1,37 +1,26 @@
 use std::sync::{Arc, OnceLock};
 
 use tracing_core::LevelFilter;
+use tracing_subscriber::Layer;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{Layer, Registry, layer};
 
 use crate::options::{DefaultLogOptions, LogOptions};
-use crate::records::Records;
+use crate::registry::Records;
 
 pub mod builder;
-pub mod filter;
+mod filter;
 pub mod handle;
 pub mod writer;
 
-pub use filter::Filter;
-pub use handle::{Handle, WeakHandle};
+pub use handle::Handle;
 pub use writer::{MakeWriter, StdoutWriter};
 
 mod event;
-mod format_layer;
-mod registry;
-use format_layer::FormatLayer;
 
-pub struct Subscriber<
-    Opt: LogOptions = DefaultLogOptions,
-    F = LevelFilter,
-    MkWriter: MakeWriter = StdoutWriter,
-> {
-    // we can't dig into the internals of [layer::Layered],
-    // so we need to hold a reference to the internal [Shared] instance.
-    shared: Arc<Shared<Opt>>,
-    // even with zero sized generics, this type easily approaches ~600b in size,
-    // so put behind a box.
-    registry: Box<layer::Layered<F, layer::Layered<FormatLayer<Opt, MkWriter>, Registry>>>,
+pub struct Subscriber<MkWriter: MakeWriter = StdoutWriter> {
+    filter: LevelFilter,
+    make_writer: MkWriter,
+    records: &'static Records,
 }
 
 impl Default for Subscriber {
@@ -46,23 +35,21 @@ impl Subscriber {
     }
 }
 
-impl<Opt, F, MkWriter> Subscriber<Opt, F, MkWriter>
-where
-    Opt: LogOptions,
-    MkWriter: MakeWriter,
-    F: Filter<Opt, MkWriter>,
-{
-    /// Creates a new [Handle] to this [Subscriber]
-    pub fn handle(&self) -> Handle<Opt> {
-        Handle {
-            shared: Arc::clone(&self.shared),
-        }
-    }
+/// Possible errors we could encounter when serializing and emitting a
+/// log event to an arbitrary writer.
+#[derive(Debug, thiserror::Error)]
+enum RecordError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Json(#[from] path_aware_serde::Error<serde_json::Error>),
+}
 
-    /// Creates a new [WeakHandle] to this [Subscriber]
-    pub fn weak_handle(&self) -> WeakHandle<Opt> {
-        WeakHandle {
-            shared: Arc::downgrade(&self.shared),
+impl<MkWriter: MakeWriter> Subscriber<MkWriter> {
+    /// Creates a new [Handle] to this [Subscriber]
+    pub fn handle(&self) -> Handle {
+        Handle {
+            records: &self.records,
         }
     }
 
@@ -70,7 +57,7 @@ where
     /// Returns a [Handle] to 'self'.
     ///
     /// Essentially just defers to [SubscriberInitExt::init].
-    pub fn init(self) -> Handle<Opt> {
+    pub fn init(self) -> Handle {
         let handle = self.handle();
         SubscriberInitExt::init(self);
         handle
@@ -80,7 +67,7 @@ where
     /// there's already one set.
     ///
     /// Defers to [SubscriberInitExt::try_init], but returns a [Handle] on success.
-    pub fn try_init(self) -> Result<Handle<Opt>, tracing_subscriber::util::TryInitError> {
+    pub fn try_init(self) -> Result<Handle, tracing_subscriber::util::TryInitError> {
         let handle = self.handle();
         SubscriberInitExt::try_init(self)?;
         Ok(handle)
@@ -88,13 +75,16 @@ where
 
     /// Boils down to [tracing_core::dispatcher::with_default], but passes in a
     /// [Handle] to the subscriber to the scope fn.
-    pub fn with_default<O>(self, scope: impl FnOnce(Handle<Opt>) -> O) -> O {
+    pub fn with_default<O>(self, scope: impl FnOnce(Handle) -> O) -> O {
         let handle = self.handle();
         let _guard = self.set_default();
         scope(handle)
     }
 
-    fn from_builder(builder: builder::LoggingBuilder<Opt, F, MkWriter>) -> Self {
+    fn from_builder<Opt>(builder: builder::LoggingBuilder<Opt, MkWriter>) -> Self
+    where
+        Opt: LogOptions + 'static,
+    {
         let crate::LoggingBuilder {
             stage,
             filter,
@@ -103,79 +93,62 @@ where
             make_writer,
         } = builder;
 
-        let shared = Arc::new(Shared {
-            stage,
-            options,
-            records: Records::with_capacity(16),
-            project_id: match project_id {
-                Some(proj_id) => OnceLock::from(proj_id),
-                None => OnceLock::new(),
-            },
-        });
+        let records = Records::new_with(options, Some(stage), project_id);
 
-        let fmt = FormatLayer {
+        Self {
+            filter,
+            records,
             make_writer,
-            shared: Arc::clone(&shared),
-        };
-
-        let registry = Box::new(filter.with_subscriber(fmt.with_subscriber(Registry::default())));
-
-        Self { registry, shared }
+        }
     }
 }
 
-#[derive(Debug)]
-struct Shared<O: LogOptions = DefaultLogOptions> {
-    options: O,
-    records: Records,
-    stage: crate::Stage,
-    project_id: OnceLock<&'static str>,
-}
-
-impl<F, Opt, MkWriter> tracing::Subscriber for Subscriber<Opt, F, MkWriter>
-where
-    Opt: LogOptions + 'static,
-    MkWriter: MakeWriter,
-    F: Filter<Opt, MkWriter> + 'static,
-{
+impl<MkWriter: MakeWriter> tracing::Subscriber for Subscriber<MkWriter> {
     #[inline]
     fn exit(&self, span: &tracing::span::Id) {
-        self.registry.exit(span);
+        self.records.exit(span);
     }
 
     #[inline]
     fn enter(&self, span: &tracing::span::Id) {
-        self.registry.enter(span);
+        self.records.enter(span);
     }
 
     #[inline]
     fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
-        self.registry.enabled(metadata)
+        &self.filter >= metadata.level() && self.records.enabled(metadata)
     }
 
     #[inline]
     fn new_span(&self, span: &tracing::span::Attributes<'_>) -> tracing::span::Id {
-        self.registry.new_span(span)
+        self.records.new_span(span)
     }
 
     #[inline]
     fn record(&self, span: &tracing::span::Id, values: &tracing::span::Record<'_>) {
-        self.registry.record(span, values);
+        self.records.record(span, values);
     }
 
     #[inline]
     fn record_follows_from(&self, span: &tracing::span::Id, follows: &tracing::span::Id) {
-        self.registry.record_follows_from(span, follows);
+        self.records.record_follows_from(span, follows);
     }
 
     #[inline]
     fn event(&self, event: &tracing::Event<'_>) {
-        self.registry.event(event);
+        let emitter = event::EventEmitter::new(self.records, event);
+
+        if let Err(error) = emitter.emit(&self.make_writer) {
+            eprintln!(
+                "[gcp-logging] failed to write event to {} - {error}",
+                std::any::type_name::<<MkWriter as MakeWriter>::Writer<'_>>()
+            );
+        }
     }
 
     #[inline]
     fn on_register_dispatch(&self, subscriber: &tracing::Dispatch) {
-        self.registry.on_register_dispatch(subscriber);
+        self.records.on_register_dispatch(subscriber);
     }
 
     #[inline]
@@ -183,46 +156,50 @@ where
         &self,
         metadata: &'static tracing::Metadata<'static>,
     ) -> tracing::subscriber::Interest {
-        self.registry.register_callsite(metadata)
+        self.records.register_callsite(metadata)
     }
 
     #[inline]
     fn max_level_hint(&self) -> Option<tracing::level_filters::LevelFilter> {
-        self.registry.max_level_hint()
+        Some(self.filter)
     }
 
     #[inline]
     fn event_enabled(&self, event: &tracing::Event<'_>) -> bool {
-        self.registry.event_enabled(event)
+        &self.filter >= event.metadata().level() && self.records.event_enabled(event)
     }
 
     #[inline]
     fn clone_span(&self, id: &tracing::span::Id) -> tracing::span::Id {
-        self.registry.clone_span(id)
+        self.records.clone_span(id)
     }
 
     #[inline]
     fn try_close(&self, id: tracing::span::Id) -> bool {
-        self.registry.try_close(id)
+        self.records.try_close(id)
     }
 
     #[inline]
     fn current_span(&self) -> tracing_core::span::Current {
-        self.registry.current_span()
+        self.records.current_span()
     }
 
     #[inline]
     unsafe fn downcast_raw(&self, id: std::any::TypeId) -> Option<*const ()> {
-        if std::any::TypeId::of::<Handle<Opt>>() == id {
-            // Handle<Opt> is a repr(transparent) wrapper around Arc<Shared<Opt>>, so
+        if std::any::TypeId::of::<MkWriter>() == id {
+            return Some(&self.make_writer as *const MkWriter as *const ());
+        }
+
+        if std::any::TypeId::of::<Handle>() == id {
+            // Handle is a repr(transparent) wrapper around &'static Records, so
             // this is valid
-            return Some(&self.shared as *const Arc<Shared<Opt>> as *const ());
+            return Some(self.records as *const Records as *const ());
         }
 
-        if std::any::TypeId::of::<Opt>() == id {
-            return Some(&self.shared.options as *const Opt as *const ());
+        if std::any::TypeId::of::<Self>() == id {
+            return Some(self as *const Self as *const ());
         }
 
-        unsafe { self.registry.downcast_raw(id) }
+        unsafe { self.records.downcast_raw(id) }
     }
 }

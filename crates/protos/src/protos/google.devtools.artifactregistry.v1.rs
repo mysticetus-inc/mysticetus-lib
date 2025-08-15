@@ -1722,10 +1722,6 @@ pub struct Repository {
     /// Output only. If set, the repository satisfies physical zone isolation.
     #[prost(bool, tag = "22")]
     pub satisfies_pzi: bool,
-    /// Output only. The repository endpoint, for example:
-    /// `us-docker.pkg.dev/my-proj/my-repo`.
-    #[prost(string, tag = "26")]
-    pub registry_uri: ::prost::alloc::string::String,
     /// Repository-specific configurations.
     #[prost(oneof = "repository::FormatConfig", tags = "9, 17")]
     pub format_config: ::core::option::Option<repository::FormatConfig>,
@@ -2709,8 +2705,7 @@ pub struct BatchDeleteVersionsRequest {
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// Required. The names of the versions to delete.
-    /// The maximum number of versions deleted per batch is determined by the
-    /// service and is dependent on the available resources in the region.
+    /// A maximum of 10000 versions can be deleted in a batch.
     #[prost(string, repeated, tag = "2")]
     pub names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// If true, the request is performed without deleting data, following AIP-163.

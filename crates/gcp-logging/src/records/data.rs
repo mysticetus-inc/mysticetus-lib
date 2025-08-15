@@ -1,5 +1,4 @@
-use std::num::NonZeroU8;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tracing_subscriber::field::RecordFields;
@@ -10,17 +9,13 @@ use crate::json::JsonValue;
 
 #[derive(Debug)]
 pub struct Data {
-    // every time a span is created or closed, this is incremented by 1.
-    // If the span is an odd number, we're alive. If even, it's closed.
-    // If this value matches 'current_generation', then the span is still alive.
-    shared_generation: AtomicU8,
+    closed: AtomicBool,
     inner: RwLock<DataInner>,
 }
 
 #[derive(Debug)]
 pub(super) struct DataInner {
     pub(super) id: tracing::Id,
-    pub(super) current_generation: NonZeroU8,
     pub(super) parent_span: Option<tracing::Id>,
     pub(super) span_name: &'static str,
     pub(super) trace: Option<RequestTrace>,
@@ -50,10 +45,9 @@ impl Data {
         trace: Option<RequestTrace>,
     ) -> Self {
         Self {
-            shared_generation: AtomicU8::new(1),
+            closed: AtomicBool::new(false),
             inner: RwLock::new(DataInner {
                 id,
-                current_generation: NonZeroU8::MIN,
                 span_name: meta.name(),
                 trace,
                 parent_span,
@@ -76,19 +70,26 @@ impl Data {
     }
 
     pub(crate) fn is_closed(&self) -> bool {
-        self.shared_generation.load(Ordering::SeqCst) % 2 == 0
+        self.closed.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn close(&self) {
+        self.closed.store(true, Ordering::SeqCst);
+    }
+
+    pub(crate) fn id(&self) -> &tracing::Id {
+        &self.id
     }
 
     pub(crate) fn write(&self) -> Option<WriteData<'_>> {
-        let generation = self.shared_generation.load(Ordering::SeqCst);
-        // closed if even
-        if generation % 2 == 0 {
+        if self.is_closed() {
             return None;
         }
+
         // then, get the actual lock and see if the inner generation matches
         let write = self.inner.write();
 
-        if generation != write.current_generation.get() {
+        if self.is_closed() {
             return None;
         }
 
@@ -96,15 +97,13 @@ impl Data {
     }
 
     pub(crate) fn read(&self) -> Option<ReadData<'_>> {
-        let generation = self.shared_generation.load(Ordering::SeqCst);
-        // closed if even
-        if generation % 2 == 0 {
+        if self.is_closed() {
             return None;
         }
         // then, get the actual lock and see if the inner generation matches
         let read = self.inner.read_recursive();
 
-        if generation != read.current_generation.get() {
+        if self.is_closed() {
             return None;
         }
 
@@ -138,7 +137,7 @@ impl Data {
 
         if let Some(values) = values {
             values.record(&mut super::visitor::DataVisitor {
-                lock: Some(guard),
+                lock: Some(Some(WriteData { write: guard })),
                 data: self,
                 metadata,
                 options,
@@ -149,6 +148,26 @@ impl Data {
 
 pub(crate) struct WriteData<'a> {
     write: RwLockWriteGuard<'a, DataInner>,
+}
+impl<'a> WriteData<'a> {
+    pub fn span_name(&self) -> &'static str {
+        self.write.span_name
+    }
+
+    pub fn request_trace_mut(&mut self) -> Option<&mut RequestTrace> {
+        self.write.trace.as_mut()
+    }
+
+    pub fn insert(&mut self, field_name: &'static str, value: JsonValue) {
+        let span_name = self.write.span_name;
+        self.write.data.insert(
+            Field {
+                span_name,
+                field_name,
+            },
+            value,
+        );
+    }
 }
 
 pub(crate) struct ReadData<'a> {
@@ -186,10 +205,17 @@ impl<'a> ReadData<'a> {
         })
     }
 
-    pub(crate) fn data(&self) -> impl ExactSizeIterator<Item = (&'static str, &'_ JsonValue)> + '_ {
-        self.read
-            .data
-            .iter()
-            .map(|(field, value)| (field.field_name, value))
+    pub(crate) fn data(&self) -> DataIter<'_> {
+        self.read.data.iter().map(map_field_name)
     }
 }
+
+#[inline]
+const fn map_field_name<'b>(pair: (&Field, &'b JsonValue)) -> (&'static str, &'b JsonValue) {
+    (pair.0.field_name, pair.1)
+}
+
+pub(crate) type DataIter<'a> = std::iter::Map<
+    std::collections::hash_map::Iter<'a, Field, JsonValue>,
+    for<'b> fn((&'b Field, &'b JsonValue)) -> (&'static str, &'b JsonValue),
+>;

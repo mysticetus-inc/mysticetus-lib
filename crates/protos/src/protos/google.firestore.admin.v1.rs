@@ -184,27 +184,11 @@ pub struct Database {
     /// Output only. Information about the provenance of this database.
     #[prost(message, optional, tag = "26")]
     pub source_info: ::core::option::Option<database::SourceInfo>,
-    /// Output only. Background: Free tier is the ability of a Firestore database
-    /// to use a small amount of resources every day without being charged. Once
-    /// usage exceeds the free tier limit further usage is charged.
-    ///
-    /// Whether this database can make use of the free tier. Only one database
-    /// per project can be eligible for the free tier.
-    ///
-    /// The first (or next) database that is created in a project without a free
-    /// tier database will be marked as eligible for the free tier. Databases that
-    /// are created while there is a free tier database will not be eligible for
-    /// the free tier.
-    #[prost(bool, optional, tag = "30")]
-    pub free_tier: ::core::option::Option<bool>,
     /// This checksum is computed by the server based on the value of other
     /// fields, and may be sent on update and delete requests to ensure the
     /// client has an up-to-date value before proceeding.
     #[prost(string, tag = "99")]
     pub etag: ::prost::alloc::string::String,
-    /// Immutable. The edition of the database.
-    #[prost(enumeration = "database::DatabaseEdition", tag = "28")]
-    pub database_edition: i32,
 }
 /// Nested message and enum types in `Database`.
 pub mod database {
@@ -544,43 +528,6 @@ pub mod database {
             }
         }
     }
-    /// The edition of the database.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum DatabaseEdition {
-        /// Not used.
-        Unspecified = 0,
-        /// Standard edition.
-        ///
-        /// This is the default setting if not specified.
-        Standard = 1,
-        /// Enterprise edition.
-        Enterprise = 2,
-    }
-    impl DatabaseEdition {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "DATABASE_EDITION_UNSPECIFIED",
-                Self::Standard => "STANDARD",
-                Self::Enterprise => "ENTERPRISE",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "DATABASE_EDITION_UNSPECIFIED" => Some(Self::Unspecified),
-                "STANDARD" => Some(Self::Standard),
-                "ENTERPRISE" => Some(Self::Enterprise),
-                _ => None,
-            }
-        }
-    }
 }
 /// Cloud Firestore indexes enable simple and complex queries against
 /// documents in a database.
@@ -622,22 +569,6 @@ pub struct Index {
     /// Output only. The serving state of the index.
     #[prost(enumeration = "index::State", tag = "4")]
     pub state: i32,
-    /// Immutable. The density configuration of the index.
-    #[prost(enumeration = "index::Density", tag = "6")]
-    pub density: i32,
-    /// Optional. Whether the index is multikey. By default, the index is not
-    /// multikey. For non-multikey indexes, none of the paths in the index
-    /// definition reach or traverse an array, except via an explicit array index.
-    /// For multikey indexes, at most one of the paths in the index definition
-    /// reach or traverse an array, except via an explicit array index. Violations
-    /// will result in errors.
-    ///
-    /// Note this field only applies to index with MONGODB_COMPATIBLE_API ApiScope.
-    #[prost(bool, tag = "7")]
-    pub multikey: bool,
-    /// Optional. The number of shards for the index.
-    #[prost(int32, tag = "8")]
-    pub shard_count: i32,
 }
 /// Nested message and enum types in `Index`.
 pub mod index {
@@ -837,8 +768,6 @@ pub mod index {
         AnyApi = 0,
         /// The index can only be used by the Firestore in Datastore Mode query API.
         DatastoreModeApi = 1,
-        /// The index can only be used by the MONGODB_COMPATIBLE_API.
-        MongodbCompatibleApi = 2,
     }
     impl ApiScope {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -849,7 +778,6 @@ pub mod index {
             match self {
                 Self::AnyApi => "ANY_API",
                 Self::DatastoreModeApi => "DATASTORE_MODE_API",
-                Self::MongodbCompatibleApi => "MONGODB_COMPATIBLE_API",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -857,7 +785,6 @@ pub mod index {
             match value {
                 "ANY_API" => Some(Self::AnyApi),
                 "DATASTORE_MODE_API" => Some(Self::DatastoreModeApi),
-                "MONGODB_COMPATIBLE_API" => Some(Self::MongodbCompatibleApi),
                 _ => None,
             }
         }
@@ -912,56 +839,6 @@ pub mod index {
                 "CREATING" => Some(Self::Creating),
                 "READY" => Some(Self::Ready),
                 "NEEDS_REPAIR" => Some(Self::NeedsRepair),
-                _ => None,
-            }
-        }
-    }
-    /// The density configuration for the index.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Density {
-        /// Unspecified. It will use database default setting. This value is input
-        /// only.
-        Unspecified = 0,
-        /// In order for an index entry to be added, the document must
-        /// contain all fields specified in the index.
-        ///
-        /// This is the only allowed value for indexes having ApiScope `ANY_API` and
-        /// `DATASTORE_MODE_API`.
-        SparseAll = 1,
-        /// In order for an index entry to be added, the document must
-        /// contain at least one of the fields specified in the index.
-        /// Non-existent fields are treated as having a NULL value when generating
-        /// index entries.
-        SparseAny = 2,
-        /// An index entry will be added regardless of whether the
-        /// document contains any of the fields specified in the index.
-        /// Non-existent fields are treated as having a NULL value when generating
-        /// index entries.
-        Dense = 3,
-    }
-    impl Density {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "DENSITY_UNSPECIFIED",
-                Self::SparseAll => "SPARSE_ALL",
-                Self::SparseAny => "SPARSE_ANY",
-                Self::Dense => "DENSE",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "DENSITY_UNSPECIFIED" => Some(Self::Unspecified),
-                "SPARSE_ALL" => Some(Self::SparseAll),
-                "SPARSE_ANY" => Some(Self::SparseAny),
-                "DENSE" => Some(Self::Dense),
                 _ => None,
             }
         }
@@ -1570,91 +1447,6 @@ pub struct WeeklyRecurrence {
     #[prost(enumeration = "super::super::super::r#type::DayOfWeek", tag = "2")]
     pub day: i32,
 }
-/// A Cloud Firestore User Creds.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UserCreds {
-    /// Identifier. The resource name of the UserCreds.
-    /// Format:
-    /// `projects/{project}/databases/{database}/userCreds/{user_creds}`
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-    /// Output only. The time the user creds were created.
-    #[prost(message, optional, tag = "2")]
-    pub create_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
-    /// Output only. The time the user creds were last updated.
-    #[prost(message, optional, tag = "3")]
-    pub update_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
-    /// Output only. Whether the user creds are enabled or disabled. Defaults to
-    /// ENABLED on creation.
-    #[prost(enumeration = "user_creds::State", tag = "4")]
-    pub state: i32,
-    /// Output only. The plaintext server-generated password for the user creds.
-    /// Only populated in responses for CreateUserCreds and ResetUserPassword.
-    #[prost(string, tag = "5")]
-    pub secure_password: ::prost::alloc::string::String,
-    /// Identity associated with this User Creds.
-    #[prost(oneof = "user_creds::UserCredsIdentity", tags = "6")]
-    pub user_creds_identity: ::core::option::Option<user_creds::UserCredsIdentity>,
-}
-/// Nested message and enum types in `UserCreds`.
-pub mod user_creds {
-    /// Describes a Resource Identity principal.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct ResourceIdentity {
-        /// Output only. Principal identifier string.
-        /// See: <https://cloud.google.com/iam/docs/principal-identifiers>
-        #[prost(string, tag = "1")]
-        pub principal: ::prost::alloc::string::String,
-    }
-    /// The state of the user creds (ENABLED or DISABLED).
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum State {
-        /// The default value. Should not be used.
-        Unspecified = 0,
-        /// The user creds are enabled.
-        Enabled = 1,
-        /// The user creds are disabled.
-        Disabled = 2,
-    }
-    impl State {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Self::Unspecified => "STATE_UNSPECIFIED",
-                Self::Enabled => "ENABLED",
-                Self::Disabled => "DISABLED",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "STATE_UNSPECIFIED" => Some(Self::Unspecified),
-                "ENABLED" => Some(Self::Enabled),
-                "DISABLED" => Some(Self::Disabled),
-                _ => None,
-            }
-        }
-    }
-    /// Identity associated with this User Creds.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum UserCredsIdentity {
-        /// Resource Identity descriptor.
-        #[prost(message, tag = "6")]
-        ResourceIdentity(ResourceIdentity),
-    }
-}
 /// A request to list the Firestore Databases in all locations for a project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1767,104 +1559,6 @@ pub struct DeleteDatabaseRequest {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DeleteDatabaseMetadata {}
-/// The request for
-/// [FirestoreAdmin.CreateUserCreds][google.firestore.admin.v1.FirestoreAdmin.CreateUserCreds].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CreateUserCredsRequest {
-    /// Required. A parent name of the form
-    /// `projects/{project_id}/databases/{database_id}`
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-    /// Required. The user creds to create.
-    #[prost(message, optional, tag = "2")]
-    pub user_creds: ::core::option::Option<UserCreds>,
-    /// Required. The ID to use for the user creds, which will become the final
-    /// component of the user creds's resource name.
-    ///
-    /// This value should be 4-63 characters. Valid characters are /[a-z][0-9]-/
-    /// with first character a letter and the last a letter or a number. Must not
-    /// be UUID-like /\[0-9a-f\]{8}(-\[0-9a-f\]{4}){3}-\[0-9a-f\]{12}/.
-    #[prost(string, tag = "3")]
-    pub user_creds_id: ::prost::alloc::string::String,
-}
-/// The request for
-/// [FirestoreAdmin.GetUserCreds][google.firestore.admin.v1.FirestoreAdmin.GetUserCreds].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetUserCredsRequest {
-    /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-/// The request for
-/// [FirestoreAdmin.ListUserCreds][google.firestore.admin.v1.FirestoreAdmin.ListUserCreds].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListUserCredsRequest {
-    /// Required. A parent database name of the form
-    /// `projects/{project_id}/databases/{database_id}`
-    #[prost(string, tag = "1")]
-    pub parent: ::prost::alloc::string::String,
-}
-/// The response for
-/// [FirestoreAdmin.ListUserCreds][google.firestore.admin.v1.FirestoreAdmin.ListUserCreds].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ListUserCredsResponse {
-    /// The user creds for the database.
-    #[prost(message, repeated, tag = "1")]
-    pub user_creds: ::prost::alloc::vec::Vec<UserCreds>,
-}
-/// The request for
-/// [FirestoreAdmin.EnableUserCreds][google.firestore.admin.v1.FirestoreAdmin.EnableUserCreds].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct EnableUserCredsRequest {
-    /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-/// The request for
-/// [FirestoreAdmin.DisableUserCreds][google.firestore.admin.v1.FirestoreAdmin.DisableUserCreds].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DisableUserCredsRequest {
-    /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-/// The request for
-/// [FirestoreAdmin.ResetUserPassword][google.firestore.admin.v1.FirestoreAdmin.ResetUserPassword].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ResetUserPasswordRequest {
-    /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-/// The request for
-/// [FirestoreAdmin.DeleteUserCreds][google.firestore.admin.v1.FirestoreAdmin.DeleteUserCreds].
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct DeleteUserCredsRequest {
-    /// Required. A name of the form
-    /// `projects/{project_id}/databases/{database_id}/userCreds/{user_creds_id}`
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
 /// The request for
 /// [FirestoreAdmin.CreateBackupSchedule][google.firestore.admin.v1.FirestoreAdmin.
 /// CreateBackupSchedule].
@@ -2230,20 +1924,6 @@ pub struct ListBackupsRequest {
     /// locations.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// An expression that filters the list of returned backups.
-    ///
-    /// A filter expression consists of a field name, a comparison operator, and a
-    /// value for filtering.
-    /// The value must be a string, a number, or a boolean. The comparison operator
-    /// must be one of: `<`, `>`, `<=`, `>=`, `!=`, `=`, or `:`.
-    /// Colon `:` is the contains operator. Filter rules are not case sensitive.
-    ///
-    /// The following fields in the [Backup][google.firestore.admin.v1.Backup] are
-    /// eligible for filtering:
-    ///
-    ///    * `database_uid` (supports `=` only)
-    #[prost(string, tag = "2")]
-    pub filter: ::prost::alloc::string::String,
 }
 /// The response for
 /// [FirestoreAdmin.ListBackups][google.firestore.admin.v1.FirestoreAdmin.ListBackups].
@@ -2792,145 +2472,6 @@ pub mod firestore_admin_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "google.firestore.admin.v1.FirestoreAdmin",
                 "DeleteDatabase",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Create a user creds.
-        pub async fn create_user_creds(
-            &mut self,
-            request: impl tonic::IntoRequest<super::CreateUserCredsRequest>,
-        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.firestore.admin.v1.FirestoreAdmin/CreateUserCreds",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.firestore.admin.v1.FirestoreAdmin",
-                "CreateUserCreds",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Gets a user creds resource. Note that the returned resource does not
-        /// contain the secret value itself.
-        pub async fn get_user_creds(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetUserCredsRequest>,
-        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.firestore.admin.v1.FirestoreAdmin/GetUserCreds",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.firestore.admin.v1.FirestoreAdmin",
-                "GetUserCreds",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// List all user creds in the database. Note that the returned resource
-        /// does not contain the secret value itself.
-        pub async fn list_user_creds(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ListUserCredsRequest>,
-        ) -> std::result::Result<tonic::Response<super::ListUserCredsResponse>, tonic::Status>
-        {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.firestore.admin.v1.FirestoreAdmin/ListUserCreds",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.firestore.admin.v1.FirestoreAdmin",
-                "ListUserCreds",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Enables a user creds. No-op if the user creds are already enabled.
-        pub async fn enable_user_creds(
-            &mut self,
-            request: impl tonic::IntoRequest<super::EnableUserCredsRequest>,
-        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.firestore.admin.v1.FirestoreAdmin/EnableUserCreds",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.firestore.admin.v1.FirestoreAdmin",
-                "EnableUserCreds",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Disables a user creds. No-op if the user creds are already disabled.
-        pub async fn disable_user_creds(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DisableUserCredsRequest>,
-        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.firestore.admin.v1.FirestoreAdmin/DisableUserCreds",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.firestore.admin.v1.FirestoreAdmin",
-                "DisableUserCreds",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Resets the password of a user creds.
-        pub async fn reset_user_password(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ResetUserPasswordRequest>,
-        ) -> std::result::Result<tonic::Response<super::UserCreds>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.firestore.admin.v1.FirestoreAdmin/ResetUserPassword",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.firestore.admin.v1.FirestoreAdmin",
-                "ResetUserPassword",
-            ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Deletes a user creds.
-        pub async fn delete_user_creds(
-            &mut self,
-            request: impl tonic::IntoRequest<super::DeleteUserCredsRequest>,
-        ) -> std::result::Result<
-            tonic::Response<super::super::super::super::protobuf::Empty>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/google.firestore.admin.v1.FirestoreAdmin/DeleteUserCreds",
-            );
-            let mut req = request.into_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.firestore.admin.v1.FirestoreAdmin",
-                "DeleteUserCreds",
             ));
             self.inner.unary(req, path, codec).await
         }

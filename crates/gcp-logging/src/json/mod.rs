@@ -106,7 +106,7 @@ impl serde::Serialize for Number {
         match *self {
             Self::Int(int) => serializer.serialize_i64(int),
             Self::Uint(uint) => serializer.serialize_u64(uint),
-            Self::Float(f) => serializer.serialize_f64(f),
+            Self::Float(f) => crate::utils::JsonFloat(f).serialize(serializer),
             Self::BigInt(int) => serializer.serialize_i128(int),
             Self::BigUint(uint) => serializer.serialize_u128(uint),
         }

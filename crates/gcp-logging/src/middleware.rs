@@ -2,15 +2,27 @@ use std::convert::Infallible;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::Instant;
 
 use axum::response::{IntoResponse, Response};
-use futures::{TryFuture, future};
+use futures::TryFuture;
 use http_body::Body;
 use tower::{Layer, Service};
 use tracing::Span;
 
-use crate::records::ActiveRequest;
-use crate::subscriber::{Handle, WeakHandle};
+use crate::http_request::{RESPONSE_LATENCY_KEY, RESPONSE_SIZE_KEY, RESPONSE_STATUS_KEY};
+use crate::subscriber::Handle;
+
+tokio::task_local! {
+    static REQUEST_SPAN: Option<tracing::Id>;
+}
+
+pub fn current_request_span_id() -> Option<tracing::Id> {
+    REQUEST_SPAN
+        .try_with(|maybe_id| maybe_id.clone())
+        .ok()
+        .flatten()
+}
 
 impl<S> Layer<S> for Handle {
     type Service = TraceService<S>;
@@ -23,46 +35,10 @@ impl<S> Layer<S> for Handle {
     }
 }
 
-impl<S> Layer<S> for WeakHandle {
-    type Service = WeakTraceService<S>;
-
-    fn layer(&self, svc: S) -> Self::Service {
-        WeakTraceService {
-            svc,
-            handle: self.clone(),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct TraceService<S> {
     svc: S,
     handle: Handle,
-}
-
-#[derive(Debug, Clone)]
-pub struct WeakTraceService<S> {
-    svc: S,
-    handle: WeakHandle,
-}
-
-impl<S> WeakTraceService<S> {
-    pub fn upgrade_ref(&mut self) -> Option<TraceService<&mut S>> {
-        self.handle.upgrade().map(|handle| TraceService {
-            svc: &mut self.svc,
-            handle,
-        })
-    }
-
-    pub fn upgrade(self) -> Result<TraceService<S>, Self> {
-        match self.handle.upgrade() {
-            Some(handle) => Ok(TraceService {
-                svc: self.svc,
-                handle,
-            }),
-            None => Err(self),
-        }
-    }
 }
 
 // The bounds need to be essentially the same as the bounds for axum::Router::layer:
@@ -86,24 +62,52 @@ where
 
     #[inline]
     fn call(&mut self, req: http::Request<RequestBody>) -> Self::Future {
-        let span = tracing::info_span!("request");
-        let active = self.handle.start_request_for_span(&span, &req);
+        use tracing::field::Empty;
+
+        use crate::registry::{NewRequest, REQUEST_KEY};
+        use crate::utils::ErrorPassthrough;
+
+        let span = tracing::info_span! {
+            "request",
+            { REQUEST_KEY } = ErrorPassthrough(NewRequest::new(&req)).as_dyn(),
+            { RESPONSE_LATENCY_KEY } = Empty,
+            { RESPONSE_SIZE_KEY } = Empty,
+            { RESPONSE_STATUS_KEY } = Empty,
+        };
 
         // need to enter the scope not just when polling, but here too.
         // 'Service::call' likely does work that may include logging,
         // which we (obviously) want to include
-        let fut = span.in_scope(|| self.svc.call(req));
 
-        TraceFuture { span, fut, active }
+        let (fut, started) = in_scope(&span, || {
+            let started = if span.is_disabled() {
+                None
+            } else {
+                Some(Instant::now())
+            };
+
+            (self.svc.call(req), started)
+        });
+
+        TraceFuture { fut, span, started }
     }
 }
 
+#[inline]
+fn in_scope<O>(span: &tracing::Span, f: impl FnOnce() -> O) -> O {
+    REQUEST_SPAN.sync_scope(span.id(), || {
+        let _guard = span.enter();
+        f()
+    })
+}
+
 pin_project_lite::pin_project! {
+    #[project = TraceFutureProjection]
     pub struct TraceFuture<F: TryFuture> {
         #[pin]
         fut: F,
         span: Span,
-        active: Option<ActiveRequest>,
+        started: Option<Instant>,
     }
 }
 
@@ -116,59 +120,55 @@ where
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
+        let TraceFutureProjection { fut, span, started } = self.project();
 
-        // need to enter the span every time we poll
-        let _guard = this.span.enter();
+        in_scope(span, || {
+            let Ok(resp) = std::task::ready!(fut.poll(cx));
+            let resp = resp.into_response();
 
-        let Ok(resp) = std::task::ready!(this.fut.poll(cx));
-        let resp = resp.into_response();
+            record_response_fields(span, &resp, started.take());
 
-        if let Some(active) = this.active.take() {
-            active.update_from_response(&resp);
-        }
-
-        Poll::Ready(Ok(resp))
+            Poll::Ready(Ok(resp))
+        })
     }
 }
 
-pub type WeakTraceFuture<F> = future::Either<
-    TraceFuture<F>,
-    future::Map<F, fn(<F as Future>::Output) -> Result<Response, Infallible>>,
->;
+fn record_response_fields<B: Body>(
+    span: &tracing::Span,
+    resp: &http::Response<B>,
+    started: Option<Instant>,
+) {
+    use tracing::field::{AsField, FieldSet, Value, ValueSet};
 
-// The bounds need to be essentially the same as the bounds for axum::Router::layer:
-// https://docs.rs/axum/latest/axum/routing/struct.Router.html#method.layer
-impl<S, RequestBody> tower::Service<http::Request<RequestBody>> for WeakTraceService<S>
-where
-    RequestBody: Body,
-    S: Service<http::Request<RequestBody>, Error = Infallible>,
-    S::Response: IntoResponse,
-{
-    type Error = Infallible;
+    let Some(metadata) = span.metadata() else {
+        return;
+    };
 
-    type Response = Response;
+    let status = resp.status().as_u16() as u64;
 
-    type Future = WeakTraceFuture<S::Future>;
-
-    #[inline]
-    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.svc.poll_ready(cx)
+    macro_rules! status_kvp {
+        () => {
+            (
+                RESPONSE_STATUS_KEY.as_field(metadata),
+                Some(&status as &dyn Value),
+            )
+        };
     }
 
-    #[inline]
-    fn call(&mut self, req: http::Request<RequestBody>) -> Self::Future {
-        use futures::future::FutureExt;
+    macro_rules! record {
+        ($($t:tt)*) => {
+            span.record_all(&metadata.fields().value_set(&[
+                $($t)*
+            ]));
+        };
+    }
 
-        fn map_response<R: IntoResponse>(
-            result: Result<R, Infallible>,
-        ) -> Result<Response, Infallible> {
-            result.map(R::into_response)
-        }
+    let values: &[(&'static str, Option<&dyn Value>)];
 
-        match self.upgrade_ref() {
-            Some(mut svc) => future::Either::Left(svc.call(req)),
-            None => future::Either::Right(self.svc.call(req).map(map_response)),
-        }
+    let response_size = crate::http_request::get_response_size(resp);
+
+    match (response_size.is_unknown(), started) {
+        (false, None) => record!(status_kvp!()),
+        _ => todo!(),
     }
 }

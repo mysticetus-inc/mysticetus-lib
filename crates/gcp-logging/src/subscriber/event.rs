@@ -1,264 +1,434 @@
 use std::cell::RefCell;
+use std::io::Write;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use serde::ser::SerializeMap;
 use timestamp::Timestamp;
 use tracing::Event;
 use tracing::field::{Field, Visit};
-use tracing_subscriber::layer;
+use tracing::span::Id;
 use tracing_subscriber::registry::{LookupSpan, SpanRef};
 
-use super::Shared;
+use super::RecordError;
 use crate::http_request::TraceHeader;
-use crate::payload::LABEL_PREFIX;
-use crate::payload::label::{Labels, StageLabel};
-use crate::records::data::ReadData;
-use crate::records::{Data, ReadRecords};
-use crate::{DefaultLogOptions, LogOptions};
+use crate::options::TryGetBacktrace;
+use crate::registry::{DataRef, ReadOptions, Records};
+use crate::subscriber::MakeWriter;
+use crate::utils::HexBytes;
+use crate::{LogOptions, Severity, Stage, keys};
 
-pub struct LogEvent<'shared, 'tracing, S: LookupSpan<'tracing>, O: LogOptions = DefaultLogOptions> {
-    pub ctx: &'tracing layer::Context<'tracing, S>,
-    pub event: &'tracing tracing::Event<'tracing>,
-    data: EventData<'shared, O>,
+const LABEL_PREFIX: &str = "label.";
+
+pub struct EventEmitter<'a, 'event> {
+    pub(super) records: &'static Records,
+    pub(super) event: &'event tracing::Event<'event>,
+    pub(super) event_data: Option<DataRef<'a>>,
+    pub(super) request_span_id: Option<Id>,
+    pub(super) has_emitted_http: bool,
+    pub(super) has_emitted_trace: bool,
 }
 
-#[derive(Debug)]
-struct EventData<'shared, O: LogOptions> {
-    shared: &'shared Shared<O>,
-    alert: bool,
-    emitted_http: bool,
-    emitted_trace: bool,
-    labels_found: u8,
-}
-
-impl<'s, O: LogOptions> EventData<'s, O> {
-    const fn new(shared: &'s Shared<O>) -> Self {
+impl<'a, 'event> EventEmitter<'a, 'event> {
+    pub(super) fn new(records: &'static Records, event: &'event tracing::Event<'event>) -> Self {
         Self {
-            shared,
-            alert: false,
-            labels_found: 0,
-            emitted_http: false,
-            emitted_trace: false,
+            records,
+            event,
+            event_data: records.event_data(event),
+            request_span_id: crate::middleware::current_request_span_id(),
+            has_emitted_http: false,
+            has_emitted_trace: false,
         }
     }
 
-    // defers to the inner Shared::options LogOptions method
-    fn include_timestamp(&self, meta: &tracing::Metadata<'_>) -> bool {
-        self.shared
-            .options
-            .include_timestamp(self.shared.stage, meta)
+    pub fn emit<M>(self, mk_writer: &M) -> Result<(), RecordError>
+    where
+        M: MakeWriter + ?Sized,
+    {
+        if M::NEEDS_BUFFERING {
+            crate::utils::with_buffer(|buffer| {
+                buffer.clear();
+                self.emit_inner(buffer)?;
+
+                if buffer.is_empty() {
+                    return Err(RecordError::Io(std::io::ErrorKind::WriteZero.into()));
+                }
+
+                let mut writer = mk_writer.make_writer();
+                writer.write_all(&buffer)?;
+                writer.flush()?;
+                Ok(()) as Result<(), RecordError>
+            })?;
+        } else {
+            let mut writer = mk_writer.make_writer();
+            self.emit_inner(&mut writer)?;
+        }
+        Ok(())
     }
 
-    fn include_stage(&self, meta: &tracing::Metadata<'_>) -> bool {
-        self.shared.options.include_stage(self.shared.stage, meta)
+    fn emit_inner<W>(mut self, writer: &mut W) -> Result<(), RecordError>
+    where
+        W: Write + ?Sized,
+    {
+        use serde::Serializer;
+
+        {
+            let mut json_ser = serde_json::Serializer::new(&mut *writer);
+
+            let ser = path_aware_serde::Serializer::new(&mut json_ser);
+
+            let mut map = ser.serialize_map(None)?;
+
+            self.emit_to_map(&mut map)?;
+            map.end()?;
+        }
+
+        writer.flush()?;
+
+        Ok(())
     }
 
-    fn should_alert(&self, meta: &tracing::Metadata<'_>) -> bool {
-        self.alert && self.shared.options.treat_as_error(meta)
+    fn emit_to_map<M>(mut self, map: &mut M) -> Result<(), RecordError>
+    where
+        M: SerializeMap<Error = path_aware_serde::Error<serde_json::Error>> + ?Sized,
+    {
+        let mut options = None;
+
+        let (ts, mut severity, event_has_labels) = self.emit_event(map, &mut options)?;
+
+        let options = options.unwrap_or_else(|| self.records.options());
+
+        if options.include_timestamp(self.event.metadata()) {
+            struct ProtoTimestamp(Timestamp);
+
+            impl serde::Serialize for ProtoTimestamp {
+                #[inline]
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::Serializer,
+                {
+                    Timestamp::serialize_as_proto(&self.0, serializer)
+                }
+            }
+
+            let ts = ts.unwrap_or_else(Timestamp::now);
+            map.serialize_entry(keys::TIMESTAMP_KEY, &ProtoTimestamp(ts))?;
+        }
+
+        let request_span_data = self
+            .request_span_id
+            .as_ref()
+            .and_then(|id| self.records.get(id));
+
+        let mut request_span_data_read = None;
+
+        if let Some(ref req_span_data) = request_span_data {
+            let req_read = request_span_data_read.insert(req_span_data.read());
+
+            if let Some(trace) = req_read.trace(self.records) {
+                map.serialize_entry(keys::TRACE_KEY, &trace)?;
+                self.has_emitted_trace = true;
+            }
+
+            if options.include_http_info(self.event.metadata()) {
+                if let Some(http) = req_read.http_request() {
+                    map.serialize_entry(keys::HTTP_REQUEST_KEY, &http)?;
+                    self.has_emitted_http = true;
+                }
+            }
+        }
+
+        request_span_data_read = None;
+        drop(request_span_data);
+
+        let mut parent_span_has_labels = false;
+
+        if let Some(event_data) = self.event_data {
+            serialize_span_id(event_data.id(), map)?;
+
+            if let Some(error) = event_data.visit_all(|data_ref| {
+                let read = if Some(data_ref.id()) == self.request_span_id.as_ref() {
+                    request_span_data_read
+                        .take()
+                        .unwrap_or_else(|| data_ref.read())
+                } else {
+                    data_ref.read()
+                };
+
+                if let Err(error) = read.visit_fields(|key, value| {
+                    map.serialize_entry(key, &value)?;
+                    Ok(())
+                }) {
+                    return ControlFlow::Break(error);
+                }
+
+                ControlFlow::Continue(())
+            }) {
+                return Err(error);
+            }
+        }
+
+        map.serialize_entry(Severity::KEY, severity.as_upper_str())?;
+
+        if severity.should_alert() {
+            map.serialize_entry(keys::ALERT_ERROR_NAME, keys::ALERT_ERROR_VALUE)?;
+        }
+
+        let source = SourceLocation::new(self.event.metadata());
+        map.serialize_entry(keys::SOURCE_LOCATION_KEY, &source)?;
+
+        let stage_label = options.include_stage(self.event.metadata());
+
+        match (stage_label, event_has_labels, parent_span_has_labels) {
+            (true, false, false) => {
+                #[derive(serde::Serialize)]
+                struct StageLabels {
+                    stage: Stage,
+                }
+
+                map.serialize_entry(
+                    keys::LABELS_KEY,
+                    &StageLabels {
+                        stage: self.records.stage(),
+                    },
+                )?;
+            }
+            (false, false, false) => (),
+            _ => (),
+        }
+
+        Ok(())
+    }
+
+    fn emit_event<M>(
+        &self,
+        map: &mut M,
+        opts: &mut Option<ReadOptions<'_>>,
+    ) -> Result<(Option<Timestamp>, Severity, bool), RecordError>
+    where
+        M: SerializeMap<Error = path_aware_serde::Error<serde_json::Error>> + ?Sized,
+    {
+        let mut event_visitor =
+            EventVisitor::new(&mut *map, self.event.metadata(), self.records, opts);
+
+        self.event.record(&mut event_visitor);
+
+        if let Some(error) = event_visitor.error.take() {
+            return Err(RecordError::Json(error));
+        }
+
+        let event_has_labels = event_visitor.labels_found > 0;
+
+        let severity = event_visitor.severity.unwrap_or_else(|| {
+            Severity::from_tracing(self.event.metadata().level().clone(), event_visitor.alert)
+        });
+
+        Ok((event_visitor.timestamp, severity, event_has_labels))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceLocation<'a> {
+    pub file: Option<&'a str>,
+    pub line: u32,
+    pub function: &'a str,
+}
+
+impl<'a> SourceLocation<'a> {
+    pub(crate) fn new(meta: &'a tracing::Metadata<'a>) -> Self {
+        Self {
+            file: meta.file(),
+            line: meta.line().unwrap_or_default(),
+            function: meta.target(),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct EventVisitor<'a, 'opts_borrow, 'opts, M: SerializeMap + ?Sized> {
+    records: &'opts Records,
+    metadata: &'static tracing::Metadata<'static>,
+    alert: bool,
+    map: &'a mut M,
+    error: Option<M::Error>,
+    options: &'opts_borrow mut Option<ReadOptions<'opts>>,
+    severity: Option<Severity>,
+    timestamp: Option<Timestamp>,
+    labels_found: u8,
+}
+
+impl<'a, 'opts_borrow, 'opts, M: SerializeMap + ?Sized> EventVisitor<'a, 'opts_borrow, 'opts, M> {
+    const fn new(
+        map: &'a mut M,
+        metadata: &'static tracing::Metadata<'static>,
+        records: &'opts Records,
+        options: &'opts_borrow mut Option<ReadOptions<'opts>>,
+    ) -> Self {
+        Self {
+            map,
+            metadata,
+            records,
+            options,
+            error: None,
+            timestamp: None,
+            severity: None,
+            alert: false,
+            labels_found: 0,
+        }
     }
 
     fn add_label(&mut self) {
         self.labels_found = self.labels_found.saturating_add(1);
     }
-}
 
-impl<'shared, 'tracing, O: LogOptions, S> LogEvent<'shared, 'tracing, S, O>
-where
-    for<'s> S: LookupSpan<'s> + tracing::Subscriber,
-{
-    pub(super) fn new(
-        shared: &'shared Shared<O>,
-        ctx: &'tracing layer::Context<'tracing, S>,
-        event: &'tracing Event<'tracing>,
-    ) -> Self {
-        Self {
-            ctx,
-            event,
-            data: EventData::new(shared),
-        }
-    }
-
-    pub(super) fn serialize<M>(mut self, map: &mut M) -> Result<(), M::Error>
-    where
-        M: SerializeMap + ?Sized,
-    {
-        self.serialize_preamble(map)?;
-
-        let pre_span_label_count = self.data.labels_found;
-
-        if let Some(span_ref) = self.ctx.event_span(self.event) {
-            self.serialize_span_data(&span_ref, map)?;
-            // if some of the parent spans contained labels, we need to
-            // go back in and find + emit them.
-            if self.data.labels_found != pre_span_label_count {
-                self.serialize_event(map)?;
-                return self.serialize_span_labels(&span_ref, map);
-            }
-        }
-
-        self.serialize_event(map)?;
-        self.serialize_event_labels(map)
-    }
-
-    fn read_scope_data(&mut self, span: &SpanRef<'_, S>, mut buf: buf::ScopeData<'_>) {
-        let mut scope = span.scope();
-
-        // ensure we have at least 1 parent before getting the read lock
-        let Some(parent) = scope.next() else {
-            return;
-        };
-
-        
-        let read_records = self.data.shared.records.read();
-
-        if let Some(data) = read_records.get(parent.id()) {
-            
-        }
-    }
-
-    fn serialize_span_data<M>(&mut self, span: &SpanRef<'_, S>, map: &mut M) -> Result<(), M::Error>
-    where
-        M: SerializeMap + ?Sized,
-    {
-        let mut scope = span.scope();
-
-        // ensure we have at least 1 parent before getting the read lock
-        let Some(parent) = scope.next() else {
-            return Ok(());
-        };
-
-        let parent_span_fields = self
-            .data
-            .shared
-            .options
-            .parent_span_fields(self.data.shared.stage, span.metadata());
-
-        let read_records = self.data.shared.records.read();
-
-        // serialize the parent scope
-        serialize_active_span_data(
-            map,
-            parent,
-            &read_records,
-            &mut self.data,
-            parent_span_fields,
-        )?;
-
-        // then serialize the remaining
-        for span in scope {
-            let init_label_count = self.data.labels_found;
-
-            if let Some(data) = serialize_active_span_data(
-                map,
-                span,
-                &read_records,
-                &mut self.data,
-                parent_span_fields,
-            )? {
-                if init_label_count != self.data.labels_found || self.data.labels_found == u8::MAX {
-                    todo!("cache span with labels");
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn serialize_preamble<M>(&mut self, map: &mut M) -> Result<(), M::Error>
-    where
-        M: serde::ser::SerializeMap + ?Sized,
-    {
-        let meta = self.event.metadata();
-
-        if self.data.include_timestamp(meta) {
-            let timestamp = ProtoTimestamp(Timestamp::now());
-            map.serialize_entry(crate::types::TIMESTAMP_KEY, &timestamp)?;
-        }
-
-        map.serialize_entry(
-            crate::types::SEVERITY_KEY,
-            crate::types::get_severity_string(meta.level()),
-        )?;
-
-        map.serialize_entry(
-            crate::types::SOURCE_LOCATION_KEY,
-            &crate::types::SourceLocation::new(meta),
-        )?;
-
-        Ok(())
-    }
-
-    fn serialize_event<M>(&mut self, map: &mut M) -> Result<(), M::Error>
-    where
-        M: SerializeMap + ?Sized,
-    {
-        let mut event_visitor = Visitor {
-            map,
-            metadata: self.event.metadata(),
-            data: &mut self.data,
-            error: None,
-        };
-
-        self.event.record(&mut event_visitor);
-
-        if let Some(error) = event_visitor.error {
-            return Err(error);
-        }
-
-        // indicate this is an alert if we need to. We only listen to
-        // 'alert = true' inside the actual event, not in any parent span data.
-        if self.data.should_alert(self.event.metadata()) {
-            map.serialize_entry(
-                crate::types::ALERT_ERROR_NAME,
-                crate::types::ALERT_ERROR_VALUE,
-            )?;
-        }
-
-        Ok(())
-    }
-
-    fn serialize_event_labels<M>(&mut self, map: &mut M) -> Result<(), M::Error>
-    where
-        M: serde::ser::SerializeMap + ?Sized,
-    {
-        if self.data.labels_found > 0 {
-            map.serialize_entry(
-                crate::types::LABELS_KEY,
-                &Labels {
-                    labels: self.data.labels_found,
-                    stage: self.data.shared.stage,
-                    event: self.event,
-                    options: self.data.shared.options,
-                },
-            )?;
-        } else if self.data.include_stage(self.event.metadata()) {
-            map.serialize_entry(
-                crate::types::LABELS_KEY,
-                &StageLabel {
-                    stage: self.data.shared.stage,
-                },
-            )?;
-        }
-
-        Ok(())
-    }
-
-    fn serialize_span_labels<M>(
+    fn record_inner<S: serde::Serialize>(
         &mut self,
-        span: &SpanRef<'_, S>,
-        map: &mut M,
-    ) -> Result<(), M::Error>
-    where
-        M: SerializeMap + ?Sized,
-    {
-        todo!()
+        field: &Field,
+        get_value: impl FnOnce(&mut Self) -> S,
+    ) {
+        if self.error.is_some() {
+            return;
+        }
+
+        if field.name().starts_with(LABEL_PREFIX) {
+            self.add_label();
+        } else {
+            let value = get_value(self);
+            self.error = self.map.serialize_entry(field.name(), &value).err();
+        }
+    }
+
+    fn try_get_bt(&mut self, error: &(dyn std::error::Error + 'static)) -> TryGetBacktrace {
+        let opts = self.options.get_or_insert_with(|| self.records.options());
+        opts.try_get_backtrace(self.metadata, error)
     }
 }
 
+impl<M: SerializeMap + ?Sized> tracing::field::Visit for EventVisitor<'_, '_, '_, M> {
+    #[inline]
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        self.record_inner(field, |_| crate::utils::SerializeDebug(value))
+    }
+
+    #[inline]
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.record_inner(field, |_| crate::utils::JsonFloat(value));
+    }
+
+    #[inline]
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.record_inner(field, |_| value);
+    }
+
+    #[inline]
+    fn record_i128(&mut self, field: &Field, value: i128) {
+        self.record_inner(field, |_| value);
+    }
+
+    #[inline]
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        self.record_inner(field, |_| value);
+    }
+
+    #[inline]
+    fn record_u128(&mut self, field: &Field, value: u128) {
+        self.record_inner(field, |_| value);
+    }
+
+    #[inline]
+    fn record_str(&mut self, field: &Field, value: &str) {
+        if field.name() == Severity::KEY {
+            if let Some(severity) = Severity::from_str(value) {
+                self.severity = Some(match self.severity {
+                    Some(existing) => existing.worst(severity),
+                    None => severity,
+                });
+
+                return;
+            }
+        }
+
+        if field.name() == "timestamp" {
+            if let Ok(ts) = Timestamp::from_datetime_str(value) {
+                self.timestamp = Some(ts);
+                return;
+            }
+        }
+
+        self.record_inner(field, |_| value);
+    }
+
+    #[inline]
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        match std::str::from_utf8(value) {
+            Ok(s) => self.record_str(field, s),
+            Err(_) => self.record_debug(field, &HexBytes(value)),
+        }
+    }
+
+    #[inline]
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        if field.name() == "alert" && value {
+            self.alert = true;
+        } else {
+            self.record_inner(field, |_| value);
+        }
+    }
+
+    #[inline]
+    fn record_error(&mut self, field: &Field, value: &(dyn std::error::Error + 'static)) {
+        self.record_inner(field, |this| {
+            let try_get_bt = this.try_get_bt(value);
+            crate::utils::SerializeErrorReprs::new(value, try_get_bt)
+        })
+    }
+
+    #[cfg(feature = "valuable")]
+    #[inline]
+    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
+        if field.name() == Severity::KEY {
+            if let Some(severity) = Severity::from_value(&value) {
+                self.severity = Some(match self.severity {
+                    Some(existing) => existing.worst(severity),
+                    None => severity,
+                });
+
+                return;
+            }
+        }
+
+        if field.name() == "alert" && matches!(value, valuable::Value::Bool(true)) {
+            self.alert = true;
+            return;
+        }
+
+        self.record_inner(field, |_| valuable_serde::Serializable::new(value))
+    }
+}
+
+pub(crate) fn serialize_span_id<M>(span_id: &tracing::Id, map: &mut M) -> Result<(), M::Error>
+where
+    M: SerializeMap + ?Sized,
+{
+    let span_id_bytes = span_id.into_u64().to_be_bytes();
+
+    let mut dst = [0_u8; 2 * std::mem::size_of::<u64>()];
+
+    hex::encode_to_slice(span_id_bytes, &mut dst).expect("dst has enough space to encode 8 bytes");
+
+    let hex_str =
+        std::str::from_utf8(&dst).expect("successful hex encoding should always be valid ascii");
+
+    map.serialize_entry(crate::keys::SPAN_ID_KEY, hex_str)
+}
+
+/*
 fn serialize_span_data<'s, M, O>(
     map: &mut M,
+    records: &Records,
     read_data: ReadData<'_>,
-    event_data: &mut EventData<'_, O>,
+    event_data: &mut EventData<'_>,
     parent_span_fields: crate::options::ParentSpanFields,
 ) -> Result<(), M::Error>
 where
@@ -272,11 +442,8 @@ where
         }
 
         if !event_data.emitted_trace {
-            if let Some((project_id, header)) = event_data
-                .shared
-                .project_id
-                .get()
-                .zip(trace.trace_header.as_ref())
+            if let Some((project_id, header)) =
+                records.project_id.get().zip(trace.trace_header.as_ref())
             {
                 event_data.emitted_trace = true;
                 map.serialize_entry(
@@ -290,7 +457,7 @@ where
     match parent_span_fields {
         crate::options::ParentSpanFields::Nested => {
             struct SerializeNested<'a, 's, O: LogOptions> {
-                data: RefCell<&'a mut EventData<'s, O>>,
+                data: RefCell<&'a mut EventData<'s>>,
                 read_data: &'a ReadData<'a>,
             }
 
@@ -373,77 +540,98 @@ where
     Ok(Some(data))
 }
 
-struct ProtoTimestamp(Timestamp);
-
-impl serde::Serialize for ProtoTimestamp {
-    #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        Timestamp::serialize_as_proto(&self.0, serializer)
-    }
-}
-
-struct Visitor<'a, 's, M: SerializeMap + ?Sized, O: LogOptions> {
+struct Visitor<'a, 's, M: SerializeMap + ?Sized> {
+    records: &'static Records,
     map: &'a mut M,
-    data: &'a mut EventData<'s, O>,
+    data: &'a mut EventData<'s>,
     metadata: &'a tracing::Metadata<'a>,
     error: Option<M::Error>,
 }
 
-macro_rules! impl_simple_record_fns {
-    ($($fn_name:ident($arg_ty:ty)),* $(,)?) => {
-        $(
-            fn $fn_name(&mut self, field: &Field, value: $arg_ty) {
-                if field.name().starts_with(crate::payload::LABEL_PREFIX) {
-                    self.data.add_label();
-                } else if self.error.is_none() {
-                    self.error = self.map.serialize_entry(field.name(), &value).err();
-                }
-            }
-        )*
-    };
-}
-
-impl<M: SerializeMap + ?Sized, O: LogOptions> Visit for Visitor<'_, '_, M, O> {
-    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+impl<M: SerializeMap + ?Sized> Visitor<'_, '_, M> {
+    fn record_inner(&mut self, field: &Field, value: impl serde::Serialize) {
         if field.name().starts_with(crate::payload::LABEL_PREFIX) {
-            self.data.add_label();
-        } else if self.error.is_none() {
-            self.error = self
-                .map
-                .serialize_entry(field.name(), &crate::utils::SerializeDebug(value))
-                .err();
-        }
-    }
-
-    impl_simple_record_fns! {
-        record_u64(u64),
-        record_u128(u128),
-        record_i64(i64),
-        record_i128(i128),
-        record_str(&str),
-    }
-
-    fn record_bool(&mut self, field: &Field, value: bool) {
-        if field.name() == "alert" && value {
-            self.data.alert = true;
-        } else if field.name().starts_with(crate::payload::LABEL_PREFIX) {
             self.data.add_label();
         } else if self.error.is_none() {
             self.error = self.map.serialize_entry(field.name(), &value).err();
         }
     }
+}
+
+impl<M: SerializeMap + ?Sized> Visit for Visitor<'_, '_, M> {
+    fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
+        self.record_inner(field, crate::utils::SerializeDebug(value))
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        if field.name() == "alert" && value {
+            self.data.alert = true;
+        } else {
+            self.record_inner(field, value)
+        }
+    }
+
+    fn record_str(&mut self, field: &Field, value: &str) {
+        if let Some(Some(sev)) =
+            (field.name() == Severity::KEY).then(|| Severity::from_upper_str(value))
+        {
+            self.data.insert_span_severity(sev);
+        } else {
+            self.record_inner(field, value)
+        }
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        if let Some(Some(sev)) =
+            (field.name() == Severity::KEY).then(|| Severity::from_int(value as _))
+        {
+            self.data.insert_span_severity(sev);
+        } else {
+            self.record_inner(field, value)
+        }
+    }
+
+    fn record_i128(&mut self, field: &Field, value: i128) {
+        if let Some(Some(sev)) =
+            (field.name() == Severity::KEY).then(|| Severity::from_int(value as _))
+        {
+            self.data.insert_span_severity(sev);
+        } else {
+            self.record_inner(field, value)
+        }
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        if let Some(Some(sev)) =
+            (field.name() == Severity::KEY).then(|| Severity::from_int(value as _))
+        {
+            self.data.insert_span_severity(sev);
+        } else {
+            self.record_inner(field, value)
+        }
+    }
+
+    fn record_u128(&mut self, field: &Field, value: u128) {
+        if let Some(Some(sev)) =
+            (field.name() == Severity::KEY).then(|| Severity::from_int(value as _))
+        {
+            self.data.insert_span_severity(sev);
+        } else {
+            self.record_inner(field, value)
+        }
+    }
 
     fn record_f64(&mut self, field: &Field, value: f64) {
-        if field.name().starts_with(crate::payload::LABEL_PREFIX) {
-            self.data.add_label();
-        } else if self.error.is_none() {
-            self.error = self
-                .map
-                .serialize_entry(field.name(), &crate::utils::JsonFloat(value))
-                .err();
+        self.record_inner(field, crate::utils::JsonFloat(value))
+    }
+
+    fn record_bytes(&mut self, field: &Field, value: &[u8]) {
+        match std::str::from_utf8(value) {
+            Ok(s) => self.record_str(field, s),
+            Err(_) => {
+                let s = hex::encode(value);
+                self.record_str(field, &s)
+            }
         }
     }
 
@@ -451,10 +639,13 @@ impl<M: SerializeMap + ?Sized, O: LogOptions> Visit for Visitor<'_, '_, M, O> {
         if field.name().starts_with(crate::payload::LABEL_PREFIX) {
             self.data.add_label();
         } else if self.error.is_none() {
+            if field.name() == "alert" {
+                self.data.alert = true;
+            }
+
             let try_get_bt = self
                 .data
-                .shared
-                .options
+                .options(self.records)
                 .try_get_backtrace(self.metadata, value);
 
             self.error = self
@@ -466,76 +657,26 @@ impl<M: SerializeMap + ?Sized, O: LogOptions> Visit for Visitor<'_, '_, M, O> {
                 .err();
         }
     }
-}
 
-mod buf {
-    use std::cell::RefCell;
-    use std::sync::Arc;
-
-    use crate::records::Data;
-
-    pub(super) struct ScopeData<'a>(&'a mut Vec<Arc<Data>>);
-
-    impl<'a> ScopeData<'a> {
+    #[cfg(feature = "valuable")]
+    fn record_value(&mut self, field: &Field, value: valuable::Value<'_>) {
         #[inline]
-        pub(super) fn reborrow(&mut self) -> ScopeData<'_> {
-            ScopeData(&mut *self.0)
-        }
-    }
-
-    impl std::ops::Deref for ScopeData<'_> {
-        type Target = Vec<Arc<Data>>;
-        #[inline]
-        fn deref(&self) -> &Self::Target {
-            self.0
-        }
-    }
-
-    impl std::ops::DerefMut for ScopeData<'_> {
-        #[inline]
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            self.0
-        }
-    }
-
-    // need to ensure the inner vec is cleared so we don't hold onto references
-    // to span data that might have already been dropped. This serves as
-    // an alternative to storing Weak<Data>, which is a bit more annoying
-    // to deal with
-    impl Drop for ScopeData<'_> {
-        fn drop(&mut self) {
-            self.0.clear();
-        }
-    }
-
-    pub(super) fn with_buffer<O>(f: impl FnOnce(ScopeData<'_>) -> O) -> O {
-        thread_local! {
-            static BUF: RefCell<Vec<Arc<Data>>> = RefCell::new(Vec::with_capacity(8));
-        }
-
-        // Need to wrap the callback in an option so we don't have to move it into the
-        // closure. If we did, there's no way to call with the fallback buffer it if
-        // the TLS value is inaccessible for whatever reason.
-        let mut callback = Some(f);
-
-        let res = BUF.try_with(|buf| {
-            if let Ok(mut ref_mut) = buf.try_borrow_mut() {
-                let f = callback.take().expect("this is Some");
-                ref_mut.clear();
-                Some(f(ScopeData(&mut *ref_mut)))
-            } else {
-                None
+        const fn is_value_true(value: &valuable::Value<'_>) -> bool {
+            match value {
+                valuable::Value::Bool(true) => true,
+                _ => false,
             }
-        });
+        }
 
-        match res {
-            Ok(Some(output)) => output,
-            Err(_) | Ok(None) => {
-                let mut tmp_buf = Vec::new();
-                (callback.take().expect("this wasn't removed in the closure"))(ScopeData(
-                    &mut tmp_buf,
-                ))
-            }
+        if let Some(Some(sev)) =
+            (field.name() == Severity::KEY).then(|| Severity::from_value(&value))
+        {
+            self.data.insert_span_severity(sev);
+        } else if field.name() == "alert" && is_value_true(&value) {
+            self.data.alert = true;
+        } else {
+            self.record_inner(field, valuable_serde::Serializable::new(value));
         }
     }
 }
+ */

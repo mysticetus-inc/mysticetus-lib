@@ -4,12 +4,12 @@ use std::fmt::{self, Arguments};
 use parking_lot::RwLockWriteGuard;
 use tracing::field::{Field, Visit};
 
-use super::data::{Data, DataInner};
+use super::data::{Data, WriteData};
 use crate::LogOptions;
 use crate::json::{JsonValue, Number, Primitive};
 
 pub(crate) struct DataVisitor<'a, O> {
-    pub(super) lock: Option<RwLockWriteGuard<'a, DataInner>>,
+    pub(super) lock: Option<Option<WriteData<'a>>>,
     pub(super) data: &'a Data,
     pub(super) options: O,
     pub(super) metadata: &'a tracing::Metadata<'a>,
@@ -41,16 +41,9 @@ impl<'a, O: LogOptions> DataVisitor<'a, O> {
             field: &Field,
             value: JsonValue,
         ) {
-            let guard = visitor
-                .lock
-                .get_or_insert_with(|| visitor.data.inner.write());
-
-            let field = super::data::Field {
-                span_name: guard.span_name,
-                field_name: field.name(),
-            };
-
-            guard.data.insert(field, value);
+            if let Some(guard) = visitor.lock.get_or_insert_with(|| visitor.data.write()) {
+                guard.insert(field.name(), value);
+            }
         }
 
         record_inner(self, field, value.into())

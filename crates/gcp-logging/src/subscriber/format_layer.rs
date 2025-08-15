@@ -28,7 +28,7 @@ enum RecordError {
 
 impl<Opt, MkWriter> FormatLayer<Opt, MkWriter>
 where
-    Opt: crate::LogOptions,
+    Opt: crate::LogOptions + Copy,
     MkWriter: MakeWriter,
 {
     fn serialize_entry<W, Sub>(
@@ -110,7 +110,7 @@ impl<S, Opt, MkWriter> layer::Layer<S> for FormatLayer<Opt, MkWriter>
 where
     S: tracing::Subscriber + std::fmt::Debug,
     for<'a> S: LookupSpan<'a, Data: std::fmt::Debug>,
-    Opt: crate::LogOptions,
+    Opt: crate::LogOptions + Copy,
     MkWriter: MakeWriter,
 {
     fn on_new_span(
@@ -136,8 +136,6 @@ where
             eprintln!("[gcp-logging] failed to record event: {error}");
         }
     }
-    
-    fn on_close(&self, id: tracing_core::span::Id, ctx: layer::Context<'_, S>) {
-        self.shared.
-    }
+
+    fn on_close(&self, id: tracing_core::span::Id, ctx: layer::Context<'_, S>) {}
 }

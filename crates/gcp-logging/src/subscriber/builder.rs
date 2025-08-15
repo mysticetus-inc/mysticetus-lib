@@ -2,18 +2,14 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::util::TryInitError;
 
 use super::writer::{MakeWriter, StdoutWriter};
-use super::{Filter, Handle, Subscriber};
+use super::{Handle, Subscriber};
 use crate::Stage;
 use crate::options::{DefaultLogOptions, LogOptions};
 
-pub struct LoggingBuilder<
-    O: LogOptions = DefaultLogOptions,
-    F = LevelFilter,
-    MkWriter: MakeWriter = StdoutWriter,
-> {
+pub struct LoggingBuilder<O: LogOptions = DefaultLogOptions, MkWriter: MakeWriter = StdoutWriter> {
     pub(crate) options: O,
     pub(crate) project_id: Option<&'static str>,
-    pub(crate) filter: F,
+    pub(crate) filter: LevelFilter,
     pub(crate) stage: Stage,
     pub(crate) make_writer: MkWriter,
 }
@@ -31,7 +27,7 @@ impl LoggingBuilder {
         Self {
             options: DefaultLogOptions,
             project_id: None,
-            filter: LevelFilter::INFO,
+            filter: tracing::level_filters::STATIC_MAX_LEVEL,
             stage,
             make_writer: StdoutWriter,
         }
@@ -39,30 +35,19 @@ impl LoggingBuilder {
 
     #[inline]
     pub const fn new() -> Self {
-        #[cfg(test)]
-        let stage = Stage::Test;
-        #[cfg(all(not(test), debug_assertions))]
-        let stage = Stage::Dev;
-        #[cfg(all(not(test), not(debug_assertions)))]
-        let stage = Stage::Production;
-
-        Self::new_from_stage(stage)
+        Self::new_from_stage(Stage::detect())
     }
 }
 
-impl<O, W, F> LoggingBuilder<O, F, W>
+impl<O, W> LoggingBuilder<O, W>
 where
-    O: LogOptions,
+    O: LogOptions + 'static,
     W: MakeWriter,
-    F: Filter<O, W>,
 {
     pub fn with_writer<MkWriter: MakeWriter>(
         self,
         make_writer: MkWriter,
-    ) -> LoggingBuilder<O, F, MkWriter>
-    where
-        F: Filter<O, MkWriter>,
-    {
+    ) -> LoggingBuilder<O, MkWriter> {
         LoggingBuilder {
             options: self.options,
             filter: self.filter,
@@ -72,10 +57,7 @@ where
         }
     }
 
-    pub fn with_filter<F2>(self, filter: F2) -> LoggingBuilder<O, F2, W>
-    where
-        F2: Filter<O, W>,
-    {
+    pub fn with_filter<F2>(self, filter: LevelFilter) -> LoggingBuilder<O, W> {
         LoggingBuilder {
             filter,
             options: self.options,
@@ -85,10 +67,7 @@ where
         }
     }
 
-    pub fn with_options<Opt2: LogOptions>(self, options: Opt2) -> LoggingBuilder<Opt2, F, W>
-    where
-        F: Filter<Opt2, W>,
-    {
+    pub fn with_options<Opt2: LogOptions + Copy>(self, options: Opt2) -> LoggingBuilder<Opt2, W> {
         LoggingBuilder {
             options,
             project_id: self.project_id,
@@ -103,17 +82,21 @@ where
         self
     }
 
-    pub fn build(self) -> Subscriber<O, F, W> {
+    pub fn build(self) -> Subscriber<W> {
         Subscriber::from_builder(self)
     }
 
     #[inline]
-    pub fn build_try_init(self) -> Result<Handle<O>, TryInitError> {
+    pub fn build_try_init(self) -> Result<Handle, TryInitError> {
         self.build().try_init()
     }
 
     #[inline]
-    pub fn init(self) -> Handle<O> {
+    pub fn init(self) -> Handle {
         self.build().init()
     }
 }
+
+
+
+

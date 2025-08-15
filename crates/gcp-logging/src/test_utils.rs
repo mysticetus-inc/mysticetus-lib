@@ -74,7 +74,7 @@ where
     F: Fn(&http::Request<B>),
 {
     type Error = std::convert::Infallible;
-    type Future = std::future::Ready<Result<http::Response<B>, std::convert::Infallible>>;
+    type Future = EchoFuture<Result<http::Response<B>, std::convert::Infallible>>;
     type Response = http::Response<B>;
 
     fn poll_ready(
@@ -102,7 +102,46 @@ where
         resp_parts.extensions.insert(req_parts.method);
         resp_parts.extensions.insert(req_parts.uri);
 
-        std::future::ready(Ok(http::Response::from_parts(resp_parts, body)))
+        EchoFuture {
+            resets: 2,
+            sleep: tokio::time::sleep(tokio::time::Duration::from_millis(100)),
+            ret: Some(Ok(http::Response::from_parts(resp_parts, body))),
+        }
+    }
+}
+
+pin_project_lite::pin_project! {
+    pub struct EchoFuture<R> {
+        // reset 'sleep' resets times, to imitate a future with multiple breakpoints
+        resets: usize,
+        #[pin]
+        sleep: tokio::time::Sleep,
+        ret: Option<R>,
+    }
+}
+
+impl<R> Future for EchoFuture<R> {
+    type Output = R;
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let mut this = self.project();
+
+        loop {
+            std::task::ready!(this.sleep.as_mut().poll(cx));
+            *this.resets = this.resets.checked_sub(1).unwrap();
+            if *this.resets == 0 {
+                break;
+            }
+            this.sleep
+                .as_mut()
+                .reset(tokio::time::Instant::now() + tokio::time::Duration::from_millis(100));
+        }
+
+        let ret = this.ret.take().expect("EchoFuture polled after completion");
+
+        std::task::Poll::Ready(ret)
     }
 }
 

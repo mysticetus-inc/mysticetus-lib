@@ -274,7 +274,6 @@ pub mod transaction_options {
 /// 4. order_by + start_at + end_at
 /// 5. offset
 /// 6. limit
-/// 7. find_nearest
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -764,8 +763,8 @@ pub mod structured_query {
         /// Since DOT_PRODUCT distances increase when the vectors are more similar,
         /// the comparison is inverted.
         ///
-        /// * For EUCLIDEAN, COSINE: WHERE distance <= distance_threshold
-        /// * For DOT_PRODUCT:       WHERE distance >= distance_threshold
+        /// For EUCLIDEAN, COSINE: WHERE distance <= distance_threshold
+        /// For DOT_PRODUCT:       WHERE distance >= distance_threshold
         #[prost(message, optional, tag = "6")]
         pub distance_threshold: ::core::option::Option<super::super::super::protobuf::DoubleValue>,
     }

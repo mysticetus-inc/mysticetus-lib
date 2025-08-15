@@ -42,12 +42,10 @@ pub struct GetBucketRequest {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateBucketRequest {
-    /// Required. The project to which this bucket will belong. This field must
-    /// either be empty or `projects/_`. The project ID that owns this bucket
-    /// should be specified in the `bucket.project` field.
+    /// Required. The project to which this bucket will belong.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// Optional. Properties of the new bucket being inserted.
+    /// Properties of the new bucket being inserted.
     /// The name of the bucket is specified in the `bucket_id` field. Populating
     /// `bucket.name` field will result in an error.
     /// The project of the bucket must be specified in the `bucket.project` field.
@@ -61,19 +59,16 @@ pub struct CreateBucketRequest {
     /// result in a bucket with the name `projects/123456/buckets/foo`.
     #[prost(string, tag = "3")]
     pub bucket_id: ::prost::alloc::string::String,
-    /// Optional. Apply a predefined set of access controls to this bucket.
+    /// Apply a predefined set of access controls to this bucket.
     /// Valid values are "authenticatedRead", "private", "projectPrivate",
     /// "publicRead", or "publicReadWrite".
     #[prost(string, tag = "6")]
     pub predefined_acl: ::prost::alloc::string::String,
-    /// Optional. Apply a predefined set of default object access controls to this
-    /// bucket. Valid values are "authenticatedRead", "bucketOwnerFullControl",
+    /// Apply a predefined set of default object access controls to this bucket.
+    /// Valid values are "authenticatedRead", "bucketOwnerFullControl",
     /// "bucketOwnerRead", "private", "projectPrivate", or "publicRead".
     #[prost(string, tag = "7")]
     pub predefined_default_object_acl: ::prost::alloc::string::String,
-    /// Optional. If true, enable object retention on the bucket.
-    #[prost(bool, tag = "9")]
-    pub enable_object_retention: bool,
 }
 /// Request message for ListBuckets.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -83,17 +78,17 @@ pub struct ListBucketsRequest {
     /// Required. The project whose buckets we are listing.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// Optional. Maximum number of buckets to return in a single response. The
-    /// service will use this parameter or 1,000 items, whichever is smaller. If
-    /// "acl" is present in the read_mask, the service will use this parameter of
-    /// 200 items, whichever is smaller.
+    /// Maximum number of buckets to return in a single response. The service will
+    /// use this parameter or 1,000 items, whichever is smaller. If "acl" is
+    /// present in the read_mask, the service will use this parameter of 200 items,
+    /// whichever is smaller.
     #[prost(int32, tag = "2")]
     pub page_size: i32,
-    /// Optional. A previously-returned page token representing part of the larger
-    /// set of results to view.
+    /// A previously-returned page token representing part of the larger set of
+    /// results to view.
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
-    /// Optional. Filter results to buckets whose names begin with this prefix.
+    /// Filter results to buckets whose names begin with this prefix.
     #[prost(string, tag = "4")]
     pub prefix: ::prost::alloc::string::String,
     /// Mask specifying which fields to read from each result.
@@ -146,13 +141,13 @@ pub struct UpdateBucketRequest {
     /// this value.
     #[prost(int64, optional, tag = "3")]
     pub if_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. Apply a predefined set of access controls to this bucket.
+    /// Apply a predefined set of access controls to this bucket.
     /// Valid values are "authenticatedRead", "private", "projectPrivate",
     /// "publicRead", or "publicReadWrite".
     #[prost(string, tag = "8")]
     pub predefined_acl: ::prost::alloc::string::String,
-    /// Optional. Apply a predefined set of default object access controls to this
-    /// bucket. Valid values are "authenticatedRead", "bucketOwnerFullControl",
+    /// Apply a predefined set of default object access controls to this bucket.
+    /// Valid values are "authenticatedRead", "bucketOwnerFullControl",
     /// "bucketOwnerRead", "private", "projectPrivate", or "publicRead".
     #[prost(string, tag = "9")]
     pub predefined_default_object_acl: ::prost::alloc::string::String,
@@ -175,12 +170,11 @@ pub struct ComposeObjectRequest {
     /// Required. Properties of the resulting object.
     #[prost(message, optional, tag = "1")]
     pub destination: ::core::option::Option<Object>,
-    /// Optional. The list of source objects that will be concatenated into a
-    /// single object.
+    /// The list of source objects that will be concatenated into a single object.
     #[prost(message, repeated, tag = "2")]
     pub source_objects: ::prost::alloc::vec::Vec<compose_object_request::SourceObject>,
-    /// Optional. Apply a predefined set of access controls to the destination
-    /// object. Valid values are "authenticatedRead", "bucketOwnerFullControl",
+    /// Apply a predefined set of access controls to the destination object.
+    /// Valid values are "authenticatedRead", "bucketOwnerFullControl",
     /// "bucketOwnerRead", "private", "projectPrivate", or "publicRead".
     #[prost(string, tag = "9")]
     pub destination_predefined_acl: ::prost::alloc::string::String,
@@ -193,18 +187,17 @@ pub struct ComposeObjectRequest {
     /// metageneration matches the given value.
     #[prost(int64, optional, tag = "5")]
     pub if_metageneration_match: ::core::option::Option<i64>,
-    /// Optional. Resource name of the Cloud KMS key, of the form
+    /// Resource name of the Cloud KMS key, of the form
     /// `projects/my-project/locations/my-location/keyRings/my-kr/cryptoKeys/my-key`,
     /// that will be used to encrypt the object. Overrides the object
     /// metadata's `kms_key_name` value, if any.
     #[prost(string, tag = "6")]
     pub kms_key: ::prost::alloc::string::String,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "7")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
-    /// Optional. The checksums of the complete object. This will be validated
-    /// against the combined checksums of the component objects.
+    /// The checksums of the complete object. This will be validated against the
+    /// combined checksums of the component objects.
     #[prost(message, optional, tag = "10")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
 }
@@ -219,10 +212,10 @@ pub mod compose_object_request {
         /// same bucket.
         #[prost(string, tag = "1")]
         pub name: ::prost::alloc::string::String,
-        /// Optional. The generation of this object to use as the source.
+        /// The generation of this object to use as the source.
         #[prost(int64, tag = "2")]
         pub generation: i64,
-        /// Optional. Conditions that must be met for this operation to execute.
+        /// Conditions that must be met for this operation to execute.
         #[prost(message, optional, tag = "3")]
         pub object_preconditions: ::core::option::Option<source_object::ObjectPreconditions>,
     }
@@ -255,8 +248,8 @@ pub struct DeleteObjectRequest {
     /// `CancelResumableWrite`.
     #[prost(string, tag = "2")]
     pub object: ::prost::alloc::string::String,
-    /// Optional. If present, permanently deletes a specific revision of this
-    /// object (as opposed to the latest version, the default).
+    /// If present, permanently deletes a specific revision of this object (as
+    /// opposed to the latest version, the default).
     #[prost(int64, tag = "4")]
     pub generation: i64,
     /// Makes the operation conditional on whether the object's current generation
@@ -278,8 +271,7 @@ pub struct DeleteObjectRequest {
     /// metageneration does not match the given value.
     #[prost(int64, optional, tag = "8")]
     pub if_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "10")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
 }
@@ -329,8 +321,7 @@ pub struct RestoreObjectRequest {
     /// Return an error if bucket has UBLA enabled.
     #[prost(bool, optional, tag = "9")]
     pub copy_source_acl: ::core::option::Option<bool>,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "8")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
 }
@@ -362,12 +353,12 @@ pub struct ReadObjectRequest {
     /// Required. The name of the object to read.
     #[prost(string, tag = "2")]
     pub object: ::prost::alloc::string::String,
-    /// Optional. If present, selects a specific revision of this object (as
-    /// opposed to the latest version, the default).
+    /// If present, selects a specific revision of this object (as opposed
+    /// to the latest version, the default).
     #[prost(int64, tag = "3")]
     pub generation: i64,
-    /// Optional. The offset for the first byte to return in the read, relative to
-    /// the start of the object.
+    /// The offset for the first byte to return in the read, relative to the start
+    /// of the object.
     ///
     /// A negative `read_offset` value will be interpreted as the number of bytes
     /// back from the end of the object to be returned. For example, if an object's
@@ -377,10 +368,9 @@ pub struct ReadObjectRequest {
     /// return the entire object.
     #[prost(int64, tag = "4")]
     pub read_offset: i64,
-    /// Optional. The maximum number of `data` bytes the server is allowed to
-    /// return in the sum of all `Object` messages. A `read_limit` of zero
-    /// indicates that there is no limit, and a negative `read_limit` will cause an
-    /// error.
+    /// The maximum number of `data` bytes the server is allowed to return in the
+    /// sum of all `Object` messages. A `read_limit` of zero indicates that there
+    /// is no limit, and a negative `read_limit` will cause an error.
     ///
     /// If the stream returns fewer bytes than allowed by the `read_limit` and no
     /// error occurred, the stream includes all data from the `read_offset` to the
@@ -406,8 +396,7 @@ pub struct ReadObjectRequest {
     /// metageneration does not match the given value.
     #[prost(int64, optional, tag = "9")]
     pub if_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "10")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
     /// Mask specifying which fields to read.
@@ -429,8 +418,8 @@ pub struct GetObjectRequest {
     /// Required. Name of the object.
     #[prost(string, tag = "2")]
     pub object: ::prost::alloc::string::String,
-    /// Optional. If present, selects a specific revision of this object (as
-    /// opposed to the latest version, the default).
+    /// If present, selects a specific revision of this object (as opposed to the
+    /// latest version, the default).
     #[prost(int64, tag = "3")]
     pub generation: i64,
     /// If true, return the soft-deleted version of this object.
@@ -455,8 +444,7 @@ pub struct GetObjectRequest {
     /// metageneration does not match the given value.
     #[prost(int64, optional, tag = "7")]
     pub if_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "8")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
     /// Mask specifying which fields to read.
@@ -499,238 +487,6 @@ pub struct ReadObjectResponse {
     #[prost(message, optional, tag = "4")]
     pub metadata: ::core::option::Option<Object>,
 }
-/// Describes the object to read in a BidiReadObject request.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiReadObjectSpec {
-    /// Required. The name of the bucket containing the object to read.
-    #[prost(string, tag = "1")]
-    pub bucket: ::prost::alloc::string::String,
-    /// Required. The name of the object to read.
-    #[prost(string, tag = "2")]
-    pub object: ::prost::alloc::string::String,
-    /// Optional. If present, selects a specific revision of this object (as
-    /// opposed to the latest version, the default).
-    #[prost(int64, tag = "3")]
-    pub generation: i64,
-    /// Makes the operation conditional on whether the object's current generation
-    /// matches the given value. Setting to 0 makes the operation succeed only if
-    /// there are no live versions of the object.
-    #[prost(int64, optional, tag = "4")]
-    pub if_generation_match: ::core::option::Option<i64>,
-    /// Makes the operation conditional on whether the object's live generation
-    /// does not match the given value. If no live object exists, the precondition
-    /// fails. Setting to 0 makes the operation succeed only if there is a live
-    /// version of the object.
-    #[prost(int64, optional, tag = "5")]
-    pub if_generation_not_match: ::core::option::Option<i64>,
-    /// Makes the operation conditional on whether the object's current
-    /// metageneration matches the given value.
-    #[prost(int64, optional, tag = "6")]
-    pub if_metageneration_match: ::core::option::Option<i64>,
-    /// Makes the operation conditional on whether the object's current
-    /// metageneration does not match the given value.
-    #[prost(int64, optional, tag = "7")]
-    pub if_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
-    #[prost(message, optional, tag = "8")]
-    pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
-    /// Mask specifying which fields to read.
-    /// The checksummed_data field and its children will always be present.
-    /// If no mask is specified, will default to all fields except metadata.owner
-    /// and metadata.acl.
-    /// * may be used to mean "all fields".
-    /// As per <https://google.aip.dev/161,> this field is deprecated.
-    /// As an alternative, grpc metadata can be used:
-    /// <https://cloud.google.com/apis/docs/system-parameters#definitions>
-    #[deprecated]
-    #[prost(message, optional, tag = "12")]
-    pub read_mask: ::core::option::Option<super::super::protobuf::FieldMask>,
-    /// The client can optionally set this field. The read handle is an optimized
-    /// way of creating new streams. Read handles are generated and periodically
-    /// refreshed from prior reads.
-    #[prost(message, optional, tag = "13")]
-    pub read_handle: ::core::option::Option<BidiReadHandle>,
-    /// The routing token that influences request routing for the stream. Must be
-    /// provided if a BidiReadObjectRedirectedError is returned.
-    #[prost(string, optional, tag = "14")]
-    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
-}
-/// Request message for BidiReadObject.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiReadObjectRequest {
-    /// Optional. The first message of each stream should set this field. If this
-    /// is not the first message, an error will be returned. Describes the object
-    /// to read.
-    #[prost(message, optional, tag = "1")]
-    pub read_object_spec: ::core::option::Option<BidiReadObjectSpec>,
-    /// Optional. Provides a list of 0 or more (up to 100) ranges to read. If a
-    /// single range is large enough to require multiple responses, they are
-    /// guaranteed to be delivered in increasing offset order. There are no
-    /// ordering guarantees across ranges. When no ranges are provided, the
-    /// response message will not include ObjectRangeData. For full object
-    /// downloads, the offset and size can be set to 0.
-    #[prost(message, repeated, tag = "8")]
-    pub read_ranges: ::prost::alloc::vec::Vec<ReadRange>,
-}
-/// Response message for BidiReadObject.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiReadObjectResponse {
-    /// A portion of the object's data. The service **may** leave data
-    /// empty for any given ReadResponse. This enables the service to inform the
-    /// client that the request is still live while it is running an operation to
-    /// generate more data.
-    /// The service **may** pipeline multiple responses belonging to different read
-    /// requests. Each ObjectRangeData entry will have a read_id
-    /// set to the same value as the corresponding source read request.
-    #[prost(message, repeated, tag = "6")]
-    pub object_data_ranges: ::prost::alloc::vec::Vec<ObjectRangeData>,
-    /// Metadata of the object whose media is being returned.
-    /// Only populated in the first response in the stream and not populated when
-    /// the stream is opened with a read handle.
-    #[prost(message, optional, tag = "4")]
-    pub metadata: ::core::option::Option<Object>,
-    /// This field will be periodically refreshed, however it may not be set in
-    /// every response. It allows the client to more efficiently open subsequent
-    /// bidirectional streams to the same object.
-    #[prost(message, optional, tag = "7")]
-    pub read_handle: ::core::option::Option<BidiReadHandle>,
-}
-/// Error proto containing details for a redirected read. This error is only
-/// returned on initial open in case of a redirect.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiReadObjectRedirectedError {
-    /// The read handle for the redirected read. The client can use this for the
-    /// subsequent open.
-    #[prost(message, optional, tag = "1")]
-    pub read_handle: ::core::option::Option<BidiReadHandle>,
-    /// The routing token that should be used when reopening the read stream.
-    #[prost(string, optional, tag = "2")]
-    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
-}
-/// Error proto containing details for a redirected write. This error is only
-/// returned on initial open in case of a redirect.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiWriteObjectRedirectedError {
-    /// The routing token that should be used when reopening the write stream.
-    #[prost(string, optional, tag = "1")]
-    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
-    /// Opaque value describing a previous write.
-    #[prost(message, optional, tag = "2")]
-    pub write_handle: ::core::option::Option<BidiWriteHandle>,
-    /// The generation of the object that triggered the redirect.
-    /// Note that if this error was returned as part of an appendable object
-    /// create, this object generation is now successfully created and
-    /// append_object_spec should be used when reconnecting.
-    #[prost(int64, optional, tag = "3")]
-    pub generation: ::core::option::Option<i64>,
-}
-/// Error extension proto containing details for all outstanding reads on the
-/// failed stream
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiReadObjectError {
-    /// The error code for each outstanding read_range
-    #[prost(message, repeated, tag = "1")]
-    pub read_range_errors: ::prost::alloc::vec::Vec<ReadRangeError>,
-}
-/// Error extension proto containing details for a single range read
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ReadRangeError {
-    /// The id of the corresponding read_range
-    #[prost(int64, tag = "1")]
-    pub read_id: i64,
-    /// The status which should be an enum value of \[google.rpc.Code\].
-    #[prost(message, optional, tag = "2")]
-    pub status: ::core::option::Option<super::super::rpc::Status>,
-}
-/// Describes a range of bytes to read in a BidiReadObjectRanges request.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ReadRange {
-    /// Required. The offset for the first byte to return in the read, relative to
-    /// the start of the object.
-    ///
-    /// A negative read_offset value will be interpreted as the number of bytes
-    /// back from the end of the object to be returned. For example, if an object's
-    /// length is 15 bytes, a ReadObjectRequest with read_offset = -5 and
-    /// read_length = 3 would return bytes 10 through 12 of the object. Requesting
-    /// a negative offset with magnitude larger than the size of the object will
-    /// return the entire object. A read_offset larger than the size of the object
-    /// will result in an OutOfRange error.
-    #[prost(int64, tag = "1")]
-    pub read_offset: i64,
-    /// Optional. The maximum number of data bytes the server is allowed to return
-    /// across all response messages with the same read_id. A read_length of zero
-    /// indicates to read until the resource end, and a negative read_length will
-    /// cause an error. If the stream returns fewer bytes than allowed by the
-    /// read_length and no error occurred, the stream includes all data from the
-    /// read_offset to the resource end.
-    #[prost(int64, tag = "2")]
-    pub read_length: i64,
-    /// Required. Read identifier provided by the client. When the client issues
-    /// more than one outstanding ReadRange on the same stream, responses can be
-    /// mapped back to their corresponding requests using this value. Clients must
-    /// ensure that all outstanding requests have different read_id values. The
-    /// server may close the stream with an error if this condition is not met.
-    #[prost(int64, tag = "3")]
-    pub read_id: i64,
-}
-/// Contains data and metadata for a range of an object.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ObjectRangeData {
-    /// A portion of the data for the object.
-    #[prost(message, optional, tag = "1")]
-    pub checksummed_data: ::core::option::Option<ChecksummedData>,
-    /// The ReadRange describes the content being returned with read_id set to the
-    /// corresponding ReadObjectRequest in the stream. Multiple ObjectRangeData
-    /// messages may have the same read_id but increasing offsets.
-    /// ReadObjectResponse messages with the same read_id are guaranteed to be
-    /// delivered in increasing offset order.
-    #[prost(message, optional, tag = "2")]
-    pub read_range: ::core::option::Option<ReadRange>,
-    /// If set, indicates there are no more bytes to read for the given ReadRange.
-    #[prost(bool, tag = "3")]
-    pub range_end: bool,
-}
-/// BidiReadHandle contains a handle from a previous BiDiReadObject
-/// invocation. The client can use this instead of BidiReadObjectSpec as an
-/// optimized way of opening subsequent bidirectional streams to the same object.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiReadHandle {
-    /// Required. Opaque value describing a previous read.
-    #[prost(bytes = "bytes", tag = "1")]
-    pub handle: ::prost::bytes::Bytes,
-}
-/// BidiWriteHandle contains a handle from a previous BidiWriteObject
-/// invocation. The client can use this as an optimized way of opening subsequent
-/// bidirectional streams to the same object.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BidiWriteHandle {
-    /// Required. Opaque value describing a previous write.
-    #[prost(bytes = "bytes", tag = "1")]
-    pub handle: ::prost::bytes::Bytes,
-}
 /// Describes an attempt to insert an object, possibly over multiple requests.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -739,7 +495,7 @@ pub struct WriteObjectSpec {
     /// Required. Destination object, including its name and its metadata.
     #[prost(message, optional, tag = "1")]
     pub resource: ::core::option::Option<Object>,
-    /// Optional. Apply a predefined set of access controls to this object.
+    /// Apply a predefined set of access controls to this object.
     /// Valid values are "authenticatedRead", "bucketOwnerFullControl",
     /// "bucketOwnerRead", "private", "projectPrivate", or "publicRead".
     #[prost(string, tag = "7")]
@@ -772,10 +528,6 @@ pub struct WriteObjectSpec {
     /// number of bytes.
     #[prost(int64, optional, tag = "8")]
     pub object_size: ::core::option::Option<i64>,
-    /// If true, the object will be created in appendable mode.
-    /// This field may only be set when using BidiWriteObject.
-    #[prost(bool, optional, tag = "9")]
-    pub appendable: ::core::option::Option<bool>,
 }
 /// Request message for WriteObject.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -797,13 +549,13 @@ pub struct WriteObjectRequest {
     /// An incorrect value will cause an error.
     #[prost(int64, tag = "3")]
     pub write_offset: i64,
-    /// Optional. Checksums for the complete object. If the checksums computed by
-    /// the service don't match the specified checksums the call will fail. May
-    /// only be provided in the first or last request (either with first_message,
-    /// or finish_write set).
+    /// Checksums for the complete object. If the checksums computed by the service
+    /// don't match the specified checksums the call will fail. May only be
+    /// provided in the first or last request (either with first_message, or
+    /// finish_write set).
     #[prost(message, optional, tag = "6")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
-    /// Optional. If `true`, this indicates that the write is complete. Sending any
+    /// If `true`, this indicates that the write is complete. Sending any
     /// `WriteObjectRequest`s subsequent to one in which `finish_write` is `true`
     /// will cause an error.
     /// For a non-resumable write (where the upload_id was not set in the first
@@ -811,8 +563,7 @@ pub struct WriteObjectRequest {
     /// stream.
     #[prost(bool, tag = "7")]
     pub finish_write: bool,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "8")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
     /// The first message of each stream should set one of the following.
@@ -875,37 +626,6 @@ pub mod write_object_response {
         Resource(super::Object),
     }
 }
-/// Describes an attempt to append to an object, possibly over multiple requests.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct AppendObjectSpec {
-    /// Required. The name of the bucket containing the object to write.
-    #[prost(string, tag = "1")]
-    pub bucket: ::prost::alloc::string::String,
-    /// Required. The name of the object to open for writing.
-    #[prost(string, tag = "2")]
-    pub object: ::prost::alloc::string::String,
-    /// Required. The generation number of the object to open for writing.
-    #[prost(int64, tag = "3")]
-    pub generation: i64,
-    /// Makes the operation conditional on whether the object's current
-    /// metageneration matches the given value.
-    #[prost(int64, optional, tag = "4")]
-    pub if_metageneration_match: ::core::option::Option<i64>,
-    /// Makes the operation conditional on whether the object's current
-    /// metageneration does not match the given value.
-    #[prost(int64, optional, tag = "5")]
-    pub if_metageneration_not_match: ::core::option::Option<i64>,
-    /// An optional routing token that influences request routing for the stream.
-    /// Must be provided if a BidiWriteObjectRedirectedError is returned.
-    #[prost(string, optional, tag = "6")]
-    pub routing_token: ::core::option::Option<::prost::alloc::string::String>,
-    /// An optional write handle returned from a previous BidiWriteObjectResponse
-    /// message or a BidiWriteObjectRedirectedError error.
-    #[prost(message, optional, tag = "7")]
-    pub write_handle: ::core::option::Option<BidiWriteHandle>,
-}
 /// Request message for BidiWriteObject.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -926,31 +646,30 @@ pub struct BidiWriteObjectRequest {
     /// An invalid value will cause an error.
     #[prost(int64, tag = "3")]
     pub write_offset: i64,
-    /// Optional. Checksums for the complete object. If the checksums computed by
-    /// the service don't match the specified checksums the call will fail. May
-    /// only be provided in the first request or the last request (with
-    /// finish_write set).
+    /// Checksums for the complete object. If the checksums computed by the service
+    /// don't match the specified checksums the call will fail. May only be
+    /// provided in last request (with finish_write set).
     #[prost(message, optional, tag = "6")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
-    /// Optional. For each BidiWriteObjectRequest where state_lookup is `true` or
-    /// the client closes the stream, the service will send a
-    /// BidiWriteObjectResponse containing the current persisted size. The
-    /// persisted size sent in responses covers all the bytes the server has
-    /// persisted thus far and can be used to decide what data is safe for the
-    /// client to drop. Note that the object's current size reported by the
-    /// BidiWriteObjectResponse may lag behind the number of bytes written by the
-    /// client. This field is ignored if `finish_write` is set to true.
+    /// For each BidiWriteObjectRequest where state_lookup is `true` or the client
+    /// closes the stream, the service will send a BidiWriteObjectResponse
+    /// containing the current persisted size. The persisted size sent in responses
+    /// covers all the bytes the server has persisted thus far and can be used to
+    /// decide what data is safe for the client to drop. Note that the object's
+    /// current size reported by the BidiWriteObjectResponse may lag behind the
+    /// number of bytes written by the client. This field is ignored if
+    /// `finish_write` is set to true.
     #[prost(bool, tag = "7")]
     pub state_lookup: bool,
-    /// Optional. Persists data written on the stream, up to and including the
-    /// current message, to permanent storage. This option should be used sparingly
-    /// as it may reduce performance. Ongoing writes will periodically be persisted
-    /// on the server even when `flush` is not set. This field is ignored if
+    /// Persists data written on the stream, up to and including the current
+    /// message, to permanent storage. This option should be used sparingly as it
+    /// may reduce performance. Ongoing writes will periodically be persisted on
+    /// the server even when `flush` is not set. This field is ignored if
     /// `finish_write` is set to true since there's no need to checkpoint or flush
     /// if this message completes the write.
     #[prost(bool, tag = "8")]
     pub flush: bool,
-    /// Optional. If `true`, this indicates that the write is complete. Sending any
+    /// If `true`, this indicates that the write is complete. Sending any
     /// `WriteObjectRequest`s subsequent to one in which `finish_write` is `true`
     /// will cause an error.
     /// For a non-resumable write (where the upload_id was not set in the first
@@ -958,12 +677,11 @@ pub struct BidiWriteObjectRequest {
     /// stream.
     #[prost(bool, tag = "9")]
     pub finish_write: bool,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "10")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
     /// The first message of each stream should set one of the following.
-    #[prost(oneof = "bidi_write_object_request::FirstMessage", tags = "1, 2, 11")]
+    #[prost(oneof = "bidi_write_object_request::FirstMessage", tags = "1, 2")]
     pub first_message: ::core::option::Option<bidi_write_object_request::FirstMessage>,
     /// A portion of the data for the object.
     #[prost(oneof = "bidi_write_object_request::Data", tags = "4")]
@@ -984,9 +702,6 @@ pub mod bidi_write_object_request {
         /// destination bucket and object name, preconditions, etc.
         #[prost(message, tag = "2")]
         WriteObjectSpec(super::WriteObjectSpec),
-        /// For appendable uploads. Describes the object to append to.
-        #[prost(message, tag = "11")]
-        AppendObjectSpec(super::AppendObjectSpec),
     }
     /// A portion of the data for the object.
     #[derive(serde::Deserialize, serde::Serialize)]
@@ -1004,11 +719,6 @@ pub mod bidi_write_object_request {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BidiWriteObjectResponse {
-    /// An optional write handle that will periodically be present in response
-    /// messages. Clients should save it for later use in establishing a new stream
-    /// if a connection is interrupted.
-    #[prost(message, optional, tag = "3")]
-    pub write_handle: ::core::option::Option<BidiWriteHandle>,
     /// The response will set one of the following.
     #[prost(oneof = "bidi_write_object_response::WriteStatus", tags = "1, 2")]
     pub write_status: ::core::option::Option<bidi_write_object_response::WriteStatus>,
@@ -1038,32 +748,33 @@ pub struct ListObjectsRequest {
     /// Required. Name of the bucket in which to look for objects.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
-    /// Optional. Maximum number of `items` plus `prefixes` to return
+    /// Maximum number of `items` plus `prefixes` to return
     /// in a single page of responses. As duplicate `prefixes` are
     /// omitted, fewer total results may be returned than requested. The service
     /// will use this parameter or 1,000 items, whichever is smaller.
     #[prost(int32, tag = "2")]
     pub page_size: i32,
-    /// Optional. A previously-returned page token representing part of the larger
-    /// set of results to view.
+    /// A previously-returned page token representing part of the larger set of
+    /// results to view.
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
-    /// Optional. If set, returns results in a directory-like mode. `items` will
-    /// contain only objects whose names, aside from the `prefix`, do not contain
-    /// `delimiter`. Objects whose names, aside from the `prefix`, contain
-    /// `delimiter` will have their name, truncated after the `delimiter`, returned
-    /// in `prefixes`. Duplicate `prefixes` are omitted.
+    /// If set, returns results in a directory-like mode. `items` will contain
+    /// only objects whose names, aside from the `prefix`, do not
+    /// contain `delimiter`. Objects whose names, aside from the
+    /// `prefix`, contain `delimiter` will have their name,
+    /// truncated after the `delimiter`, returned in
+    /// `prefixes`. Duplicate `prefixes` are omitted.
     #[prost(string, tag = "4")]
     pub delimiter: ::prost::alloc::string::String,
-    /// Optional. If true, objects that end in exactly one instance of `delimiter`
+    /// If true, objects that end in exactly one instance of `delimiter`
     /// will have their metadata included in `items` in addition to
     /// `prefixes`.
     #[prost(bool, tag = "5")]
     pub include_trailing_delimiter: bool,
-    /// Optional. Filter results to objects whose names begin with this prefix.
+    /// Filter results to objects whose names begin with this prefix.
     #[prost(string, tag = "6")]
     pub prefix: ::prost::alloc::string::String,
-    /// Optional. If `true`, lists all versions of an object as distinct results.
+    /// If `true`, lists all versions of an object as distinct results.
     /// For more information, see
     /// [Object
     /// Versioning](<https://cloud.google.com/storage/docs/object-versioning>).
@@ -1111,8 +822,7 @@ pub struct QueryWriteStatusRequest {
     /// being requested.
     #[prost(string, tag = "1")]
     pub upload_id: ::prost::alloc::string::String,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "2")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
 }
@@ -1169,14 +879,14 @@ pub struct RewriteObjectRequest {
     /// object.
     #[prost(string, tag = "25")]
     pub destination_bucket: ::prost::alloc::string::String,
-    /// Optional. The name of the Cloud KMS key that will be used to encrypt the
-    /// destination object. The Cloud KMS key must be located in same location as
-    /// the object. If the parameter is not specified, the request uses the
-    /// destination bucket's default encryption key, if any, or else the
-    /// Google-managed encryption key.
+    /// The name of the Cloud KMS key that will be used to encrypt the destination
+    /// object. The Cloud KMS key must be located in same location as the object.
+    /// If the parameter is not specified, the request uses the destination
+    /// bucket's default encryption key, if any, or else the Google-managed
+    /// encryption key.
     #[prost(string, tag = "27")]
     pub destination_kms_key: ::prost::alloc::string::String,
-    /// Optional. Properties of the destination, post-rewrite object.
+    /// Properties of the destination, post-rewrite object.
     /// The `name`, `bucket` and `kms_key` fields must not be populated (these
     /// values are specified in the `destination_name`, `destination_bucket`, and
     /// `destination_kms_key` fields).
@@ -1191,19 +901,19 @@ pub struct RewriteObjectRequest {
     /// Required. Name of the source object.
     #[prost(string, tag = "3")]
     pub source_object: ::prost::alloc::string::String,
-    /// Optional. If present, selects a specific revision of the source object (as
-    /// opposed to the latest version, the default).
+    /// If present, selects a specific revision of the source object (as opposed to
+    /// the latest version, the default).
     #[prost(int64, tag = "4")]
     pub source_generation: i64,
-    /// Optional. Include this field (from the previous rewrite response) on each
-    /// rewrite request after the first one, until the rewrite response 'done' flag
-    /// is true. Calls that provide a rewriteToken can omit all other request
-    /// fields, but if included those fields must match the values provided in the
-    /// first rewrite request.
+    /// Include this field (from the previous rewrite response) on each rewrite
+    /// request after the first one, until the rewrite response 'done' flag is
+    /// true. Calls that provide a rewriteToken can omit all other request fields,
+    /// but if included those fields must match the values provided in the first
+    /// rewrite request.
     #[prost(string, tag = "5")]
     pub rewrite_token: ::prost::alloc::string::String,
-    /// Optional. Apply a predefined set of access controls to the destination
-    /// object. Valid values are "authenticatedRead", "bucketOwnerFullControl",
+    /// Apply a predefined set of access controls to the destination object.
+    /// Valid values are "authenticatedRead", "bucketOwnerFullControl",
     /// "bucketOwnerRead", "private", "projectPrivate", or "publicRead".
     #[prost(string, tag = "28")]
     pub destination_predefined_acl: ::prost::alloc::string::String,
@@ -1242,35 +952,35 @@ pub struct RewriteObjectRequest {
     /// metageneration does not match the given value.
     #[prost(int64, optional, tag = "14")]
     pub if_source_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. The maximum number of bytes that will be rewritten per rewrite
-    /// request. Most callers shouldn't need to specify this parameter - it is
-    /// primarily in place to support testing. If specified the value must be an
-    /// integral multiple of 1 MiB (1048576). Also, this only applies to requests
-    /// where the source and destination span locations and/or storage classes.
-    /// Finally, this value must not change across rewrite calls else you'll get an
-    /// error that the `rewriteToken` is invalid.
+    /// The maximum number of bytes that will be rewritten per rewrite request.
+    /// Most callers
+    /// shouldn't need to specify this parameter - it is primarily in place to
+    /// support testing. If specified the value must be an integral multiple of
+    /// 1 MiB (1048576). Also, this only applies to requests where the source and
+    /// destination span locations and/or storage classes. Finally, this value must
+    /// not change across rewrite calls else you'll get an error that the
+    /// `rewriteToken` is invalid.
     #[prost(int64, tag = "15")]
     pub max_bytes_rewritten_per_call: i64,
-    /// Optional. The algorithm used to encrypt the source object, if any. Used if
-    /// the source object was encrypted with a Customer-Supplied Encryption Key.
+    /// The algorithm used to encrypt the source object, if any. Used if the source
+    /// object was encrypted with a Customer-Supplied Encryption Key.
     #[prost(string, tag = "16")]
     pub copy_source_encryption_algorithm: ::prost::alloc::string::String,
-    /// Optional. The raw bytes (not base64-encoded) AES-256 encryption key used to
-    /// encrypt the source object, if it was encrypted with a Customer-Supplied
-    /// Encryption Key.
+    /// The raw bytes (not base64-encoded) AES-256 encryption key used to encrypt
+    /// the source object, if it was encrypted with a Customer-Supplied Encryption
+    /// Key.
     #[prost(bytes = "bytes", tag = "21")]
     pub copy_source_encryption_key_bytes: ::prost::bytes::Bytes,
-    /// Optional. The raw bytes (not base64-encoded) SHA256 hash of the encryption
-    /// key used to encrypt the source object, if it was encrypted with a
-    /// Customer-Supplied Encryption Key.
+    /// The raw bytes (not base64-encoded) SHA256 hash of the encryption key used
+    /// to encrypt the source object, if it was encrypted with a Customer-Supplied
+    /// Encryption Key.
     #[prost(bytes = "bytes", tag = "22")]
     pub copy_source_encryption_key_sha256_bytes: ::prost::bytes::Bytes,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "19")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
-    /// Optional. The checksums of the complete object. This will be used to
-    /// validate the destination object after rewriting.
+    /// The checksums of the complete object. This will be used to validate the
+    /// destination object after rewriting.
     #[prost(message, optional, tag = "29")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
 }
@@ -1300,94 +1010,22 @@ pub struct RewriteResponse {
     #[prost(message, optional, tag = "5")]
     pub resource: ::core::option::Option<Object>,
 }
-/// Request message for MoveObject.
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct MoveObjectRequest {
-    /// Required. Name of the bucket in which the object resides.
-    #[prost(string, tag = "1")]
-    pub bucket: ::prost::alloc::string::String,
-    /// Required. Name of the source object.
-    #[prost(string, tag = "2")]
-    pub source_object: ::prost::alloc::string::String,
-    /// Required. Name of the destination object.
-    #[prost(string, tag = "3")]
-    pub destination_object: ::prost::alloc::string::String,
-    /// Optional. Makes the operation conditional on whether the source object's
-    /// current generation matches the given value. `if_source_generation_match`
-    /// and `if_source_generation_not_match` conditions are mutually exclusive:
-    /// it's an error for both of them to be set in the request.
-    #[prost(int64, optional, tag = "4")]
-    pub if_source_generation_match: ::core::option::Option<i64>,
-    /// Optional. Makes the operation conditional on whether the source object's
-    /// current generation does not match the given value.
-    /// `if_source_generation_match` and `if_source_generation_not_match`
-    /// conditions are mutually exclusive: it's an error for both of them to be set
-    /// in the request.
-    #[prost(int64, optional, tag = "5")]
-    pub if_source_generation_not_match: ::core::option::Option<i64>,
-    /// Optional. Makes the operation conditional on whether the source object's
-    /// current metageneration matches the given value.
-    /// `if_source_metageneration_match` and `if_source_metageneration_not_match`
-    /// conditions are mutually exclusive: it's an error for both of them to be set
-    /// in the request.
-    #[prost(int64, optional, tag = "6")]
-    pub if_source_metageneration_match: ::core::option::Option<i64>,
-    /// Optional. Makes the operation conditional on whether the source object's
-    /// current metageneration does not match the given value.
-    /// `if_source_metageneration_match` and `if_source_metageneration_not_match`
-    /// conditions are mutually exclusive: it's an error for both of them to be set
-    /// in the request.
-    #[prost(int64, optional, tag = "7")]
-    pub if_source_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. Makes the operation conditional on whether the destination
-    /// object's current generation matches the given value. Setting to 0 makes the
-    /// operation succeed only if there are no live versions of the object.
-    /// `if_generation_match` and `if_generation_not_match` conditions are mutually
-    /// exclusive: it's an error for both of them to be set in the request.
-    #[prost(int64, optional, tag = "8")]
-    pub if_generation_match: ::core::option::Option<i64>,
-    /// Optional. Makes the operation conditional on whether the destination
-    /// object's current generation does not match the given value. If no live
-    /// object exists, the precondition fails. Setting to 0 makes the operation
-    /// succeed only if there is a live version of the object.
-    /// `if_generation_match` and `if_generation_not_match` conditions are mutually
-    /// exclusive: it's an error for both of them to be set in the request.
-    #[prost(int64, optional, tag = "9")]
-    pub if_generation_not_match: ::core::option::Option<i64>,
-    /// Optional. Makes the operation conditional on whether the destination
-    /// object's current metageneration matches the given value.
-    /// `if_metageneration_match` and `if_metageneration_not_match` conditions are
-    /// mutually exclusive: it's an error for both of them to be set in the
-    /// request.
-    #[prost(int64, optional, tag = "10")]
-    pub if_metageneration_match: ::core::option::Option<i64>,
-    /// Optional. Makes the operation conditional on whether the destination
-    /// object's current metageneration does not match the given value.
-    /// `if_metageneration_match` and `if_metageneration_not_match` conditions are
-    /// mutually exclusive: it's an error for both of them to be set in the
-    /// request.
-    #[prost(int64, optional, tag = "11")]
-    pub if_metageneration_not_match: ::core::option::Option<i64>,
-}
 /// Request message StartResumableWrite.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StartResumableWriteRequest {
-    /// Required. Contains the information necessary to start a resumable write.
+    /// Required. The destination bucket, object, and metadata, as well as any
+    /// preconditions.
     #[prost(message, optional, tag = "1")]
     pub write_object_spec: ::core::option::Option<WriteObjectSpec>,
-    /// Optional. A set of parameters common to Storage API requests related to an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "3")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
-    /// Optional. The checksums of the complete object. This is used to validate
-    /// the uploaded object. For each upload, `object_checksums` can be provided
-    /// when initiating a resumable upload with`StartResumableWriteRequest` or when
-    /// completing a write with `WriteObjectRequest` with
-    /// `finish_write` set to `true`.
+    /// The checksums of the complete object. This will be used to validate the
+    /// uploaded object. For each upload, object_checksums can be provided with
+    /// either StartResumableWriteRequest or the WriteObjectRequest with
+    /// finish_write set to `true`.
     #[prost(message, optional, tag = "5")]
     pub object_checksums: ::core::option::Option<ObjectChecksums>,
 }
@@ -1396,11 +1034,8 @@ pub struct StartResumableWriteRequest {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StartResumableWriteResponse {
-    /// A unique identifier for the initiated resumable write operation.
-    /// As the ID grants write access, you should keep it confidential during
-    /// the upload to prevent unauthorized access and data tampering during your
-    /// upload. This ID should be included in subsequent `WriteObject` requests to
-    /// upload the object data.
+    /// The upload_id of the newly started resumable write operation. This
+    /// value should be copied into the `WriteObjectRequest.upload_id` field.
     #[prost(string, tag = "1")]
     pub upload_id: ::prost::alloc::string::String,
 }
@@ -1435,7 +1070,7 @@ pub struct UpdateObjectRequest {
     /// metageneration does not match the given value.
     #[prost(int64, optional, tag = "5")]
     pub if_metageneration_not_match: ::core::option::Option<i64>,
-    /// Optional. Apply a predefined set of access controls to this object.
+    /// Apply a predefined set of access controls to this object.
     /// Valid values are "authenticatedRead", "bucketOwnerFullControl",
     /// "bucketOwnerRead", "private", "projectPrivate", or "publicRead".
     #[prost(string, tag = "10")]
@@ -1450,29 +1085,25 @@ pub struct UpdateObjectRequest {
     /// Not specifying any fields is an error.
     #[prost(message, optional, tag = "7")]
     pub update_mask: ::core::option::Option<super::super::protobuf::FieldMask>,
-    /// Optional. A set of parameters common to Storage API requests concerning an
-    /// object.
+    /// A set of parameters common to Storage API requests concerning an object.
     #[prost(message, optional, tag = "8")]
     pub common_object_request_params: ::core::option::Option<CommonObjectRequestParams>,
-    /// Optional. Overrides the unlocked retention config on the object.
-    #[prost(bool, tag = "11")]
-    pub override_unlocked_retention: bool,
 }
 /// Parameters that can be passed to any object request.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommonObjectRequestParams {
-    /// Optional. Encryption algorithm used with the Customer-Supplied Encryption
-    /// Keys feature.
+    /// Encryption algorithm used with the Customer-Supplied Encryption Keys
+    /// feature.
     #[prost(string, tag = "1")]
     pub encryption_algorithm: ::prost::alloc::string::String,
-    /// Optional. Encryption key used with the Customer-Supplied Encryption Keys
-    /// feature. In raw bytes format (not base64-encoded).
+    /// Encryption key used with the Customer-Supplied Encryption Keys feature.
+    /// In raw bytes format (not base64-encoded).
     #[prost(bytes = "bytes", tag = "4")]
     pub encryption_key_bytes: ::prost::bytes::Bytes,
-    /// Optional. SHA256 hash of encryption key used with the Customer-Supplied
-    /// Encryption Keys feature.
+    /// SHA256 hash of encryption key used with the Customer-Supplied Encryption
+    /// Keys feature.
     #[prost(bytes = "bytes", tag = "5")]
     pub encryption_key_sha256_bytes: ::prost::bytes::Bytes,
 }
@@ -1608,7 +1239,7 @@ pub mod service_constants {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Bucket {
-    /// Identifier. The name of the bucket.
+    /// Immutable. The name of the bucket.
     /// Format: `projects/{project}/buckets/{bucket}`
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -1625,7 +1256,6 @@ pub struct Bucket {
     /// Immutable. The project which owns this bucket, in the format of
     /// "projects/{projectIdentifier}".
     /// {projectIdentifier} can be the project ID or project number.
-    /// Output values will always be in project number format.
     #[prost(string, tag = "3")]
     pub project: ::prost::alloc::string::String,
     /// Output only. The metadata generation of this bucket.
@@ -1643,33 +1273,33 @@ pub struct Bucket {
     /// multi-region, etc).
     #[prost(string, tag = "6")]
     pub location_type: ::prost::alloc::string::String,
-    /// Optional. The bucket's default storage class, used whenever no storageClass
-    /// is specified for a newly-created object. This defines how objects in the
+    /// The bucket's default storage class, used whenever no storageClass is
+    /// specified for a newly-created object. This defines how objects in the
     /// bucket are stored and determines the SLA and the cost of storage.
     /// If this value is not specified when the bucket is created, it will default
     /// to `STANDARD`. For more information, see
     /// <https://developers.google.com/storage/docs/storage-classes.>
     #[prost(string, tag = "7")]
     pub storage_class: ::prost::alloc::string::String,
-    /// Optional. The recovery point objective for cross-region replication of the
-    /// bucket. Applicable only for dual- and multi-region buckets. "DEFAULT" uses
-    /// default replication. "ASYNC_TURBO" enables turbo replication, valid for
-    /// dual-region buckets only. If rpo is not specified when the bucket is
-    /// created, it defaults to "DEFAULT". For more information, see
+    /// The recovery point objective for cross-region replication of the bucket.
+    /// Applicable only for dual- and multi-region buckets. "DEFAULT" uses default
+    /// replication. "ASYNC_TURBO" enables turbo replication, valid for dual-region
+    /// buckets only. If rpo is not specified when the bucket is created, it
+    /// defaults to "DEFAULT". For more information, see
     /// <https://cloud.google.com/storage/docs/availability-durability#turbo-replication.>
     #[prost(string, tag = "27")]
     pub rpo: ::prost::alloc::string::String,
-    /// Optional. Access controls on the bucket.
+    /// Access controls on the bucket.
     /// If iam_config.uniform_bucket_level_access is enabled on this bucket,
     /// requests to set, read, or modify acl is an error.
     #[prost(message, repeated, tag = "8")]
     pub acl: ::prost::alloc::vec::Vec<BucketAccessControl>,
-    /// Optional. Default access controls to apply to new objects when no ACL is
-    /// provided. If iam_config.uniform_bucket_level_access is enabled on this
-    /// bucket, requests to set, read, or modify acl is an error.
+    /// Default access controls to apply to new objects when no ACL is provided.
+    /// If iam_config.uniform_bucket_level_access is enabled on this bucket,
+    /// requests to set, read, or modify acl is an error.
     #[prost(message, repeated, tag = "9")]
     pub default_object_acl: ::prost::alloc::vec::Vec<ObjectAccessControl>,
-    /// Optional. The bucket's lifecycle config. See
+    /// The bucket's lifecycle config. See
     /// \[<https://developers.google.com/storage/docs/lifecycle\]Lifecycle> Management]
     /// for more information.
     #[prost(message, optional, tag = "10")]
@@ -1677,42 +1307,42 @@ pub struct Bucket {
     /// Output only. The creation time of the bucket.
     #[prost(message, optional, tag = "11")]
     pub create_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Optional. The bucket's [<https://www.w3.org/TR/cors/][Cross-Origin> Resource
-    /// Sharing] (CORS) config.
+    /// The bucket's [<https://www.w3.org/TR/cors/][Cross-Origin> Resource Sharing]
+    /// (CORS) config.
     #[prost(message, repeated, tag = "12")]
     pub cors: ::prost::alloc::vec::Vec<bucket::Cors>,
     /// Output only. The modification time of the bucket.
     #[prost(message, optional, tag = "13")]
     pub update_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Optional. The default value for event-based hold on newly created objects
-    /// in this bucket.  Event-based hold is a way to retain objects indefinitely
-    /// until an event occurs, signified by the hold's release. After being
-    /// released, such objects will be subject to bucket-level retention (if any).
-    /// One sample use case of this flag is for banks to hold loan documents for at
-    /// least 3 years after loan is paid in full. Here, bucket-level retention is 3
-    /// years and the event is loan being paid in full. In this example, these
-    /// objects will be held intact for any number of years until the event has
-    /// occurred (event-based hold on the object is released) and then 3 more years
-    /// after that. That means retention duration of the objects begins from the
-    /// moment event-based hold transitioned from true to false.  Objects under
-    /// event-based hold cannot be deleted, overwritten or archived until the hold
-    /// is removed.
+    /// The default value for event-based hold on newly created objects in this
+    /// bucket.  Event-based hold is a way to retain objects indefinitely until an
+    /// event occurs, signified by the
+    /// hold's release. After being released, such objects will be subject to
+    /// bucket-level retention (if any).  One sample use case of this flag is for
+    /// banks to hold loan documents for at least 3 years after loan is paid in
+    /// full. Here, bucket-level retention is 3 years and the event is loan being
+    /// paid in full. In this example, these objects will be held intact for any
+    /// number of years until the event has occurred (event-based hold on the
+    /// object is released) and then 3 more years after that. That means retention
+    /// duration of the objects begins from the moment event-based hold
+    /// transitioned from true to false.  Objects under event-based hold cannot be
+    /// deleted, overwritten or archived until the hold is removed.
     #[prost(bool, tag = "14")]
     pub default_event_based_hold: bool,
-    /// Optional. User-provided labels, in key/value pairs.
+    /// User-provided labels, in key/value pairs.
     #[prost(map = "string, string", tag = "15")]
     pub labels:
         ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
-    /// Optional. The bucket's website config, controlling how the service behaves
+    /// The bucket's website config, controlling how the service behaves
     /// when accessing bucket contents as a web site. See the
     /// [<https://cloud.google.com/storage/docs/static-website][Static> Website
     /// Examples] for more information.
     #[prost(message, optional, tag = "16")]
     pub website: ::core::option::Option<bucket::Website>,
-    /// Optional. The bucket's versioning config.
+    /// The bucket's versioning config.
     #[prost(message, optional, tag = "17")]
     pub versioning: ::core::option::Option<bucket::Versioning>,
-    /// Optional. The bucket's logging config, which defines the destination bucket
+    /// The bucket's logging config, which defines the destination bucket
     /// and name prefix (if any) for the current bucket's logs.
     #[prost(message, optional, tag = "18")]
     pub logging: ::core::option::Option<bucket::Logging>,
@@ -1720,38 +1350,36 @@ pub struct Bucket {
     /// owner group.
     #[prost(message, optional, tag = "19")]
     pub owner: ::core::option::Option<Owner>,
-    /// Optional. Encryption config for a bucket.
+    /// Encryption config for a bucket.
     #[prost(message, optional, tag = "20")]
     pub encryption: ::core::option::Option<bucket::Encryption>,
-    /// Optional. The bucket's billing config.
+    /// The bucket's billing config.
     #[prost(message, optional, tag = "21")]
     pub billing: ::core::option::Option<bucket::Billing>,
-    /// Optional. The bucket's retention policy. The retention policy enforces a
-    /// minimum retention time for all objects contained in the bucket, based on
-    /// their creation time. Any attempt to overwrite or delete objects younger
-    /// than the retention period will result in a PERMISSION_DENIED error.  An
-    /// unlocked retention policy can be modified or removed from the bucket via a
+    /// The bucket's retention policy. The retention policy enforces a minimum
+    /// retention time for all objects contained in the bucket, based on their
+    /// creation time. Any attempt to overwrite or delete objects younger than the
+    /// retention period will result in a PERMISSION_DENIED error.  An unlocked
+    /// retention policy can be modified or removed from the bucket via a
     /// storage.buckets.update operation. A locked retention policy cannot be
     /// removed or shortened in duration for the lifetime of the bucket.
     /// Attempting to remove or decrease period of a locked retention policy will
     /// result in a PERMISSION_DENIED error.
     #[prost(message, optional, tag = "22")]
     pub retention_policy: ::core::option::Option<bucket::RetentionPolicy>,
-    /// Optional. The bucket's IAM config.
+    /// The bucket's IAM config.
     #[prost(message, optional, tag = "23")]
     pub iam_config: ::core::option::Option<bucket::IamConfig>,
-    /// Optional. Reserved for future use.
+    /// Reserved for future use.
     #[prost(bool, tag = "25")]
     pub satisfies_pzs: bool,
-    /// Optional. Configuration that, if present, specifies the data placement for
-    /// a
+    /// Configuration that, if present, specifies the data placement for a
     /// [<https://cloud.google.com/storage/docs/locations#location-dr][configurable>
     /// dual-region].
     #[prost(message, optional, tag = "26")]
     pub custom_placement_config: ::core::option::Option<bucket::CustomPlacementConfig>,
-    /// Optional. The bucket's Autoclass configuration. If there is no
-    /// configuration, the Autoclass feature will be disabled and have no effect on
-    /// the bucket.
+    /// The bucket's Autoclass configuration. If there is no configuration, the
+    /// Autoclass feature will be disabled and have no effect on the bucket.
     #[prost(message, optional, tag = "28")]
     pub autoclass: ::core::option::Option<bucket::Autoclass>,
     /// Optional. The bucket's hierarchical namespace configuration. If there is no
@@ -1763,13 +1391,6 @@ pub struct Bucket {
     /// soft-deleted objects from being permanently deleted.
     #[prost(message, optional, tag = "31")]
     pub soft_delete_policy: ::core::option::Option<bucket::SoftDeletePolicy>,
-    /// Optional. The bucket's object retention configuration. Must be enabled
-    /// before objects in the bucket may have retention configured.
-    #[prost(message, optional, tag = "33")]
-    pub object_retention: ::core::option::Option<bucket::ObjectRetention>,
-    /// Optional. The bucket's IP filter configuration.
-    #[prost(message, optional, tag = "38")]
-    pub ip_filter: ::core::option::Option<bucket::IpFilter>,
 }
 /// Nested message and enum types in `Bucket`.
 pub mod bucket {
@@ -1778,7 +1399,7 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct Billing {
-        /// Optional. When set to true, Requester Pays is enabled for this bucket.
+        /// When set to true, Requester Pays is enabled for this bucket.
         #[prost(bool, tag = "1")]
         pub requester_pays: bool,
     }
@@ -1790,23 +1411,22 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Cors {
-        /// Optional. The list of Origins eligible to receive CORS response headers.
-        /// See [<https://tools.ietf.org/html/rfc6454][RFC> 6454] for more on origins.
+        /// The list of Origins eligible to receive CORS response headers. See
+        /// [<https://tools.ietf.org/html/rfc6454][RFC> 6454] for more on origins.
         /// Note: "*" is permitted in the list of origins, and means "any Origin".
         #[prost(string, repeated, tag = "1")]
         pub origin: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. The list of HTTP methods on which to include CORS response
-        /// headers,
+        /// The list of HTTP methods on which to include CORS response headers,
         /// (`GET`, `OPTIONS`, `POST`, etc) Note: "*" is permitted in the list of
         /// methods, and means "any method".
         #[prost(string, repeated, tag = "2")]
         pub method: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. The list of HTTP headers other than the
+        /// The list of HTTP headers other than the
         /// [<https://www.w3.org/TR/cors/#simple-response-header][simple> response
         /// headers] to give permission for the user-agent to share across domains.
         #[prost(string, repeated, tag = "3")]
         pub response_header: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        /// Optional. The value, in seconds, to return in the
+        /// The value, in seconds, to return in the
         /// [<https://www.w3.org/TR/cors/#access-control-max-age-response-header][Access-Control-Max-Age>
         /// header] used in preflight responses.
         #[prost(int32, tag = "4")]
@@ -1817,97 +1437,22 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Encryption {
-        /// Optional. The name of the Cloud KMS key that will be used to encrypt
-        /// objects inserted into this bucket, if no encryption method is specified.
+        /// The name of the Cloud KMS key that will be used to encrypt objects
+        /// inserted into this bucket, if no encryption method is specified.
         #[prost(string, tag = "1")]
         pub default_kms_key: ::prost::alloc::string::String,
-        /// Optional. If omitted, then new objects with GMEK encryption-type is
-        /// allowed. If set, then new objects created in this bucket must comply with
-        /// enforcement config. Changing this has no effect on existing objects; it
-        /// applies to new objects only.
-        #[prost(message, optional, tag = "2")]
-        pub google_managed_encryption_enforcement_config:
-            ::core::option::Option<encryption::GoogleManagedEncryptionEnforcementConfig>,
-        /// Optional. If omitted, then new objects with CMEK encryption-type is
-        /// allowed. If set, then new objects created in this bucket must comply with
-        /// enforcement config. Changing this has no effect on existing objects; it
-        /// applies to new objects only.
-        #[prost(message, optional, tag = "3")]
-        pub customer_managed_encryption_enforcement_config:
-            ::core::option::Option<encryption::CustomerManagedEncryptionEnforcementConfig>,
-        /// Optional. If omitted, then new objects with CSEK encryption-type is
-        /// allowed. If set, then new objects created in this bucket must comply with
-        /// enforcement config. Changing this has no effect on existing objects; it
-        /// applies to new objects only.
-        #[prost(message, optional, tag = "4")]
-        pub customer_supplied_encryption_enforcement_config:
-            ::core::option::Option<encryption::CustomerSuppliedEncryptionEnforcementConfig>,
-    }
-    /// Nested message and enum types in `Encryption`.
-    pub mod encryption {
-        /// Google Managed Encryption (GMEK) enforcement config of a bucket.
-        #[derive(serde::Deserialize, serde::Serialize)]
-        #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-        pub struct GoogleManagedEncryptionEnforcementConfig {
-            /// Whether Google Managed Encryption (GMEK) is restricted for new
-            /// objects within the bucket.
-            /// If true, new objects can't be created using GMEK encryption.
-            /// If false or unset, creation of new objects with GMEK encryption is
-            /// allowed.
-            #[prost(bool, optional, tag = "1")]
-            pub restricted: ::core::option::Option<bool>,
-            /// Time from which the config was effective. This is service-provided.
-            #[prost(message, optional, tag = "2")]
-            pub effective_time:
-                ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
-        }
-        /// Customer Managed Encryption (CMEK) enforcement config of a bucket.
-        #[derive(serde::Deserialize, serde::Serialize)]
-        #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-        pub struct CustomerManagedEncryptionEnforcementConfig {
-            /// Whether Customer Managed Encryption (CMEK) is restricted for new
-            /// objects within the bucket.
-            /// If true, new objects can't be created using CMEK encryption.
-            /// If false or unset, creation of new objects with CMEK encryption is
-            /// allowed.
-            #[prost(bool, optional, tag = "1")]
-            pub restricted: ::core::option::Option<bool>,
-            /// Time from which the config was effective. This is service-provided.
-            #[prost(message, optional, tag = "2")]
-            pub effective_time:
-                ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
-        }
-        /// Customer Supplied Encryption (CSEK) enforcement config of a bucket.
-        #[derive(serde::Deserialize, serde::Serialize)]
-        #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-        pub struct CustomerSuppliedEncryptionEnforcementConfig {
-            /// Whether Customer Supplied Encryption (CSEK) is restricted for new
-            /// objects within the bucket.
-            /// If true, new objects can't be created using CSEK encryption.
-            /// If false or unset, creation of new objects with CSEK encryption is
-            /// allowed.
-            #[prost(bool, optional, tag = "1")]
-            pub restricted: ::core::option::Option<bool>,
-            /// Time from which the config was effective. This is service-provided.
-            #[prost(message, optional, tag = "2")]
-            pub effective_time:
-                ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
-        }
     }
     /// Bucket restriction options.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct IamConfig {
-        /// Optional. Bucket restriction options currently enforced on the bucket.
+        /// Bucket restriction options currently enforced on the bucket.
         #[prost(message, optional, tag = "1")]
         pub uniform_bucket_level_access:
             ::core::option::Option<iam_config::UniformBucketLevelAccess>,
-        /// Optional. Whether IAM will enforce public access prevention. Valid values
-        /// are "enforced" or "inherited".
+        /// Whether IAM will enforce public access prevention. Valid values are
+        /// "enforced" or "inherited".
         #[prost(string, tag = "3")]
         pub public_access_prevention: ::prost::alloc::string::String,
     }
@@ -1919,11 +1464,10 @@ pub mod bucket {
         #[serde(rename_all = "camelCase")]
         #[derive(Clone, Copy, PartialEq, ::prost::Message)]
         pub struct UniformBucketLevelAccess {
-            /// Optional. If set, access checks only use bucket-level IAM policies or
-            /// above.
+            /// If set, access checks only use bucket-level IAM policies or above.
             #[prost(bool, tag = "1")]
             pub enabled: bool,
-            /// Optional. The deadline time for changing
+            /// The deadline time for changing
             /// `iam_config.uniform_bucket_level_access.enabled` from `true` to
             /// `false`. Mutable until the specified deadline is reached, but not
             /// afterward.
@@ -1937,8 +1481,8 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Lifecycle {
-        /// Optional. A lifecycle management rule, which is made of an action to take
-        /// and the condition(s) under which the action will be taken.
+        /// A lifecycle management rule, which is made of an action to take and the
+        /// condition(s) under which the action will be taken.
         #[prost(message, repeated, tag = "1")]
         pub rule: ::prost::alloc::vec::Vec<lifecycle::Rule>,
     }
@@ -1950,10 +1494,10 @@ pub mod bucket {
         #[serde(rename_all = "camelCase")]
         #[derive(Clone, PartialEq, ::prost::Message)]
         pub struct Rule {
-            /// Optional. The action to take.
+            /// The action to take.
             #[prost(message, optional, tag = "1")]
             pub action: ::core::option::Option<rule::Action>,
-            /// Optional. The condition(s) under which the action will be taken.
+            /// The condition(s) under which the action will be taken.
             #[prost(message, optional, tag = "2")]
             pub condition: ::core::option::Option<rule::Condition>,
         }
@@ -1964,13 +1508,12 @@ pub mod bucket {
             #[serde(rename_all = "camelCase")]
             #[derive(Clone, PartialEq, ::prost::Message)]
             pub struct Action {
-                /// Optional. Type of the action. Currently, only `Delete`,
-                /// `SetStorageClass`, and `AbortIncompleteMultipartUpload` are
-                /// supported.
+                /// Type of the action. Currently, only `Delete`, `SetStorageClass`, and
+                /// `AbortIncompleteMultipartUpload` are supported.
                 #[prost(string, tag = "1")]
                 pub r#type: ::prost::alloc::string::String,
-                /// Optional. Target storage class. Required iff the type of the action
-                /// is SetStorageClass.
+                /// Target storage class. Required iff the type of the action is
+                /// SetStorageClass.
                 #[prost(string, tag = "2")]
                 pub storage_class: ::prost::alloc::string::String,
             }
@@ -1985,8 +1528,8 @@ pub mod bucket {
                 /// condition.
                 #[prost(int32, optional, tag = "1")]
                 pub age_days: ::core::option::Option<i32>,
-                /// Optional. This condition is satisfied when an object is created
-                /// before midnight of the specified date in UTC.
+                /// This condition is satisfied when an object is created before midnight
+                /// of the specified date in UTC.
                 #[prost(message, optional, tag = "2")]
                 pub created_before:
                     ::core::option::Option<super::super::super::super::super::r#type::Date>,
@@ -2000,9 +1543,9 @@ pub mod bucket {
                 /// the live version) newer than this version of the object.
                 #[prost(int32, optional, tag = "4")]
                 pub num_newer_versions: ::core::option::Option<i32>,
-                /// Optional. Objects having any of the storage classes specified by this
-                /// condition will be matched. Values include `MULTI_REGIONAL`,
-                /// `REGIONAL`, `NEARLINE`, `COLDLINE`, `STANDARD`, and
+                /// Objects having any of the storage classes specified by this condition
+                /// will be matched. Values include `MULTI_REGIONAL`, `REGIONAL`,
+                /// `NEARLINE`, `COLDLINE`, `STANDARD`, and
                 /// `DURABLE_REDUCED_AVAILABILITY`.
                 #[prost(string, repeated, tag = "5")]
                 pub matches_storage_class: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
@@ -2011,8 +1554,8 @@ pub mod bucket {
                 /// The value of the field must be a nonnegative integer.
                 #[prost(int32, optional, tag = "7")]
                 pub days_since_custom_time: ::core::option::Option<i32>,
-                /// Optional. An object matches this condition if the custom timestamp
-                /// set on the object is before the specified date in UTC.
+                /// An object matches this condition if the custom timestamp set on the
+                /// object is before the specified date in UTC.
                 #[prost(message, optional, tag = "8")]
                 pub custom_time_before:
                     ::core::option::Option<super::super::super::super::super::r#type::Date>,
@@ -2023,18 +1566,18 @@ pub mod bucket {
                 /// eligible for Lifecycle action as soon as it becomes noncurrent.
                 #[prost(int32, optional, tag = "9")]
                 pub days_since_noncurrent_time: ::core::option::Option<i32>,
-                /// Optional. This condition is relevant only for versioned objects. An
-                /// object version satisfies this condition only if it became noncurrent
-                /// before the specified date in UTC.
+                /// This condition is relevant only for versioned objects. An object
+                /// version satisfies this condition only if it became noncurrent before
+                /// the specified date in UTC.
                 #[prost(message, optional, tag = "10")]
                 pub noncurrent_time_before:
                     ::core::option::Option<super::super::super::super::super::r#type::Date>,
-                /// Optional. List of object name prefixes. If any prefix exactly matches
-                /// the beginning of the object name, the condition evaluates to true.
+                /// List of object name prefixes. If any prefix exactly matches the
+                /// beginning of the object name, the condition evaluates to true.
                 #[prost(string, repeated, tag = "11")]
                 pub matches_prefix: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-                /// Optional. List of object name suffixes. If any suffix exactly matches
-                /// the end of the object name, the condition evaluates to true.
+                /// List of object name suffixes. If any suffix exactly matches the
+                /// end of the object name, the condition evaluates to true.
                 #[prost(string, repeated, tag = "12")]
                 pub matches_suffix: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
             }
@@ -2045,41 +1588,31 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Logging {
-        /// Optional. The destination bucket where the current bucket's logs should
-        /// be placed, using path format (like `projects/123456/buckets/foo`).
+        /// The destination bucket where the current bucket's logs should be placed,
+        /// using path format (like `projects/123456/buckets/foo`).
         #[prost(string, tag = "1")]
         pub log_bucket: ::prost::alloc::string::String,
-        /// Optional. A prefix for log object names.
+        /// A prefix for log object names.
         #[prost(string, tag = "2")]
         pub log_object_prefix: ::prost::alloc::string::String,
-    }
-    /// Object Retention related properties of a bucket.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-    pub struct ObjectRetention {
-        /// Optional. Output only. If true, object retention is enabled for the
-        /// bucket.
-        #[prost(bool, tag = "1")]
-        pub enabled: bool,
     }
     /// Retention policy properties of a bucket.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct RetentionPolicy {
-        /// Optional. Server-determined value that indicates the time from which
-        /// policy was enforced and effective.
+        /// Server-determined value that indicates the time from which policy was
+        /// enforced and effective.
         #[prost(message, optional, tag = "1")]
         pub effective_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
-        /// Optional. Once locked, an object retention policy cannot be modified.
+        /// Once locked, an object retention policy cannot be modified.
         #[prost(bool, tag = "2")]
         pub is_locked: bool,
-        /// Optional. The duration that objects need to be retained. Retention
-        /// duration must be greater than zero and less than 100 years. Note that
-        /// enforcement of retention periods less than a day is not guaranteed. Such
-        /// periods should only be used for testing purposes. Any `nanos` value
-        /// specified will be rounded down to the nearest second.
+        /// The duration that objects need to be retained. Retention duration must be
+        /// greater than zero and less than 100 years. Note that enforcement of
+        /// retention periods less than a day is not guaranteed. Such periods should
+        /// only be used for testing purposes. Any `nanos` value specified will be
+        /// rounded down to the nearest second.
         #[prost(message, optional, tag = "4")]
         pub retention_duration: ::core::option::Option<super::super::super::protobuf::Duration>,
     }
@@ -2104,7 +1637,7 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, Copy, PartialEq, ::prost::Message)]
     pub struct Versioning {
-        /// Optional. While set to true, versioning is fully enabled for this bucket.
+        /// While set to true, versioning is fully enabled for this bucket.
         #[prost(bool, tag = "1")]
         pub enabled: bool,
     }
@@ -2115,13 +1648,13 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Website {
-        /// Optional. If the requested object path is missing, the service will
-        /// ensure the path has a trailing '/', append this suffix, and attempt to
-        /// retrieve the resulting object. This allows the creation of `index.html`
+        /// If the requested object path is missing, the service will ensure the path
+        /// has a trailing '/', append this suffix, and attempt to retrieve the
+        /// resulting object. This allows the creation of `index.html`
         /// objects to represent directory pages.
         #[prost(string, tag = "1")]
         pub main_page_suffix: ::prost::alloc::string::String,
-        /// Optional. If the requested object path is missing, and any
+        /// If the requested object path is missing, and any
         /// `mainPageSuffix` object is missing, if applicable, the service
         /// will return the named object from this bucket as the content for a
         /// [<https://tools.ietf.org/html/rfc7231#section-6.5.4][404> Not Found]
@@ -2131,12 +1664,12 @@ pub mod bucket {
     }
     /// Configuration for Custom Dual Regions.  It should specify precisely two
     /// eligible regions within the same Multiregion. More information on regions
-    /// may be found [here](<https://cloud.google.com/storage/docs/locations>).
+    /// may be found [<https://cloud.google.com/storage/docs/locations][here].>
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct CustomPlacementConfig {
-        /// Optional. List of locations to use for data placement.
+        /// List of locations to use for data placement.
         #[prost(string, repeated, tag = "1")]
         pub data_locations: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     }
@@ -2145,7 +1678,7 @@ pub mod bucket {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Autoclass {
-        /// Optional. Enables Autoclass.
+        /// Enables Autoclass.
         #[prost(bool, tag = "1")]
         pub enabled: bool,
         /// Output only. Latest instant at which the `enabled` field was set to true
@@ -2165,73 +1698,6 @@ pub mod bucket {
         pub terminal_storage_class_update_time:
             ::core::option::Option<super::super::super::protobuf::Timestamp>,
     }
-    /// The [bucket IP
-    /// filtering](<https://cloud.google.com/storage/docs/ip-filtering-overview>)
-    /// configuration. Specifies the network sources that can access the bucket, as
-    /// well as its underlying objects.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
-    pub struct IpFilter {
-        /// The state of the IP filter configuration. Valid values are `Enabled` and
-        /// `Disabled`. When set to `Enabled`, IP filtering rules are applied to a
-        /// bucket and all incoming requests to the bucket are evaluated against
-        /// these rules. When set to `Disabled`, IP filtering rules are not applied
-        /// to a bucket.".
-        #[prost(string, optional, tag = "1")]
-        pub mode: ::core::option::Option<::prost::alloc::string::String>,
-        /// Public IPs allowed to operate or access the bucket.
-        #[prost(message, optional, tag = "2")]
-        pub public_network_source: ::core::option::Option<ip_filter::PublicNetworkSource>,
-        /// Optional. The list of network sources that are allowed to access
-        /// operations on the bucket or the underlying objects.
-        #[prost(message, repeated, tag = "3")]
-        pub vpc_network_sources: ::prost::alloc::vec::Vec<ip_filter::VpcNetworkSource>,
-        /// Optional. Whether or not to allow VPCs from orgs different than the
-        /// bucket's parent org to access the bucket. When set to true, validations
-        /// on the existence of the VPCs won't be performed. If set to false, each
-        /// VPC network source will be checked to belong to the same org as the
-        /// bucket as well as validated for existence.
-        #[prost(bool, tag = "4")]
-        pub allow_cross_org_vpcs: bool,
-        /// Whether or not to allow all P4SA access to the bucket. When set to true,
-        /// IP filter config validation will not apply.
-        #[prost(bool, optional, tag = "5")]
-        pub allow_all_service_agent_access: ::core::option::Option<bool>,
-    }
-    /// Nested message and enum types in `IpFilter`.
-    pub mod ip_filter {
-        /// The public network IP address ranges that can access the bucket and its
-        /// data.
-        #[derive(serde::Deserialize, serde::Serialize)]
-        #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
-        pub struct PublicNetworkSource {
-            /// Optional. The list of IPv4 and IPv6 cidr blocks that are allowed to
-            /// operate or access the bucket and its underlying objects.
-            #[prost(string, repeated, tag = "1")]
-            pub allowed_ip_cidr_ranges: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        }
-        /// The list of VPC networks that can access the bucket.
-        #[derive(serde::Deserialize, serde::Serialize)]
-        #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
-        pub struct VpcNetworkSource {
-            /// Name of the network.
-            ///
-            /// Format: `projects/PROJECT_ID/global/networks/NETWORK_NAME`
-            #[prost(string, optional, tag = "1")]
-            pub network: ::core::option::Option<::prost::alloc::string::String>,
-            /// Optional. The list of public or private IPv4 and IPv6 CIDR ranges that
-            /// can access the bucket. In the CIDR IP address block, the specified IP
-            /// address must be properly truncated, meaning all the host bits must be
-            /// zero or else the input is considered malformed. For example,
-            /// `192.0.2.0/24` is accepted but `192.0.2.1/24` is not. Similarly, for
-            /// IPv6, `2001:db8::/32` is accepted whereas `2001:db8::1/32` is not.
-            #[prost(string, repeated, tag = "2")]
-            pub allowed_ip_cidr_ranges: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-        }
-    }
     /// Configuration for a bucket's hierarchical namespace feature.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -2247,13 +1713,13 @@ pub mod bucket {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BucketAccessControl {
-    /// Optional. The access permission for the entity.
+    /// The access permission for the entity.
     #[prost(string, tag = "1")]
     pub role: ::prost::alloc::string::String,
-    /// Optional. The ID of the access-control entry.
+    /// The ID of the access-control entry.
     #[prost(string, tag = "2")]
     pub id: ::prost::alloc::string::String,
-    /// Optional. The entity holding the permission, in one of the following forms:
+    /// The entity holding the permission, in one of the following forms:
     /// * `user-{userid}`
     /// * `user-{email}`
     /// * `group-{groupid}`
@@ -2277,22 +1743,22 @@ pub struct BucketAccessControl {
     /// entities, `project-{team}-{projectid}` format will be returned on response.
     #[prost(string, tag = "9")]
     pub entity_alt: ::prost::alloc::string::String,
-    /// Optional. The ID for the entity, if any.
+    /// The ID for the entity, if any.
     #[prost(string, tag = "4")]
     pub entity_id: ::prost::alloc::string::String,
-    /// Optional. The etag of the BucketAccessControl.
+    /// The etag of the BucketAccessControl.
     /// If included in the metadata of an update or delete request message, the
     /// operation operation will only be performed if the etag matches that of the
     /// bucket's BucketAccessControl.
     #[prost(string, tag = "8")]
     pub etag: ::prost::alloc::string::String,
-    /// Optional. The email address associated with the entity, if any.
+    /// The email address associated with the entity, if any.
     #[prost(string, tag = "5")]
     pub email: ::prost::alloc::string::String,
-    /// Optional. The domain associated with the entity, if any.
+    /// The domain associated with the entity, if any.
     #[prost(string, tag = "6")]
     pub domain: ::prost::alloc::string::String,
-    /// Optional. The project team associated with the entity, if any.
+    /// The project team associated with the entity, if any.
     #[prost(message, optional, tag = "7")]
     pub project_team: ::core::option::Option<ProjectTeam>,
 }
@@ -2320,7 +1786,7 @@ pub struct ObjectChecksums {
     /// object matches this checksum.
     #[prost(fixed32, optional, tag = "1")]
     pub crc32c: ::core::option::Option<u32>,
-    /// Optional. 128 bit MD5 hash of the object data.
+    /// 128 bit MD5 hash of the object data.
     /// For more information about using the MD5 hash, see
     /// [<https://cloud.google.com/storage/docs/hashes-etags#json-api][Hashes> and
     /// ETags: Best Practices].
@@ -2336,10 +1802,10 @@ pub struct ObjectChecksums {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CustomerEncryption {
-    /// Optional. The encryption algorithm.
+    /// The encryption algorithm.
     #[prost(string, tag = "1")]
     pub encryption_algorithm: ::prost::alloc::string::String,
-    /// Optional. SHA256 hash value of the encryption key.
+    /// SHA256 hash value of the encryption key.
     /// In raw bytes format (not base64-encoded).
     #[prost(bytes = "bytes", tag = "3")]
     pub key_sha256_bytes: ::prost::bytes::Bytes,
@@ -2361,7 +1827,7 @@ pub struct Object {
     /// Immutable. The name of the bucket containing this object.
     #[prost(string, tag = "2")]
     pub bucket: ::prost::alloc::string::String,
-    /// Optional. The etag of the object.
+    /// The etag of the object.
     /// If included in the metadata of an update or delete request message, the
     /// operation will only be performed if the etag matches that of the live
     /// object.
@@ -2382,33 +1848,33 @@ pub struct Object {
     /// generation of a particular object.
     #[prost(int64, tag = "4")]
     pub metageneration: i64,
-    /// Optional. Storage class of the object.
+    /// Storage class of the object.
     #[prost(string, tag = "5")]
     pub storage_class: ::prost::alloc::string::String,
     /// Output only. Content-Length of the object data in bytes, matching
     /// [<https://tools.ietf.org/html/rfc7230#section-3.3.2][RFC> 7230 §3.3.2].
     #[prost(int64, tag = "6")]
     pub size: i64,
-    /// Optional. Content-Encoding of the object data, matching
+    /// Content-Encoding of the object data, matching
     /// [<https://tools.ietf.org/html/rfc7231#section-3.1.2.2][RFC> 7231 §3.1.2.2]
     #[prost(string, tag = "7")]
     pub content_encoding: ::prost::alloc::string::String,
-    /// Optional. Content-Disposition of the object data, matching
+    /// Content-Disposition of the object data, matching
     /// [<https://tools.ietf.org/html/rfc6266][RFC> 6266].
     #[prost(string, tag = "8")]
     pub content_disposition: ::prost::alloc::string::String,
-    /// Optional. Cache-Control directive for the object data, matching
+    /// Cache-Control directive for the object data, matching
     /// [<https://tools.ietf.org/html/rfc7234#section-5.2"][RFC> 7234 §5.2].
     /// If omitted, and the object is accessible to all anonymous users, the
     /// default will be `public, max-age=3600`.
     #[prost(string, tag = "9")]
     pub cache_control: ::prost::alloc::string::String,
-    /// Optional. Access controls on the object.
+    /// Access controls on the object.
     /// If iam_config.uniform_bucket_level_access is enabled on the parent
     /// bucket, requests to set, read, or modify acl is an error.
     #[prost(message, repeated, tag = "10")]
     pub acl: ::prost::alloc::vec::Vec<ObjectAccessControl>,
-    /// Optional. Content-Language of the object data, matching
+    /// Content-Language of the object data, matching
     /// [<https://tools.ietf.org/html/rfc7231#section-3.1.3.2][RFC> 7231 §3.1.3.2].
     #[prost(string, tag = "11")]
     pub content_language: ::prost::alloc::string::String,
@@ -2416,10 +1882,7 @@ pub struct Object {
     /// became noncurrent.
     #[prost(message, optional, tag = "12")]
     pub delete_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Output only. The time when the object was finalized.
-    #[prost(message, optional, tag = "36")]
-    pub finalize_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Optional. Content-Type of the object data, matching
+    /// Content-Type of the object data, matching
     /// [<https://tools.ietf.org/html/rfc7231#section-3.1.1.5][RFC> 7231 §3.1.1.5].
     /// If an object is stored without a Content-Type, it is served as
     /// `application/octet-stream`.
@@ -2447,31 +1910,31 @@ pub struct Object {
     /// Object Lifecycle Configuration.
     #[prost(message, optional, tag = "17")]
     pub update_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Optional. Cloud KMS Key used to encrypt this object, if the object is
-    /// encrypted by such a key.
+    /// Cloud KMS Key used to encrypt this object, if the object is encrypted by
+    /// such a key.
     #[prost(string, tag = "18")]
     pub kms_key: ::prost::alloc::string::String,
     /// Output only. The time at which the object's storage class was last changed.
     /// When the object is initially created, it will be set to time_created.
     #[prost(message, optional, tag = "19")]
     pub update_storage_class_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Optional. Whether an object is under temporary hold. While this flag is set
-    /// to true, the object is protected against deletion and overwrites.  A common
-    /// use case of this flag is regulatory investigations where objects need to be
-    /// retained while the investigation is ongoing. Note that unlike event-based
-    /// hold, temporary hold does not impact retention expiration time of an
-    /// object.
+    /// Whether an object is under temporary hold. While this flag is set to true,
+    /// the object is protected against deletion and overwrites.  A common use case
+    /// of this flag is regulatory investigations where objects need to be retained
+    /// while the investigation is ongoing. Note that unlike event-based hold,
+    /// temporary hold does not impact retention expiration time of an object.
     #[prost(bool, tag = "20")]
     pub temporary_hold: bool,
-    /// Optional. A server-determined value that specifies the earliest time that
-    /// the object's retention period expires. Note 1: This field is not provided
-    /// for objects with an active event-based hold, since retention expiration is
-    /// unknown until the hold is removed. Note 2: This value can be provided even
-    /// when temporary hold is set (so that the user can reason about policy
-    /// without having to first unset the temporary hold).
+    /// A server-determined value that specifies the earliest time that the
+    /// object's retention period expires.
+    /// Note 1: This field is not provided for objects with an active event-based
+    /// hold, since retention expiration is unknown until the hold is removed.
+    /// Note 2: This value can be provided even when temporary hold is set (so that
+    /// the user can reason about policy without having to first unset the
+    /// temporary hold).
     #[prost(message, optional, tag = "21")]
     pub retention_expire_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Optional. User-provided metadata, in key/value pairs.
+    /// User-provided metadata, in key/value pairs.
     #[prost(map = "string, string", tag = "22")]
     pub metadata:
         ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
@@ -2492,11 +1955,11 @@ pub struct Object {
     /// the object.
     #[prost(message, optional, tag = "24")]
     pub owner: ::core::option::Option<Owner>,
-    /// Optional. Metadata of Customer-Supplied Encryption Key, if the object is
-    /// encrypted by such a key.
+    /// Metadata of Customer-Supplied Encryption Key, if the object is encrypted by
+    /// such a key.
     #[prost(message, optional, tag = "25")]
     pub customer_encryption: ::core::option::Option<CustomerEncryption>,
-    /// Optional. A user-specified timestamp set on an object.
+    /// A user-specified timestamp set on an object.
     #[prost(message, optional, tag = "26")]
     pub custom_time: ::core::option::Option<super::super::protobuf::Timestamp>,
     /// Output only. This is the time when the object became soft-deleted.
@@ -2511,88 +1974,22 @@ pub struct Object {
     /// Otherwise, the object will not be accessible.
     #[prost(message, optional, tag = "29")]
     pub hard_delete_time: ::core::option::Option<super::super::protobuf::Timestamp>,
-    /// Optional. Retention configuration of this object.
-    /// May only be configured if the bucket has object retention enabled.
-    #[prost(message, optional, tag = "30")]
-    pub retention: ::core::option::Option<object::Retention>,
-}
-/// Nested message and enum types in `Object`.
-pub mod object {
-    /// Specifies retention parameters of the object. Objects under retention
-    /// cannot be deleted or overwritten until their retention expires.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-    pub struct Retention {
-        /// Optional. The mode of the Retention.
-        #[prost(enumeration = "retention::Mode", tag = "1")]
-        pub mode: i32,
-        /// Optional. The timestamp that the object needs to be retained until.
-        /// Value cannot be set in the past or more than 100 years in the future.
-        #[prost(message, optional, tag = "2")]
-        pub retain_until_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
-    }
-    /// Nested message and enum types in `Retention`.
-    pub mod retention {
-        /// Retention mode values.
-        #[derive(serde::Deserialize, serde::Serialize)]
-        #[serde(rename_all = "camelCase")]
-        #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
-        )]
-        #[repr(i32)]
-        pub enum Mode {
-            /// No specified mode. Object is not under retention.
-            Unspecified = 0,
-            /// Retention period may be decreased or increased.
-            /// The Retention configuration may be removed.
-            /// The mode may be changed to locked.
-            Unlocked = 1,
-            /// Retention period may be increased.
-            /// The Retention configuration cannot be removed.
-            /// The mode cannot be changed.
-            Locked = 2,
-        }
-        impl Mode {
-            /// String value of the enum field names used in the ProtoBuf definition.
-            ///
-            /// The values are not transformed in any way and thus are considered stable
-            /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-            pub fn as_str_name(&self) -> &'static str {
-                match self {
-                    Self::Unspecified => "MODE_UNSPECIFIED",
-                    Self::Unlocked => "UNLOCKED",
-                    Self::Locked => "LOCKED",
-                }
-            }
-            /// Creates an enum from field names used in the ProtoBuf definition.
-            pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-                match value {
-                    "MODE_UNSPECIFIED" => Some(Self::Unspecified),
-                    "UNLOCKED" => Some(Self::Unlocked),
-                    "LOCKED" => Some(Self::Locked),
-                    _ => None,
-                }
-            }
-        }
-    }
 }
 /// An access-control entry.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ObjectAccessControl {
-    /// Optional. The access permission for the entity. One of the following
-    /// values:
+    /// The access permission for the entity. One of the following values:
     /// * `READER`
     /// * `WRITER`
     /// * `OWNER`
     #[prost(string, tag = "1")]
     pub role: ::prost::alloc::string::String,
-    /// Optional. The ID of the access-control entry.
+    /// The ID of the access-control entry.
     #[prost(string, tag = "2")]
     pub id: ::prost::alloc::string::String,
-    /// Optional. The entity holding the permission, in one of the following forms:
+    /// The entity holding the permission, in one of the following forms:
     /// * `user-{userid}`
     /// * `user-{email}`
     /// * `group-{groupid}`
@@ -2616,22 +2013,22 @@ pub struct ObjectAccessControl {
     /// entities, `project-{team}-{projectid}` format will be returned on response.
     #[prost(string, tag = "9")]
     pub entity_alt: ::prost::alloc::string::String,
-    /// Optional. The ID for the entity, if any.
+    /// The ID for the entity, if any.
     #[prost(string, tag = "4")]
     pub entity_id: ::prost::alloc::string::String,
-    /// Optional. The etag of the ObjectAccessControl.
+    /// The etag of the ObjectAccessControl.
     /// If included in the metadata of an update or delete request message, the
     /// operation will only be performed if the etag matches that of the live
     /// object's ObjectAccessControl.
     #[prost(string, tag = "8")]
     pub etag: ::prost::alloc::string::String,
-    /// Optional. The email address associated with the entity, if any.
+    /// The email address associated with the entity, if any.
     #[prost(string, tag = "5")]
     pub email: ::prost::alloc::string::String,
-    /// Optional. The domain associated with the entity, if any.
+    /// The domain associated with the entity, if any.
     #[prost(string, tag = "6")]
     pub domain: ::prost::alloc::string::String,
-    /// Optional. The project team associated with the entity, if any.
+    /// The project team associated with the entity, if any.
     #[prost(message, optional, tag = "7")]
     pub project_team: ::core::option::Option<ProjectTeam>,
 }
@@ -2657,10 +2054,10 @@ pub struct ListObjectsResponse {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ProjectTeam {
-    /// Optional. The project number.
+    /// The project number.
     #[prost(string, tag = "1")]
     pub project_number: ::prost::alloc::string::String,
-    /// Optional. The team.
+    /// The team.
     #[prost(string, tag = "2")]
     pub team: ::prost::alloc::string::String,
 }
@@ -2669,10 +2066,10 @@ pub struct ProjectTeam {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Owner {
-    /// Optional. The entity, in the form `user-`*userId*.
+    /// The entity, in the form `user-`*userId*.
     #[prost(string, tag = "1")]
     pub entity: ::prost::alloc::string::String,
-    /// Optional. The ID for the entity.
+    /// The ID for the entity.
     #[prost(string, tag = "2")]
     pub entity_id: ::prost::alloc::string::String,
 }
@@ -2887,9 +2284,7 @@ pub mod storage_client {
         }
         /// Gets the IAM policy for a specified bucket.
         /// The `resource` field in the request should be
-        /// `projects/_/buckets/{bucket}` for a bucket, or
-        /// `projects/_/buckets/{bucket}/managedFolders/{managedFolder}`
-        /// for a managed folder.
+        /// `projects/_/buckets/{bucket}`.
         pub async fn get_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::iam::v1::GetIamPolicyRequest>,
@@ -2908,9 +2303,7 @@ pub mod storage_client {
         }
         /// Updates an IAM policy for the specified bucket.
         /// The `resource` field in the request should be
-        /// `projects/_/buckets/{bucket}` for a bucket, or
-        /// `projects/_/buckets/{bucket}/managedFolders/{managedFolder}`
-        /// for a managed folder.
+        /// `projects/_/buckets/{bucket}`.
         pub async fn set_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::super::super::iam::v1::SetIamPolicyRequest>,
@@ -2990,26 +2383,12 @@ pub mod storage_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Deletes an object and its metadata. Deletions are permanent if versioning
-        /// is not enabled for the bucket, or if the generation parameter is used, or
-        /// if [soft delete](https://cloud.google.com/storage/docs/soft-delete) is not
-        /// enabled for the bucket.
-        /// When this API is used to delete an object from a bucket that has soft
-        /// delete policy enabled, the object becomes soft deleted, and the
-        /// `softDeleteTime` and `hardDeleteTime` properties are set on the object.
-        /// This API cannot be used to permanently delete soft-deleted objects.
-        /// Soft-deleted objects are permanently deleted according to their
-        /// `hardDeleteTime`.
+        /// Deletes an object and its metadata.
         ///
-        /// You can use the [`RestoreObject`][google.storage.v2.Storage.RestoreObject]
-        /// API to restore soft-deleted objects until the soft delete retention period
-        /// has passed.
-        ///
-        /// **IAM Permissions**:
-        ///
-        /// Requires `storage.objects.delete`
-        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
-        /// the bucket.
+        /// Deletions are normally permanent when versioning is disabled or whenever
+        /// the generation parameter is used. However, if soft delete is enabled for
+        /// the bucket, deleted objects can be restored using RestoreObject until the
+        /// soft delete retention period has passed.
         pub async fn delete_object(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteObjectRequest>,
@@ -3071,14 +2450,7 @@ pub mod storage_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Retrieves object metadata.
-        ///
-        /// **IAM Permissions**:
-        ///
-        /// Requires `storage.objects.get`
-        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
-        /// the bucket. To return object ACLs, the authenticated user must also have
-        /// the `storage.objects.getIamPolicy` permission.
+        /// Retrieves an object's metadata.
         pub async fn get_object(
             &mut self,
             request: impl tonic::IntoRequest<super::GetObjectRequest>,
@@ -3093,13 +2465,7 @@ pub mod storage_client {
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "GetObject"));
             self.inner.unary(req, path, codec).await
         }
-        /// Retrieves object data.
-        ///
-        /// **IAM Permissions**:
-        ///
-        /// Requires `storage.objects.get`
-        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
-        /// the bucket.
+        /// Reads an object's data.
         pub async fn read_object(
             &mut self,
             request: impl tonic::IntoRequest<super::ReadObjectRequest>,
@@ -3117,45 +2483,6 @@ pub mod storage_client {
             req.extensions_mut()
                 .insert(GrpcMethod::new("google.storage.v2.Storage", "ReadObject"));
             self.inner.server_streaming(req, path, codec).await
-        }
-        /// Reads an object's data.
-        ///
-        /// This is a bi-directional API with the added support for reading multiple
-        /// ranges within one stream both within and across multiple messages.
-        /// If the server encountered an error for any of the inputs, the stream will
-        /// be closed with the relevant error code.
-        /// Because the API allows for multiple outstanding requests, when the stream
-        /// is closed the error response will contain a BidiReadObjectRangesError proto
-        /// in the error extension describing the error for each outstanding read_id.
-        ///
-        /// **IAM Permissions**:
-        ///
-        /// Requires `storage.objects.get`
-        ///
-        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
-        /// the bucket.
-        ///
-        /// This API is currently in preview and is not yet available for general
-        /// use.
-        pub async fn bidi_read_object(
-            &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::BidiReadObjectRequest>,
-        ) -> std::result::Result<
-            tonic::Response<tonic::codec::Streaming<super::BidiReadObjectResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/BidiReadObject");
-            let mut req = request.into_streaming_request();
-            req.extensions_mut().insert(GrpcMethod::new(
-                "google.storage.v2.Storage",
-                "BidiReadObject",
-            ));
-            self.inner.streaming(req, path, codec).await
         }
         /// Updates an object's metadata.
         /// Equivalent to JSON API's storage.objects.patch.
@@ -3224,18 +2551,12 @@ pub mod storage_client {
         /// whether the service views the object as complete.
         ///
         /// Attempting to resume an already finalized object will result in an OK
-        /// status, with a `WriteObjectResponse` containing the finalized object's
+        /// status, with a WriteObjectResponse containing the finalized object's
         /// metadata.
         ///
         /// Alternatively, the BidiWriteObject operation may be used to write an
         /// object with controls over flushing and the ability to fetch the ability to
         /// determine the current persisted size.
-        ///
-        /// **IAM Permissions**:
-        ///
-        /// Requires `storage.objects.create`
-        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
-        /// the bucket.
         pub async fn write_object(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::WriteObjectRequest>,
@@ -3288,13 +2609,6 @@ pub mod storage_client {
             self.inner.streaming(req, path, codec).await
         }
         /// Retrieves a list of objects matching the criteria.
-        ///
-        /// **IAM Permissions**:
-        ///
-        /// The authenticated user requires `storage.objects.list`
-        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions)
-        /// to use this method. To return object ACLs, the authenticated user must also
-        /// have the `storage.objects.getIamPolicy` permission.
         pub async fn list_objects(
             &mut self,
             request: impl tonic::IntoRequest<super::ListObjectsRequest>,
@@ -3330,19 +2644,9 @@ pub mod storage_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Starts a resumable write operation. This
-        /// method is part of the [Resumable
-        /// upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
-        /// This allows you to upload large objects in multiple chunks, which is more
-        /// resilient to network interruptions than a single upload. The validity
-        /// duration of the write operation, and the consequences of it becoming
-        /// invalid, are service-dependent.
-        ///
-        /// **IAM Permissions**:
-        ///
-        /// Requires `storage.objects.create`
-        /// [IAM permission](https://cloud.google.com/iam/docs/overview#permissions) on
-        /// the bucket.
+        /// Starts a resumable write. How long the write operation remains valid, and
+        /// what happens when the write operation becomes invalid, are
+        /// service-dependent.
         pub async fn start_resumable_write(
             &mut self,
             request: impl tonic::IntoRequest<super::StartResumableWriteRequest>,
@@ -3362,22 +2666,18 @@ pub mod storage_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Determines the `persisted_size` of an object that is being written. This
-        /// method is part of the [resumable
-        /// upload](https://cloud.google.com/storage/docs/resumable-uploads) feature.
-        /// The returned value is the size of the object that has been persisted so
-        /// far. The value can be used as the `write_offset` for the next `Write()`
-        /// call.
+        /// Determines the `persisted_size` for an object that is being written, which
+        /// can then be used as the `write_offset` for the next `Write()` call.
         ///
-        /// If the object does not exist, meaning if it was deleted, or the
-        /// first `Write()` has not yet reached the service, this method returns the
+        /// If the object does not exist (i.e., the object has been deleted, or the
+        /// first `Write()` has not yet reached the service), this method returns the
         /// error `NOT_FOUND`.
         ///
-        /// This method is useful for clients that buffer data and need to know which
-        /// data can be safely evicted. The client can call `QueryWriteStatus()` at any
-        /// time to determine how much data has been logged for this object.
-        /// For any sequence of `QueryWriteStatus()` calls for a given
-        /// object name, the sequence of returned `persisted_size` values are
+        /// The client **may** call `QueryWriteStatus()` at any time to determine how
+        /// much data has been processed for this object. This is useful if the
+        /// client is buffering data and needs to know which data can be safely
+        /// evicted. For any sequence of `QueryWriteStatus()` calls for a given
+        /// object name, the sequence of returned `persisted_size` values will be
         /// non-decreasing.
         pub async fn query_write_status(
             &mut self,
@@ -3395,22 +2695,6 @@ pub mod storage_client {
                 "google.storage.v2.Storage",
                 "QueryWriteStatus",
             ));
-            self.inner.unary(req, path, codec).await
-        }
-        /// Moves the source object to the destination object in the same bucket.
-        pub async fn move_object(
-            &mut self,
-            request: impl tonic::IntoRequest<super::MoveObjectRequest>,
-        ) -> std::result::Result<tonic::Response<super::Object>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path =
-                http::uri::PathAndQuery::from_static("/google.storage.v2.Storage/MoveObject");
-            let mut req = request.into_request();
-            req.extensions_mut()
-                .insert(GrpcMethod::new("google.storage.v2.Storage", "MoveObject"));
             self.inner.unary(req, path, codec).await
         }
     }
