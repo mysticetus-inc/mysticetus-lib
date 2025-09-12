@@ -1,7 +1,7 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use gcp_auth_channel::{Auth, Scope};
+use gcp_auth_provider::{Auth, Scope};
 use shared::Shared;
 
 const PROJECTS_PREFIX: &str = "projects/";

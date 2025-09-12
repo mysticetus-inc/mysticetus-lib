@@ -1,5 +1,4 @@
 use std::fmt;
-use std::sync::Arc;
 
 use protos::firestore::document_transform::FieldTransform;
 use protos::firestore::document_transform::field_transform::TransformType;
@@ -13,27 +12,20 @@ use crate::ser::{escape_field_path, serialize_write};
 #[derive(Debug)]
 pub struct BatchWrite {
     client: FirestoreClient,
-    qualified_db_path: Arc<str>,
     writes: Vec<Write>,
 }
 
 impl BatchWrite {
-    pub(crate) fn new(client: FirestoreClient, qualified_db_path: Arc<str>) -> Self {
+    pub(crate) fn new(client: FirestoreClient) -> Self {
         Self {
             client,
-            qualified_db_path,
             writes: Vec::new(),
         }
     }
 
-    pub(crate) fn new_with_write_capacity(
-        client: FirestoreClient,
-        qualified_db_path: Arc<str>,
-        capacity: usize,
-    ) -> Self {
+    pub(crate) fn new_with_write_capacity(client: FirestoreClient, capacity: usize) -> Self {
         Self {
             client,
-            qualified_db_path,
             writes: Vec::with_capacity(capacity),
         }
     }
@@ -49,18 +41,14 @@ impl BatchWrite {
     }
 
     pub async fn commit_raw(self) -> crate::Result<BatchWriteResponse> {
-        let Self {
-            writes,
-            client,
-            qualified_db_path,
-        } = self;
+        let Self { writes, client } = self;
 
         if writes.is_empty() {
             return Ok(BatchWriteResponse::default());
         }
 
         let request = protos::firestore::BatchWriteRequest {
-            database: qualified_db_path.as_ref().to_owned(),
+            database: client.qualified_db_path.as_ref().to_owned(),
             writes,
             labels: Default::default(),
         };
@@ -103,7 +91,7 @@ impl BatchWrite {
         C: fmt::Display,
     {
         BatchWriteCollectionRef {
-            parent_path: format!("{}/documents", &self.qualified_db_path),
+            parent_path: format!("{}/documents", &self.client.qualified_db_path),
             collection_name: collection_name.to_string(),
             writes: &mut self.writes,
         }
@@ -266,8 +254,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_batch_write_and_delete() -> crate::Result<()> {
-        let client =
-            crate::Firestore::new("mysticetus-oncloud", gcp_auth_channel::Scope::Firestore).await?;
+        let client = crate::Firestore::new(gcp_auth_provider::Scope::Firestore).await?;
 
         #[derive(Debug, serde::Serialize, serde::Deserialize)]
         struct Data {

@@ -12,7 +12,7 @@ pub enum Error {
     #[error(transparent)]
     Status(#[from] tonic::Status),
     #[error(transparent)]
-    Auth(#[from] gcp_auth_channel::GcpAuthError),
+    Auth(#[from] gcp_auth_provider::Error),
     #[error(transparent)]
     Transport(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error(transparent)]
@@ -498,18 +498,3 @@ macro_rules! impl_convert_from_infallible {
 }
 
 impl_convert_from_infallible!(Error, ConvertError, FromError, IntoError, MissingTypeInfo);
-
-/// since [`gcp_auth_channel::Error`] shares many variants with errors encountered, here, this
-/// unpacks the variants to avoid nesting.
-impl From<gcp_auth_channel::Error> for Error {
-    #[inline]
-    fn from(err: gcp_auth_channel::Error) -> Self {
-        match err {
-            gcp_auth_channel::Error::Auth(auth) => Self::Auth(auth),
-            gcp_auth_channel::Error::Channel(misc) => Self::Transport(misc),
-            gcp_auth_channel::Error::Transport(transport) => Self::Transport(transport.into()),
-            gcp_auth_channel::Error::InvalidHeaderName(name) => Self::InvalidHeaderName(name),
-            gcp_auth_channel::Error::InvalidHeaderValue(value) => Self::InvalidHeaderValue(value),
-        }
-    }
-}

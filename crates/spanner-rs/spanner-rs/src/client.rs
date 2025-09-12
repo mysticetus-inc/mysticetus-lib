@@ -3,16 +3,17 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use gcp_auth_channel::{Auth, AuthChannel, Scope};
+use gcp_auth_provider::service::AuthSvc;
+use gcp_auth_provider::{Auth, Scope};
 use timestamp::Timestamp;
 use tokio::task::JoinSet;
-use tonic::transport::ClientTlsConfig;
+use tonic::transport::{Channel, ClientTlsConfig};
 
 use crate::info::Database;
 use crate::key_set::WriteBuilder;
 use crate::queryable::Queryable;
 use crate::tx::{ShouldCommit, Transaction};
-use crate::{ResultIter, StreamingRead, Table};
+use crate::{ResultIter, StreamingRead};
 
 mod pool;
 
@@ -49,13 +50,13 @@ impl fmt::Debug for Client {
 
 pub(crate) struct ClientParts {
     pub(crate) info: Database,
-    pub(crate) channel: AuthChannel,
+    pub(crate) channel: AuthSvc<Channel>,
     pub(crate) role: Option<Arc<str>>,
 }
 
-async fn build_channel() -> crate::Result<tonic::transport::Channel> {
-    tonic::transport::Channel::from_static(ENDPOINT)
-        .user_agent(gcp_auth_channel::user_agent!())?
+async fn build_channel() -> crate::Result<Channel> {
+    Channel::from_static(ENDPOINT)
+        // .user_agent(gcp_auth_channel::user_agent!())?
         .tls_config(
             ClientTlsConfig::new()
                 .domain_name(DOMAIN)
@@ -77,10 +78,14 @@ impl Client {
     }
 
     pub fn project_id(&self) -> &'static str {
-        self.parts.channel.auth().project_id()
+        self.parts.channel.auth().project_id().as_str()
     }
 
-    pub(crate) fn from_parts(info: Database, channel: AuthChannel, role: Option<Arc<str>>) -> Self {
+    pub(crate) fn from_parts(
+        info: Database,
+        channel: AuthSvc<Channel>,
+        role: Option<Arc<str>>,
+    ) -> Self {
         Self {
             parts: Arc::new(ClientParts {
                 info,
@@ -141,12 +146,7 @@ impl Client {
 
         let (channel, auth) = tokio::try_join!(build_channel(), load_auth_map)?;
 
-        let channel = AuthChannel::builder()
-            .with_auth(auth)
-            .with_channel(channel)
-            .build();
-
-        Ok(Self::from_parts(info, channel, role))
+        Ok(Self::from_parts(info, auth.into_service(channel), role))
     }
 
     pub(crate) async fn new_loaded(
@@ -156,12 +156,7 @@ impl Client {
     ) -> crate::Result<Self> {
         let channel = build_channel().await?;
 
-        let channel = AuthChannel::builder()
-            .with_auth(auth)
-            .with_channel(channel)
-            .build();
-
-        Ok(Self::from_parts(info, channel, role))
+        Ok(Self::from_parts(info, auth.into_service(channel), role))
     }
 
     pub(crate) async fn new_inner(
@@ -169,9 +164,9 @@ impl Client {
         scope: Scope,
         role: Option<Arc<str>>,
     ) -> crate::Result<Self> {
-        let project_id = info.project_id();
         let load_auth_fut = async move {
-            gcp_auth_channel::Auth::new(project_id, scope)
+            gcp_auth_provider::Auth::new_detect()
+                .with_scopes(scope)
                 .await
                 .map_err(crate::Error::from)
         };

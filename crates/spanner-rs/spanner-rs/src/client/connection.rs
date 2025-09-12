@@ -12,7 +12,7 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use gcp_auth_channel::AuthChannel;
+use gcp_auth_provider::service::AuthSvc;
 use protos::spanner::transaction_options::read_only::TimestampBound;
 use protos::spanner::transaction_options::read_write::ReadLockMode;
 use protos::spanner::transaction_options::{IsolationLevel, Mode, ReadOnly, ReadWrite};
@@ -142,7 +142,7 @@ fn build_sql_request(
 impl<Tx> ConnectionParts<'_, Tx> {
     pub(crate) fn client(
         &self,
-    ) -> spanner::spanner_client::SpannerClient<AuthChannel<tonic::transport::Channel>> {
+    ) -> spanner::spanner_client::SpannerClient<AuthSvc<tonic::transport::Channel>> {
         spanner::spanner_client::SpannerClient::new(self.client_parts.channel.clone())
     }
 }

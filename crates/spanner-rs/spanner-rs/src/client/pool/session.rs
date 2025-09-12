@@ -1,11 +1,10 @@
-use std::hash::BuildHasher;
-use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use std::time::Instant;
 
-use gcp_auth_channel::AuthChannel;
+use gcp_auth_provider::service::AuthSvc;
 use protos::spanner::spanner_client::SpannerClient;
 use protos::spanner::{self, DeleteSessionRequest};
+use tonic::transport::Channel;
 
 use crate::client::ClientParts;
 use crate::client::pool::tracker::SessionKey;
@@ -67,7 +66,7 @@ impl Session {
                 Ok(()) => return Ok(()),
                 Err(err) if err.code() == tonic::Code::Unauthenticated => {
                     // force refresh the token if we get an auth error, then try again once
-                    parts.channel.auth().revoke_token(true);
+                    parts.channel.auth().revoke_token();
                     self.delete_inner(&mut channel).await?;
                 }
                 Err(err) => return Err(err.into()),
@@ -77,7 +76,7 @@ impl Session {
         Ok(())
     }
 
-    async fn delete_inner(&self, channel: &mut AuthChannel) -> Result<(), tonic::Status> {
+    async fn delete_inner(&self, channel: &mut AuthSvc<Channel>) -> Result<(), tonic::Status> {
         SpannerClient::new(channel)
             .delete_session(DeleteSessionRequest {
                 name: self.raw.name.clone(),

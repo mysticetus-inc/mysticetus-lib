@@ -40,7 +40,6 @@ mod shutdown;
 mod tracker;
 
 pub use session::Session;
-use session::SessionKey;
 use tracker::{Borrowed, SessionTracker, TryBorrowError};
 
 use crate::client::ClientParts;
@@ -134,7 +133,7 @@ impl SessionPool {
                     None => std::time::Instant::now(),
                 };
 
-                guard.insert_new(created, Borrowed::No, session);
+                guard.insert_recovered(created, session);
             }
 
             if sessions.next_page_token.is_empty() {
@@ -261,11 +260,11 @@ impl SessionPool {
 
         let mut guard = self.tracker.lock().unwrap_or_else(PoisonError::into_inner);
 
-        let session = guard.insert_new(created, Borrowed::Yes, first_session);
+        let session = guard.insert_created(Borrowed::Yes, created, first_session);
         let to_return = Arc::clone(session);
 
         for session in new_session_iter {
-            guard.insert_new(created, Borrowed::No, session);
+            guard.insert_created(Borrowed::No, created, session);
         }
 
         to_return
@@ -277,10 +276,9 @@ impl SessionPool {
         session: &Arc<Session>,
     ) -> Option<JoinHandle<crate::Result<()>>> {
         match self
-            .state
+            .tracker
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .sessions
             .return_session(parts, session)
         {
             tracker::ReturnSessionResult::Deleted => None,
@@ -299,8 +297,10 @@ impl SessionPool {
         self.closed.store(true, Ordering::SeqCst);
 
         let sessions = {
-            let mut guard = self.state.lock().unwrap_or_else(PoisonError::into_inner);
-            std::mem::take(&mut guard.sessions)
+            self.tracker
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .take_sessions()
         };
 
         // notify everything waiting so they can error out instead of hang
@@ -312,7 +312,7 @@ impl SessionPool {
 
         let mut set = JoinSet::new();
 
-        for session in sessions {
+        for (_, session) in sessions {
             let parts = parts.clone();
             set.spawn(async move { session.delete(&parts).await });
         }

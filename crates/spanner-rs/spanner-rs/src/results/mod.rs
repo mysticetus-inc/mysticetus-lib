@@ -38,14 +38,12 @@ impl<Cols: ArrayLength> FieldIndex<Cols> {
     pub(crate) fn from_struct_type<Q: Queryable<NumColumns = Cols>>(
         raw: protos::spanner::StructType,
     ) -> Result<Self, MissingTypeInfo> {
-        let mut fields = raw
+        let fields = raw
             .fields
             .into_iter()
             .enumerate()
-            .map(|(data, proto)| {
-                Field::from_proto(proto).map(|field| (Indexes { data, expected: 0 }, field))
-            })
-            .collect::<Result<GenericArray<(Indexes, Field), Q::NumColumns>, MissingTypeInfo>>()?;
+            .map(|(data, proto)| Field::from_proto(proto).map(|field| (data, field)))
+            .collect::<Result<GenericArray<(usize, Field), Q::NumColumns>, MissingTypeInfo>>()?;
 
         Ok(Self { fields })
     }
@@ -61,6 +59,7 @@ impl<Cols: ArrayLength> FieldIndex<Cols> {
     pub fn get_field_at_index(&self, index: usize) -> Result<&Field, InvalidColumnIndex> {
         self.fields
             .get(index)
+            .map(|(_, field)| field)
             .ok_or_else(|| InvalidColumnIndex::new_explicit(index, self.fields.len()))
     }
 }
