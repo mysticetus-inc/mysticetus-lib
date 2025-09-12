@@ -396,11 +396,25 @@ impl tracing::Subscriber for Records {
 
         if let Some(dispatcher) = closing.then(|| self.dispatcher()).flatten() {
             if let Some(follows_id) = follows_id {
+                #[cfg(feature = "debug-logging")]
+                {
+                    println!("try_close dispatcher {id:?} - follows {follows_id:?}");
+                }
                 dispatcher.try_close(follows_id);
+            }
+
+            #[cfg(feature = "debug-logging")]
+            {
+                println!("try_close dispatcher {id:?}");
             }
             dispatcher.try_close(id);
         } else {
             if let Some(follows_id) = follows_id {
+                #[cfg(feature = "debug-logging")]
+                {
+                    println!("try_close {id:?} - follows {follows_id:?}");
+                }
+
                 self.try_close(follows_id);
             }
             self.data.clear(id_to_idx(&id));

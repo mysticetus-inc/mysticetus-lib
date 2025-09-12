@@ -16,6 +16,7 @@ impl<const BUFFERING: bool> MakeWriter for MakeTestWriter<BUFFERING> {
     type Writer<'a> = TestWriter;
 
     const NEEDS_BUFFERING: bool = BUFFERING;
+    const APPEND_NEWLINE: bool = false;
 
     fn make_writer(&self) -> Self::Writer<'_> {
         TestWriter {

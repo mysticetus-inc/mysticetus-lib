@@ -48,7 +48,7 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
         if M::NEEDS_BUFFERING {
             crate::utils::with_buffer(|buffer| {
                 buffer.clear();
-                self.emit_inner(buffer)?;
+                self.emit_inner::<M>(buffer)?;
 
                 if buffer.is_empty() {
                     return Err(RecordError::Io(std::io::ErrorKind::WriteZero.into()));
@@ -61,14 +61,14 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
             })?;
         } else {
             let mut writer = mk_writer.make_writer();
-            self.emit_inner(&mut writer)?;
+            self.emit_inner::<M>(&mut writer)?;
         }
         Ok(())
     }
 
-    fn emit_inner<W>(mut self, writer: &mut W) -> Result<(), RecordError>
+    fn emit_inner<M>(self, writer: &mut (impl Write + ?Sized)) -> Result<(), RecordError>
     where
-        W: Write + ?Sized,
+        M: MakeWriter + ?Sized,
     {
         use serde::Serializer;
 
@@ -81,6 +81,10 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
 
             self.emit_to_map(&mut map)?;
             map.end()?;
+        }
+
+        if M::APPEND_NEWLINE {
+            writer.write_all(b"\n")?;
         }
 
         writer.flush()?;
