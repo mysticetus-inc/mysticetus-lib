@@ -80,9 +80,12 @@ pub fn enter(id: &Id) -> bool {
 /// false if the span didn't exist, or wasn't currently entered.
 pub fn exit(id: &Id) -> bool {
     with_mut(|spans| {
-        if let Some((idx, _)) = spans.iter().enumerate().rev().find(|(_, i)| *i == id) {
+        let mut rev_iter = spans.iter().enumerate().rev();
+
+        if let Some((idx, _)) = rev_iter.by_ref().find(|(_, i)| *i == id) {
+            let duplicate = rev_iter.any(|(_, i)| i == id);
             spans.remove(idx);
-            true
+            !duplicate
         } else {
             false
         }
