@@ -331,6 +331,11 @@ impl tracing::Subscriber for Records {
             println!("exiting {id:?}");
         }
         if spans::exit(id) {
+            #[cfg(feature = "debug-logging")]
+            {
+                println!("exit - try_close {id:?}");
+            }
+
             tracing::dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
         }
     }
@@ -344,7 +349,10 @@ impl tracing::Subscriber for Records {
 
         #[cfg(feature = "debug-logging")]
         {
-            println!("clone_span - {id:?} ref_cnt - {}", prev_refs + 1);
+            println!(
+                "clone_span - {id:?} ref_cnt - {}",
+                prev_refs.wrapping_add(1)
+            );
         }
 
         if prev_refs == 0 {
@@ -365,7 +373,7 @@ impl tracing::Subscriber for Records {
 
         #[cfg(feature = "debug-logging")]
         {
-            println!("try_close - {id:?} ref_cnt - {}", refs - 1);
+            println!("try_close - {id:?} ref_cnt - {}", refs.wrapping_sub(1));
         }
 
         if !data.closing.load(Ordering::Relaxed) && !std::thread::panicking() {
