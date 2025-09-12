@@ -65,7 +65,13 @@ where
                 }
                 GetHeaderResult::Refreshing(refresh) => ServiceFutureState::Authenticating {
                     refresh: refresh.into_static(),
-                    parts: Some((req, self.svc.clone())),
+                    parts: Some((req, {
+                        // the cloned service might not be ready (via poll_ready),
+                        // so we need to clone it, then swap it with the actually
+                        // ready service
+                        let svc_clone = self.svc.clone();
+                        std::mem::replace(&mut self.svc, svc_clone)
+                    })),
                 },
             },
         }
