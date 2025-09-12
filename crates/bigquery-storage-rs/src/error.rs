@@ -1,5 +1,6 @@
 use std::fmt;
 
+use gcp_auth_provider::channel::ChannelError;
 use protos::bigquery_storage::storage_error::StorageErrorCode;
 use protos::bigquery_storage::{AppendRowsResponse, RowError, StorageError};
 use tokio::task::JoinError;
@@ -11,7 +12,7 @@ use crate::read::DeserializeError;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] gcp_auth_channel::Error),
+    Auth(#[from] gcp_auth_provider::Error),
     #[error(transparent)]
     Internal(InternalError),
     #[error(transparent)]
@@ -27,6 +28,15 @@ pub enum Error {
     Encode(#[from] EncodeError),
     #[error(transparent)]
     Commit(#[from] CommitError),
+}
+
+impl From<ChannelError> for Error {
+    fn from(value: ChannelError) -> Self {
+        match value {
+            ChannelError::Auth(auth) => Self::Auth(auth),
+            ChannelError::Transport(err) => Self::Transport(err),
+        }
+    }
 }
 
 #[derive(Debug)]

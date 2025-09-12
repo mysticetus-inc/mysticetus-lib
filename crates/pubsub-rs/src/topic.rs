@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use gcp_auth_channel::channel::AuthChannel;
+use gcp_auth_provider::ProjectId;
+use gcp_auth_provider::service::AuthSvc;
 use protos::pubsub::{self, PubsubMessage, Topic, publisher_client};
+use tonic::transport::Channel;
 
 use super::Error;
 use super::util::make_default_topic;
@@ -13,11 +15,11 @@ const MAX_PER_REQUEST: usize = 1000;
 #[derive(Debug, Clone)]
 pub struct TopicClient {
     topic: Arc<Topic>,
-    channel: AuthChannel,
+    channel: AuthSvc<Channel>,
 }
 
 impl TopicClient {
-    pub(crate) fn new_from_topic<T>(topic: T, channel: AuthChannel) -> Self
+    pub(crate) fn new_from_topic<T>(topic: T, channel: AuthSvc<Channel>) -> Self
     where
         T: Into<Arc<Topic>>,
     {
@@ -27,15 +29,15 @@ impl TopicClient {
         }
     }
 
-    pub(crate) fn new_from_name<S>(topic_name: S, channel: AuthChannel) -> Self
+    pub(crate) fn new_from_name<S>(topic_name: S, channel: AuthSvc<Channel>) -> Self
     where
         S: AsRef<str>,
     {
-        let topic = make_default_topic(channel.auth().project_id(), topic_name.as_ref());
+        let topic = make_default_topic(channel.auth().project_id().as_str(), topic_name.as_ref());
         Self::new_from_topic(Arc::new(topic), channel)
     }
 
-    pub fn project_id(&self) -> &str {
+    pub fn project_id(&self) -> ProjectId {
         self.channel.auth().project_id()
     }
 

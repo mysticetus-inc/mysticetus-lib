@@ -5,7 +5,7 @@ use std::task::{Context, Poll, ready};
 
 use apache_avro::Schema;
 use futures::stream::{FuturesUnordered, Stream, StreamExt};
-use gcp_auth_channel::Scope;
+use gcp_auth_provider::Scope;
 use protos::bigquery_storage::big_query_read_client::BigQueryReadClient;
 use protos::bigquery_storage::{self, ReadRowsRequest};
 use rand::seq::SliceRandom;
@@ -39,11 +39,7 @@ where
             offset: 0,
         };
 
-        let mut channel = self
-            .client
-            .channel
-            .clone()
-            .with_scope(Scope::BigQueryReadOnly);
+        let mut channel = self.client.channel.clone();
 
         let row_stream = BigQueryReadClient::new(&mut channel)
             .read_rows(request)
@@ -64,11 +60,7 @@ where
         let streams = FuturesUnordered::new();
 
         for (id, stream) in self.read_session.streams.into_iter().enumerate() {
-            let mut channel = self
-                .client
-                .channel
-                .clone()
-                .with_scope(Scope::BigQueryReadOnly);
+            let mut channel = self.client.channel.clone();
             let seed = self.seed.clone();
             let schema = self.schema.clone();
 

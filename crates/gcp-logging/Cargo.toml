@@ -13,6 +13,7 @@ priority = 0
 
 
 [dependencies]
+thiserror.workspace = true
 axum.workspace = true
 bytes.workspace = true
 futures.workspace = true
@@ -22,6 +23,7 @@ itoa.workspace = true
 ryu = "1"
 serde.workspace = true
 serde_json.workspace = true
+parking_lot = "*"
 serde-helpers = { path = "../serde-helpers" }
 mime = "0.3.17"
 pin-project-lite.workspace = true
@@ -30,7 +32,7 @@ timestamp = { path = "../timestamp" }
 tower.workspace = true
 tower-http = { version = "0.5.2", features = ["trace"] }
 tracing.workspace = true
-valuable = "0.1"
+tracing-core = "0.1"
 tracing-subscriber = { workspace = true, features = [
     "json",
     "time",
@@ -50,13 +52,30 @@ memchr = "2.7.2"
 fxhash = "0.2.1"
 dashmap = { version = "5.5.3", features = ["inline", "serde", "raw-api"] }
 anyhow = { version = "1.0.82", features = ["backtrace"] }
+crossbeam = { version = "0.8.4", features = ["crossbeam-queue"] }
+simd-json = "0.15.1"
+tokio = { workspace = true, features = ["rt", "macros", "time"] }
 
+valuable = { version = "0.1", optional = true }
+valuable-serde = { version = "0.1", optional = true }
+slab = "0.4.10"
+hashbrown = "0.15.4"
+# [target.'cfg(tracing_unstable)'.dependencies.valuable]
+# optional = true
+# version = "0.1"
 
-[target."cfg(tracing_unstable)".dependencies.valuable]
-optional = true
-version = "0.1.0"
-default-features = false
+# [target.'cfg(tracing_unstable)'.dependencies.valuable-serde]
+# optional = true
+# version = "0.1"
+
+[dev-dependencies]
 
 [features]
-default = []
-valuable = ["valuable?/std", "tracing/valuable", "tracing-subscriber/valuable"]
+default = ["valuable", "deadlock"]
+valuable = [
+    "dep:valuable",
+    "dep:valuable-serde",
+    "tracing/valuable",
+    "tracing-subscriber/valuable",
+]
+deadlock = ["parking_lot/deadlock_detection"]

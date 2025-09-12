@@ -8,8 +8,7 @@ edition = "2024"
 [dependencies]
 http.workspace = true
 tokio = { workspace = true, features = ["signal", "time", "fs", "macros"] }
-gcp-auth-channel = { path = "../../gcp-auth-channel", features = ["channel"] }
-
+gcp-auth-provider.path = "../../gcp-auth-provider"
 protos = { path = "../../protos", features = ["spanner"] }
 serde = { workspace = true, features = ["derive"] }
 timestamp = { path = "../../timestamp" }
@@ -41,6 +40,8 @@ tokio-util.workspace = true
 fxhash = "0.2.1"
 generic-array = "1.2.0"
 bytemuck = { version = "1.22.0", features = ["derive", "extern_crate_alloc"] }
+slab = "0.4.10"
+hashbrown = "0.15.4"
 
 # debug-macro = { path = "../../../../debug-macro" }
 
@@ -55,5 +56,5 @@ ryu = "1.0.12"
 default = []                                                               # ["serde_json", "admin", "emulator"]
 serde_json = ["dep:serde_json"]
 admin = ["protos/spanner-admin-database", "protos/spanner-admin-instance"]
-emulator = ["tokio/process", "gcp-auth-channel/emulator"]
+emulator = ["tokio/process", "gcp-auth-provider/emulator"]
 debug-table-macro = []

@@ -15,7 +15,7 @@ bytes.workspace = true
 pin-project-lite.workspace = true
 net-utils = { path = "../net-utils", features = ["tonic"] }
 tonic = { workspace = true, features = ["transport", "tls-webpki-roots"] }
-gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+gcp-auth-provider.path = "../gcp-auth-provider"
 tracing.workspace = true
 http.workspace = true
 futures.workspace = true

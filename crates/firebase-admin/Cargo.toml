@@ -19,7 +19,7 @@ thiserror.workspace = true
 axum.workspace = true
 jsonwebtoken.workspace = true
 timestamp = { path = "../timestamp" }
-gcp-auth-channel = { path = "../gcp-auth-channel" }
+gcp-auth-provider.path = "../gcp-auth-provider"
 reqwest = { workspace = true, features = ["json"] }
 tracing.workspace = true
 pin-project-lite.workspace = true

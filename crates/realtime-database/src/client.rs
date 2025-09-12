@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use gcp_auth_channel::Auth;
+use gcp_auth_provider::Auth;
 use reqwest::Response;
 use reqwest::header::{self, HeaderValue};
 
@@ -98,7 +98,10 @@ impl Client {
     }
 
     async fn get_auth_header(&self) -> Result<HeaderValue, Error> {
-        self.auth.get_header().await.map_err(Error::Auth)
+        match self.auth.get_header() {
+            gcp_auth_provider::GetHeaderResult::Cached(cached) => Ok(cached.header),
+            gcp_auth_provider::GetHeaderResult::Refreshing(fut) => Ok(fut.await?.header),
+        }
     }
 
     /// Builds the base request. This includes building the URL, inserting the auth header value,

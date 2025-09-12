@@ -1,4 +1,5 @@
-use gcp_auth_channel::AuthChannel;
+use gcp_auth_provider::Auth;
+use gcp_auth_provider::service::AuthSvc;
 use prost::bytes::BytesMut;
 use prost::{DecodeError, Message};
 use protos::longrunning::operations_client::OperationsClient;
@@ -7,6 +8,7 @@ use protos::longrunning::{
 };
 use protos::{protobuf, rpc};
 use timestamp::Duration;
+use tonic::transport::Channel;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -77,7 +79,7 @@ pub struct OperationHandle<Meta = protobuf::Any, Response = protobuf::Any> {
     // Only set when 'operation.done == true', and only if the resulting union field is not an
     // error status.
     response: Option<Response>,
-    channel: AuthChannel,
+    channel: AuthSvc<Channel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -87,7 +89,7 @@ pub enum WaitStatus {
 }
 
 impl<Meta, Response> OperationHandle<Meta, Response> {
-    pub fn from_channel(channel: AuthChannel, operation: Operation) -> Self {
+    pub fn from_channel(channel: AuthSvc<Channel>, operation: Operation) -> Self {
         Self {
             operation,
             metadata: None,
@@ -201,7 +203,7 @@ impl<Meta, Response> OperationHandle<Meta, Response> {
         self.operation = new;
     }
 
-    fn client(&self) -> OperationsClient<AuthChannel> {
+    fn client(&self) -> OperationsClient<AuthSvc<Channel>> {
         OperationsClient::new(self.channel.clone())
     }
 

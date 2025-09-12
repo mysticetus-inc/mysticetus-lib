@@ -2,10 +2,11 @@ use std::fmt;
 use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, PoisonError, RwLock};
 
-use gcp_auth_channel::channel::headers::{Http, WithHeaders};
-use gcp_auth_channel::{AuthChannel, Scope};
+use gcp_auth_provider::service::AuthSvc;
+use gcp_auth_provider::{Scope, Scopes};
 use http::HeaderValue;
 use net_utils::bidirec::{self, Bidirec};
+use net_utils::header::GoogRequestParam;
 use protos::bigquery_storage::append_rows_response::{AppendResult, Response};
 use protos::bigquery_storage::big_query_write_client::BigQueryWriteClient;
 use protos::bigquery_storage::{AppendRowsRequest, AppendRowsResponse, WriteStream};
@@ -37,10 +38,8 @@ impl From<BigQueryStorageClient> for WriteClient {
 
 impl WriteClient {
     /// Builds a write client, internally building a [`BigQueryStorageClient`].
-    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
-        BigQueryStorageClient::new(project_id, scope)
-            .await
-            .map(Self)
+    pub async fn new(scopes: impl Into<Scopes>) -> Result<Self, Error> {
+        BigQueryStorageClient::new(scopes.into()).await.map(Self)
     }
 
     /// Shortcut to 'client.session_builder().dataset_id(dataset_id)'.
@@ -59,7 +58,7 @@ impl WriteClient {
 #[derive(Debug, Clone)]
 pub struct WriteSession<W, R> {
     inner: Arc<WriteSessionInner>,
-    channel: AuthChannel<WithHeaders<Channel, Http>>,
+    channel: AuthSvc<GoogRequestParam<Channel>>,
     #[allow(dead_code)]
     // stream_type is currently only used as a marker, but that may change in the future.
     stream_type: W,
@@ -69,16 +68,14 @@ pub struct WriteSession<W, R> {
 impl<W, R> WriteSession<W, R> {
     fn new_inner(
         mut write_stream: WriteStream,
-        channel: AuthChannel,
+        channel: AuthSvc<Channel>,
         stream_type: W,
         schema: Option<Schema>,
     ) -> Result<Self, Error> {
         let header_str = format!("write_stream={}", write_stream.name);
         let stream_header = HeaderValue::from_str(&header_str)?;
 
-        let channel = channel.wrap_service(|svc| {
-            WithHeaders::new(svc, [(super::GOOG_REQ_PARAMS_KEY, stream_header)])
-        });
+        let channel = channel.map(|svc| GoogRequestParam::new(svc, stream_header));
 
         let schema = match schema {
             Some(schema) => schema,
