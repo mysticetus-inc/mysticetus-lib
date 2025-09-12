@@ -342,6 +342,11 @@ impl tracing::Subscriber for Records {
 
         let prev_refs = span.ref_count.fetch_add(1, Ordering::Relaxed);
 
+        #[cfg(feature = "debug-logging")]
+        {
+            println!("clone_span - {id:?} ref_cnt - {}", prev_refs + 1);
+        }
+
         if prev_refs == 0 {
             panic!("closed span ({id:?}) shouldn't be cloned")
         }
@@ -357,6 +362,11 @@ impl tracing::Subscriber for Records {
         };
 
         let refs = data.ref_count.fetch_sub(1, Ordering::Release);
+
+        #[cfg(feature = "debug-logging")]
+        {
+            println!("try_close - {id:?} ref_cnt - {}", refs - 1);
+        }
 
         if !data.closing.load(Ordering::Relaxed) && !std::thread::panicking() {
             assert!(refs < usize::MAX, "reference count overflow!");
