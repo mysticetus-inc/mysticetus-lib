@@ -13,7 +13,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 pub use error::Error;
 use gcp_auth_provider::service::AuthSvc;
-use gcp_auth_provider::{Auth, Scope, Scopes};
+use gcp_auth_provider::{Auth, Scopes};
 use tonic::transport::{Channel, ClientTlsConfig};
 
 const BQ_HOST: &str = "https://bigquerystorage.googleapis.com";
@@ -182,7 +182,7 @@ async fn test_read() -> Result<()> {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let client = BigQueryStorageClient::new(Scope::BigQueryReadOnly).await?;
+    let client = BigQueryStorageClient::new(gcp_auth_provider::Scope::BigQueryReadOnly).await?;
 
     let read_session = client
         .into_read_client()
@@ -290,7 +290,7 @@ impl TestTrackMark {
 async fn test_write() -> Result<()> {
     tracing_subscriber::fmt().init();
 
-    let client = BigQueryStorageClient::new(Scope::BigQueryReadOnly).await?;
+    let client = BigQueryStorageClient::new(gcp_auth_provider::Scope::BigQueryReadOnly).await?;
 
     let write_session = client
         .into_write_client()

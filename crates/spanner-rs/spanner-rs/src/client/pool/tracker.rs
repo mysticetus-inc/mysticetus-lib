@@ -60,6 +60,12 @@ impl SessionTracker {
         }
     }
 
+    pub(super) fn take_sessions(&mut self) -> slab::Slab<Arc<Session>> {
+        self.mapping.clear();
+        self.alive.clear();
+        std::mem::take(&mut self.sessions)
+    }
+
     pub(super) fn is_empty(&self) -> bool {
         self.sessions.is_empty()
     }
