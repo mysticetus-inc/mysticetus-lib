@@ -106,11 +106,11 @@ impl Token {
         self.expires_at
     }
 
-    pub fn valid_for(&self) -> Result<std::time::Duration, ()> {
+    pub fn valid_for(&self) -> Result<std::time::Duration, timestamp::Timestamp> {
         let now = timestamp::Timestamp::now();
 
         if now <= self.expires_at {
-            Err(())
+            Err(now)
         } else {
             Ok((self.expires_at - now).into())
         }

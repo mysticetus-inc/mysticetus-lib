@@ -78,7 +78,7 @@ impl<T: TokenProvider + Send + Sync + 'static> super::TokenCache for CachedToken
         let refresher = guard.refresher.lock();
         let token = std::task::ready!(refresher.poll_refresh(cx, &self.provider))?;
 
-        // we dont need a unique reference, so downcast to a shared ref
+        // we don't need a unique reference, so downcast to a shared ref
         let token: &Token = guard.cached.insert(token);
 
         match token.valid_for() {
@@ -86,7 +86,19 @@ impl<T: TokenProvider + Send + Sync + 'static> super::TokenCache for CachedToken
                 valid_for,
                 header: token.header().clone(),
             })),
-            Err(()) => panic!("brand new token from request already expired?"),
+            Err(timestamp) => {
+                // log more context if enabled
+                if tracing::enabled!(tracing::Level::ERROR) {
+                    tracing::error!(
+                        message = "brand new token from request already expired?",
+                        ?timestamp,
+                        token = ?token,
+                        provider = ?self.provider,
+                    );
+                }
+
+                panic!("brand new token from request already expired? - {timestamp}");
+            }
         }
     }
 }

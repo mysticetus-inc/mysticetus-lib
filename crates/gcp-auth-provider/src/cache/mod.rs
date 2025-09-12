@@ -47,7 +47,7 @@ impl TokenState {
                     header: token.header().clone(),
                     valid_for,
                 }),
-                Err(()) => None,
+                Err(_) => None,
             },
             None => None,
         }
