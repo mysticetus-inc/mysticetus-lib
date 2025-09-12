@@ -116,13 +116,19 @@ impl<MkWriter: MakeWriter> tracing::Subscriber for Subscriber<MkWriter> {
 
     #[inline]
     fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
+        // level comparison is backwards from at least my intuition, so this comparison
+        // seems funky. Docs detailing this behavior are here:
+        // https://docs.rs/tracing/latest/tracing/struct.Level.html#comparing-levels
+
         #[cfg(feature = "debug-logging")]
         {
             let level_enabled = &self.filter >= metadata.level();
             let records_enabled = self.records.enabled(metadata);
 
             println!(
-                "Subscriber - {:?} level enabled: {level_enabled} - records {records_enabled}",
+                "Subscriber({:?}) - {:?} level enabled: {level_enabled} - records \
+                 {records_enabled}",
+                self.filter,
                 metadata.level()
             );
 
@@ -136,14 +142,19 @@ impl<MkWriter: MakeWriter> tracing::Subscriber for Subscriber<MkWriter> {
 
     #[inline]
     fn event_enabled(&self, event: &tracing::Event<'_>) -> bool {
+        // level comparison is backwards from at least my intuition, so this comparison
+        // seems funky. Docs detailing this behavior are here:
+        // https://docs.rs/tracing/latest/tracing/struct.Level.html#comparing-levels
+
         #[cfg(feature = "debug-logging")]
         {
             let level_enabled = &self.filter >= event.metadata().level();
             let records_enabled = self.records.event_enabled(event);
 
             println!(
-                "Subscriber event - {:?} level enabled: {level_enabled} - records \
+                "Subscriber({:?}) event - {:?} level enabled: {level_enabled} - records \
                  {records_enabled}",
+                self.filter,
                 event.metadata().level()
             );
 

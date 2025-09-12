@@ -28,7 +28,7 @@ impl LoggingBuilder {
         Self {
             options: DefaultLogOptions,
             project_id: None,
-            filter: tracing::level_filters::STATIC_MAX_LEVEL,
+            filter: tracing::level_filters::LevelFilter::INFO,
             stage,
             make_writer: StdoutWriter,
         }
