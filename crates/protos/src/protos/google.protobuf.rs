@@ -834,7 +834,9 @@ pub struct FieldOptions {
     /// is a formalization for deprecating fields.
     #[prost(bool, optional, tag = "3", default = "false")]
     pub deprecated: ::core::option::Option<bool>,
+    /// DEPRECATED. DO NOT USE!
     /// For Google-internal migration only. Do not use.
+    #[deprecated]
     #[prost(bool, optional, tag = "10", default = "false")]
     pub weak: ::core::option::Option<bool>,
     /// Indicate that the field value should not be printed out when using debug
