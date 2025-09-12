@@ -91,8 +91,9 @@ impl<T: TokenProvider + Send + Sync + 'static> super::TokenCache for CachedToken
                 if tracing::enabled!(tracing::Level::ERROR) {
                     tracing::error!(
                         message = "brand new token from request already expired?",
-                        ?timestamp,
-                        token = ?token,
+                        now = ?timestamp,
+                        token_expires_at = ?token.expires_at(),
+                        token_expired = timestamp <= token.expires_at(),
                         provider = ?self.provider,
                     );
                 }
