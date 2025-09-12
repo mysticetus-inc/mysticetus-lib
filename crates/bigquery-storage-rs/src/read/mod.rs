@@ -2,7 +2,8 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::sync::{Arc, LazyLock};
 
-use gcp_auth_provider::Scope;
+use gcp_auth_channel::Scope;
+use gcp_auth_channel::channel::headers::WithHeaders;
 use http::HeaderValue;
 
 pub mod avro_de;
@@ -10,7 +11,6 @@ mod error;
 
 use apache_avro::Schema;
 pub use error::DeserializeError;
-use net_utils::header::GoogRequestParam;
 use protos::bigquery_storage::big_query_read_client::BigQueryReadClient;
 use protos::bigquery_storage::read_session::{self, TableReadOptions};
 use protos::bigquery_storage::{self, CreateReadSessionRequest, DataFormat};
@@ -37,8 +37,10 @@ impl From<BigQueryStorageClient> for ReadClient {
 
 impl ReadClient {
     /// Builds a read client, internally building a [`BigQueryStorageClient`].
-    pub async fn new(scope: Scope) -> Result<Self, Error> {
-        BigQueryStorageClient::new(scope).await.map(Self)
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        BigQueryStorageClient::new(project_id, scope)
+            .await
+            .map(Self)
     }
 
     pub fn session_builder(&self) -> ReadSessionBuilder<(), ()> {
@@ -188,11 +190,9 @@ where
             }),
         };
 
-        let mut channel = self
-            .client
-            .channel
-            .clone()
-            .map(|svc| GoogRequestParam::new(svc, table_header));
+        let mut channel = self.client.channel.clone().wrap_service(|svc| {
+            WithHeaders::new(svc, [(super::GOOG_REQ_PARAMS_KEY, table_header)])
+        });
 
         let mut client = BigQueryReadClient::new(&mut channel);
 

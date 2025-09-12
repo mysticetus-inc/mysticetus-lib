@@ -22,7 +22,7 @@ tokio = { workspace = true, features = [
 timestamp = { path = "../timestamp" }
 net-utils = { path = "../net-utils" }
 serde_json.workspace = true
-gcp-auth-provider.path = "../gcp-auth-provider"
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
 thiserror.workspace = true
 urlencoding = "2.1"
 mime_guess = "2.0.4"

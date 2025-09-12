@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gcp_auth_provider::service::AuthSvc;
-use net_utils::header::GoogRequestParam;
+use gcp_auth_channel::channel::headers::{Http, WithHeaders};
+use gcp_auth_channel::{AuthChannel, Scope};
 use protos::bigquery_storage::big_query_write_client::BigQueryWriteClient;
 use protos::bigquery_storage::write_stream::Type;
 use protos::bigquery_storage::{BatchCommitWriteStreamsRequest, FinalizeWriteStreamResponse};
@@ -9,7 +9,7 @@ use tonic::transport::Channel;
 use typenum::marker_traits::Bit;
 use typenum::{B0, B1};
 
-use super::{Error, WriteSession, WriteSessionInner};
+use super::{BigQueryStorageClient, Error, WriteSession, WriteSessionInner};
 
 mod private {
     pub trait Sealed {}
@@ -32,7 +32,7 @@ pub trait WriteStreamType: private::Sealed {
 pub trait FinalizeStream: WriteStreamType<CanFinalize = B1> + Sized {
     type Ok;
 
-    /// Called after the finalize response has been successfully received.
+    /// Called after the finalize response has been successfully recieved.
     /// Depending on the stream, there may be extra work that needs to be done
     fn on_finalized<R>(
         session: WriteSession<Self, R>,
@@ -126,7 +126,7 @@ impl FinalizeStream for Pending {
 pub struct PendingStream {
     inner: Arc<WriteSessionInner>,
     rows: usize,
-    channel: AuthSvc<GoogRequestParam<Channel>>,
+    channel: AuthChannel<WithHeaders<Channel, Http>>,
 }
 
 impl PendingStream {

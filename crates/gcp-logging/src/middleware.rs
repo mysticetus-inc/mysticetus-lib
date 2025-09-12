@@ -1,36 +1,35 @@
 use std::convert::Infallible;
 use std::future::Future;
+use std::marker::PhantomData;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Instant;
 
-use axum::response::{IntoResponse, Response};
-use futures::TryFuture;
+use axum::response::IntoResponse;
 use http_body::Body;
 use tower::{Layer, Service};
 use tracing::Span;
 
-use crate::http_request::{RESPONSE_LATENCY_KEY, RESPONSE_SIZE_KEY, RESPONSE_STATUS_KEY};
-use crate::subscriber::Handle;
+use crate::subscriber::{RequestTrace, SubscriberHandle};
 
-tokio::task_local! {
-    static REQUEST_SPAN: Option<tracing::Id>;
+#[derive(Debug, Clone)]
+pub struct TraceLayer {
+    handle: SubscriberHandle,
 }
 
-pub fn current_request_span_id() -> Option<tracing::Id> {
-    REQUEST_SPAN
-        .try_with(|maybe_id| maybe_id.clone())
-        .ok()
-        .flatten()
+impl TraceLayer {
+    pub const fn new(handle: SubscriberHandle) -> Self {
+        Self { handle }
+    }
 }
 
-impl<S> Layer<S> for Handle {
+impl<S> Layer<S> for TraceLayer {
     type Service = TraceService<S>;
 
     fn layer(&self, svc: S) -> Self::Service {
         TraceService {
             svc,
-            handle: self.clone(),
+            handle: self.handle.clone(),
         }
     }
 }
@@ -38,137 +37,93 @@ impl<S> Layer<S> for Handle {
 #[derive(Debug, Clone)]
 pub struct TraceService<S> {
     svc: S,
-    handle: Handle,
+    handle: SubscriberHandle,
 }
 
-// The bounds need to be essentially the same as the bounds for axum::Router::layer:
-// https://docs.rs/axum/latest/axum/routing/struct.Router.html#method.layer
-impl<S, RequestBody> tower::Service<http::Request<RequestBody>> for TraceService<S>
+impl<S, Rb> tower::Service<http::Request<Rb>> for TraceService<S>
 where
-    RequestBody: Body,
-    S: Service<http::Request<RequestBody>, Error = Infallible>,
+    Rb: Body,
+    S: Service<http::Request<Rb>>,
     S::Response: IntoResponse,
+    S::Error: Into<Infallible>,
 {
     type Error = Infallible;
 
-    type Response = Response;
+    type Response = axum::response::Response;
 
-    type Future = TraceFuture<S::Future>;
+    type Future = TraceFuture<S::Future, S::Response, S::Error>;
 
-    #[inline]
     fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> Poll<Result<(), Self::Error>> {
-        self.svc.poll_ready(cx)
+        self.svc.poll_ready(cx).map_err(Into::into)
     }
 
-    #[inline]
-    fn call(&mut self, req: http::Request<RequestBody>) -> Self::Future {
-        use tracing::field::Empty;
+    fn call(&mut self, req: http::Request<Rb>) -> Self::Future {
+        let span = make_span(&req, &self.handle);
+        let start = Instant::now();
+        let fut = self.svc.call(req);
 
-        use crate::registry::{NewRequest, REQUEST_KEY};
-        use crate::utils::ErrorPassthrough;
-
-        let span = tracing::info_span! {
-            "request",
-            { REQUEST_KEY } = ErrorPassthrough(NewRequest::new(&req)).as_dyn(),
-            { RESPONSE_LATENCY_KEY } = Empty,
-            { RESPONSE_SIZE_KEY } = Empty,
-            { RESPONSE_STATUS_KEY } = Empty,
-        };
-
-        // need to enter the scope not just when polling, but here too.
-        // 'Service::call' likely does work that may include logging,
-        // which we (obviously) want to include
-
-        let (fut, started) = in_scope(&span, || {
-            let started = if span.is_disabled() {
-                None
-            } else {
-                Some(Instant::now())
-            };
-
-            (self.svc.call(req), started)
-        });
-
-        TraceFuture { fut, span, started }
+        TraceFuture {
+            start,
+            span,
+            fut,
+            handle: self.handle.clone(),
+            _marker: PhantomData,
+        }
     }
 }
 
-#[inline]
-fn in_scope<O>(span: &tracing::Span, f: impl FnOnce() -> O) -> O {
-    REQUEST_SPAN.sync_scope(span.id(), || {
-        let _guard = span.enter();
-        f()
-    })
+pub(super) fn make_span<B: Body>(
+    request: &http::Request<B>,
+    handle: &SubscriberHandle,
+) -> tracing::Span {
+    let span = tracing::info_span!("request");
+
+    if let Some(span_id) = span.id() {
+        handle.insert_new_trace(RequestTrace::new(span_id, request));
+    }
+
+    span
 }
 
 pin_project_lite::pin_project! {
-    #[project = TraceFutureProjection]
-    pub struct TraceFuture<F: TryFuture> {
+    pub struct TraceFuture<F, Resp, Err> {
         #[pin]
         fut: F,
         span: Span,
-        started: Option<Instant>,
+        start: Instant,
+        handle: SubscriberHandle,
+        _marker: PhantomData<fn(Resp, Err)>,
     }
 }
 
-impl<F: TryFuture> Future for TraceFuture<F>
+impl<F, Resp, Err> Future for TraceFuture<F, Resp, Err>
 where
-    F: TryFuture + Future<Output = Result<F::Ok, Infallible>>,
-    F::Ok: IntoResponse,
+    F: Future<Output = Result<Resp, Err>>,
+    Err: Into<Infallible>,
+    Resp: IntoResponse,
 {
-    type Output = Result<Response, Infallible>;
+    type Output = Result<axum::response::Response, Infallible>;
 
-    #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let TraceFutureProjection { fut, span, started } = self.project();
+        let this = self.project();
 
-        in_scope(span, || {
-            let Ok(resp) = std::task::ready!(fut.poll(cx));
-            let resp = resp.into_response();
+        // need to enter the span every time we poll
+        let _guard = this.span.enter();
 
-            record_response_fields(span, &resp, started.take());
-
-            Poll::Ready(Ok(resp))
-        })
-    }
-}
-
-fn record_response_fields<B: Body>(
-    span: &tracing::Span,
-    resp: &http::Response<B>,
-    started: Option<Instant>,
-) {
-    use tracing::field::{AsField, FieldSet, Value, ValueSet};
-
-    let Some(metadata) = span.metadata() else {
-        return;
-    };
-
-    let status = resp.status().as_u16() as u64;
-
-    macro_rules! status_kvp {
-        () => {
-            (
-                RESPONSE_STATUS_KEY.as_field(metadata),
-                Some(&status as &dyn Value),
-            )
+        let resp = match std::task::ready!(this.fut.poll(cx)).map_err(Into::<Infallible>::into) {
+            Ok(res) => res,
+            Err(infallible) => match infallible {},
         };
-    }
 
-    macro_rules! record {
-        ($($t:tt)*) => {
-            span.record_all(&metadata.fields().value_set(&[
-                $($t)*
-            ]));
-        };
-    }
+        let elapsed = this.start.elapsed();
 
-    let values: &[(&'static str, Option<&dyn Value>)];
+        let response = resp.into_response();
 
-    let response_size = crate::http_request::get_response_size(resp);
+        if let Some(span_id) = this.span.id() {
+            this.handle
+                .update_trace(&span_id, elapsed.into(), &response);
+        }
 
-    match (response_size.is_unknown(), started) {
-        (false, None) => record!(status_kvp!()),
-        _ => todo!(),
+        Poll::Ready(Ok(response))
     }
 }

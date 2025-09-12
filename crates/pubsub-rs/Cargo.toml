@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 bytes.workspace = true
 futures.workspace = true
-gcp-auth-provider.path = "../gcp-auth-provider"
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
 http.workspace = true
 path-aware-serde = { path = "../path-aware-serde" }
 protos = { path = "../protos", features = ["pubsub"] }
@@ -21,7 +21,10 @@ tokio = { workspace = true, features = [
     "parking_lot",
     "time",
 ] }
-tonic = { workspace = true, features = ["transport", "tls-webpki-roots"] }
+tonic = { workspace = true, features = [
+    "transport",
+    "tls-webpki-roots",
+] }
 net-utils = { path = "../net-utils", features = ["tonic"] }
 tracing.workspace = true
 pin-project-lite = "0.2.13"

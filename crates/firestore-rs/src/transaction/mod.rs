@@ -35,11 +35,11 @@ impl<Ref> Transaction<Ref> {
 impl Transaction<Firestore> {
     pub(crate) async fn start(
         parent: Firestore,
-        options: TransactionOptions,
+        options: Option<TransactionOptions>,
     ) -> crate::Result<Self> {
         let req = BeginTransactionRequest {
             database: parent.qualified_db_path().to_owned(),
-            options: Some(options),
+            options,
         };
 
         let resp = parent

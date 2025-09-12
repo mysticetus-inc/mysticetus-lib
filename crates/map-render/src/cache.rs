@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use gcp_auth_provider::{Auth, Scope};
+use gcp_auth_channel::{Auth, Scope};
 use tiny_skia::Pixmap;
 
 use crate::coords::Zoom;
@@ -36,7 +36,8 @@ impl TileCache {
     }
 
     pub async fn new(scope: Scope) -> Result<Self, Error> {
-        let gcs = small_gcs::BucketClient::new_with_scope(scope, TILE_CACHE_BUCKET).await?;
+        let gcs =
+            small_gcs::BucketClient::new("mysticetus-oncloud", TILE_CACHE_BUCKET, scope).await?;
 
         Ok(Self { gcs })
     }

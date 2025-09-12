@@ -12,8 +12,7 @@ pub mod write;
 pub type Result<T> = core::result::Result<T, Error>;
 
 pub use error::Error;
-use gcp_auth_provider::service::AuthSvc;
-use gcp_auth_provider::{Auth, Scope, Scopes};
+use gcp_auth_channel::{Auth, AuthChannel, Scope};
 use tonic::transport::{Channel, ClientTlsConfig};
 
 const BQ_HOST: &str = "https://bigquerystorage.googleapis.com";
@@ -28,7 +27,7 @@ const KEEPALIVE_DURATION: Duration = Duration::from_secs(120);
 /// A read/write-agnostic client to the BigQuery Storage API.
 #[derive(Debug, Clone)]
 pub struct BigQueryStorageClient {
-    channel: AuthSvc<Channel>,
+    channel: AuthChannel,
 }
 
 async fn build_channel() -> Result<Channel> {
@@ -54,26 +53,35 @@ async fn build_channel() -> Result<Channel> {
         .map_err(Error::from)
 }
 
+async fn build_auth_manager(project_id: &'static str, scope: Scope) -> Result<Auth> {
+    Auth::new(project_id, scope).await.map_err(Error::from)
+}
+
 impl BigQueryStorageClient {
     /// Builds a new BQ Storage client.
-    pub async fn new(scopes: impl Into<Scopes>) -> Result<Self> {
-        let channel = Auth::builder()
-            .add_scopes(scopes)
-            .channel_with_defaults(BQ_HOST, BQ_DOMAIN)
-            .auth(Auth::new_detect())
-            .build()
-            .await?;
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self> {
+        let (inner_channel, auth_manager) =
+            tokio::try_join!(build_channel(), build_auth_manager(project_id, scope))?;
+
+        let channel = AuthChannel::builder()
+            .with_channel(inner_channel)
+            .with_auth(auth_manager)
+            .build();
 
         Ok(Self { channel })
     }
 
     /// Builds a new BQ Storage client, from an existing auth manager.
-    pub async fn from_auth(auth: Auth) -> Result<Self> {
-        let channel = auth
-            .build_channel()
-            .channel_with_defaults(BQ_HOST, BQ_DOMAIN)
-            .build()
-            .await?;
+    pub async fn from_auth_manager<A>(auth_manager: A) -> Result<Self>
+    where
+        A: Into<gcp_auth_channel::Auth>,
+    {
+        let channel = build_channel().await?;
+
+        let channel = AuthChannel::builder()
+            .with_channel(channel)
+            .with_auth(auth_manager.into())
+            .build();
 
         Ok(Self { channel })
     }
@@ -121,11 +129,7 @@ impl BigQueryStorageClient {
         D: fmt::Display,
         T: fmt::Display,
     {
-        TableInfo::new(
-            self.channel.auth().project_id().as_str(),
-            dataset_id,
-            table_id,
-        )
+        TableInfo::new(self.channel.auth().project_id(), dataset_id, table_id)
     }
 }
 
@@ -182,7 +186,7 @@ async fn test_read() -> Result<()> {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let client = BigQueryStorageClient::new(Scope::BigQueryReadOnly).await?;
+    let client = BigQueryStorageClient::new("mysticetus-oncloud", Scope::BigQueryReadOnly).await?;
 
     let read_session = client
         .into_read_client()
@@ -290,7 +294,7 @@ impl TestTrackMark {
 async fn test_write() -> Result<()> {
     tracing_subscriber::fmt().init();
 
-    let client = BigQueryStorageClient::new(Scope::BigQueryReadOnly).await?;
+    let client = BigQueryStorageClient::new("mysticetus-oncloud", Scope::BigQueryReadOnly).await?;
 
     let write_session = client
         .into_write_client()

@@ -1,3 +1,8 @@
+use gcp_auth_channel::AuthChannel;
+use gcp_auth_channel::channel::headers::{Http, WithHeaders};
+use http::HeaderName;
+use tonic::transport::Channel;
+
 mod client;
 pub use client::StorageClient;
 
@@ -17,9 +22,11 @@ pub mod write;
 
 pub use protos::storage::Object;
 
-const GOOG_PROJ_ID_HEADER: http::HeaderName = http::HeaderName::from_static("x-goog-project-id");
-const GOOG_REQUEST_PARAMS_HEADER: http::HeaderName =
-    http::HeaderName::from_static("x-goog-request-params");
+const GOOG_PROJ_ID_HEADER: HeaderName = HeaderName::from_static("x-goog-project-id");
+const GOOG_REQUEST_PARAMS_HEADER: HeaderName = HeaderName::from_static("x-goog-request-params");
+
+/// alias to the wrapped service that adds the required headers.
+pub(crate) type HeaderAuthChannel<Svc = Channel> = AuthChannel<WithHeaders<Svc, Http>>;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -32,7 +39,7 @@ mod tests {
 
     async fn get_client() -> Result<BucketClient> {
         async fn init() -> Result<BucketClient> {
-            StorageClient::new(gcp_auth_provider::Scopes::GCS_READ_ONLY)
+            StorageClient::new("mysticetus-oncloud", gcp_auth_channel::Scope::GcsReadOnly)
                 .await
                 .map(|client| client.into_bucket("mysticetus-replicated-data"))
         }
@@ -92,9 +99,10 @@ mod tests {
 
         let content = Bytes::from(buf);
 
-        let mut client = StorageClient::new(gcp_auth_provider::Scopes::GCS_READ_WRITE)
-            .await?
-            .into_bucket(BUCKET);
+        let mut client =
+            StorageClient::new("mysticetus-oncloud", gcp_auth_channel::Scope::GcsReadWrite)
+                .await?
+                .into_bucket(BUCKET);
 
         let object = client.write(PATH).write_bytes(content.clone()).await?;
 

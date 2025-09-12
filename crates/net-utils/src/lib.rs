@@ -14,12 +14,6 @@ pub mod open_close;
 #[cfg(feature = "tower")]
 pub mod retry;
 
-#[cfg(feature = "tower")]
-pub mod header;
-
-#[cfg(feature = "tower")]
-pub mod util;
-
 pub mod cloud_task_payload;
 
 #[cfg(all(feature = "tonic", feature = "tower"))]
@@ -29,63 +23,6 @@ pub mod retry_bidi;
 pub mod transient;
 
 // pub mod json_stream;
-
-/// Helper traits to simplify generics for [tower::Service]
-/// types that use [http::Request]/[http::Response]
-pub mod http_svc {
-    pub trait HttpRequest {
-        type Body;
-
-        fn headers(&self) -> &http::HeaderMap;
-
-        fn headers_mut(&mut self) -> &mut http::HeaderMap;
-    }
-
-    impl<B> HttpRequest for http::Request<B> {
-        type Body = B;
-
-        #[inline]
-        fn headers(&self) -> &http::HeaderMap {
-            self.headers()
-        }
-
-        #[inline]
-        fn headers_mut(&mut self) -> &mut http::HeaderMap {
-            self.headers_mut()
-        }
-    }
-
-    pub trait HttpResponse {
-        type Body;
-
-        fn headers(&self) -> &http::HeaderMap;
-
-        fn status(&self) -> http::StatusCode;
-
-        #[cfg(feature = "tonic")]
-        fn grpc_status(&self) -> Option<tonic::Code> {
-            const GRPC_STATUS: http::HeaderName = http::HeaderName::from_static("grpc-status");
-
-            self.headers()
-                .get(GRPC_STATUS)
-                .map(|header| tonic::Code::from_bytes(header.as_bytes()))
-        }
-    }
-
-    impl<B> HttpResponse for http::Response<B> {
-        type Body = B;
-
-        #[inline]
-        fn headers(&self) -> &http::HeaderMap {
-            self.headers()
-        }
-
-        #[inline]
-        fn status(&self) -> http::StatusCode {
-            self.status()
-        }
-    }
-}
 
 /// Common builder methods for creating tonic channels
 #[cfg(feature = "tonic")]

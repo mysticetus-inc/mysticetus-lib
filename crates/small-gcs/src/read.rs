@@ -102,11 +102,11 @@ where
     }
 
     async fn send(self, alt: Alt) -> Result<(reqwest::Response, Option<u64>), Error> {
-        let auth = self.shared.auth.get_header().into_header().await?;
+        let auth_header = self.shared.auth.get_header().await?;
 
         let mut builder = self
             .builder
-            .header(header::AUTHORIZATION, auth.header)
+            .header(header::AUTHORIZATION, auth_header)
             .query(&[alt]);
 
         let size_hint = match make_range_header(self.range)? {

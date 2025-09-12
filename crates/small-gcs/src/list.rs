@@ -99,10 +99,7 @@ impl<'a> ListBuilder<'a> {
                 let url = request.url().clone();
 
                 let fut = ReusableBoxFuture::new(async move {
-                    let header = match shared_clone.auth.get_header() {
-                        gcp_auth_provider::GetHeaderResult::Cached(cache) => cache.header,
-                        gcp_auth_provider::GetHeaderResult::Refreshing(fut) => fut.await?.header,
-                    };
+                    let header = shared_clone.auth.get_header().await?;
 
                     request.headers_mut().insert(header::AUTHORIZATION, header);
                     crate::execute_and_validate_with_backoff(&shared_clone, request)
@@ -253,12 +250,8 @@ fn request_next_page<'a>(
     token: String,
 ) -> impl std::future::Future<Output = Result<RawList, Error>> + 'a {
     let builder = shared.client.get(url.clone());
-
     async move {
-        let auth_header = match shared.auth.get_header() {
-            gcp_auth_provider::GetHeaderResult::Cached(cache) => cache.header,
-            gcp_auth_provider::GetHeaderResult::Refreshing(fut) => fut.await?.header,
-        };
+        let auth_header = shared.auth.get_header().await?;
 
         let request = builder
             .header(header::AUTHORIZATION, auth_header)

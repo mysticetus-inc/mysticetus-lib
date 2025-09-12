@@ -200,8 +200,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_job_export() -> crate::Result<()> {
-        let client =
-            super::super::BigQueryClient::new(gcp_auth_provider::Scope::BigQueryAdmin).await?;
+        let client = super::super::BigQueryClient::new(
+            "mysticetus-boem",
+            gcp_auth_channel::Scope::BigQueryAdmin,
+        )
+        .await?;
 
         let job = build_test_job();
 

@@ -212,7 +212,7 @@ impl<'a> RewriteBuilder<'a> {
             None => StringBuf::Owned(url_builder.format()),
         };
 
-        let auth = self.shared.auth.get_header().into_header().await?;
+        let auth_header = self.shared.auth.get_header().await?;
 
         let request = self
             .shared
@@ -220,7 +220,7 @@ impl<'a> RewriteBuilder<'a> {
             .post(url.as_str())
             .query(&[("maxBytesRewrittenPerCall", "1048576")])
             .header(header::CONTENT_LENGTH, "0")
-            .header(header::AUTHORIZATION, auth.header)
+            .header(header::AUTHORIZATION, auth_header)
             .build()?;
 
         let cloned_request = request.try_clone().expect("no body, should be clonable");

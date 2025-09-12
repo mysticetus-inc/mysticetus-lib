@@ -15,18 +15,13 @@ pub use streaming::StreamingRead;
 
 #[derive(Clone)]
 pub struct FieldIndex<Cols: ArrayLength> {
-    fields: GenericArray<(usize, Field), Cols>,
+    fields: GenericArray<Field, Cols>,
 }
 
 impl<Cols: ArrayLength> std::fmt::Debug for FieldIndex<Cols> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.fields.iter()).finish()
     }
-}
-
-struct Indexes {
-    data: usize,
-    expected: usize,
 }
 
 impl<Cols: ArrayLength> FieldIndex<Cols> {
@@ -38,14 +33,11 @@ impl<Cols: ArrayLength> FieldIndex<Cols> {
     pub(crate) fn from_struct_type<Q: Queryable<NumColumns = Cols>>(
         raw: protos::spanner::StructType,
     ) -> Result<Self, MissingTypeInfo> {
-        let mut fields = raw
+        let fields = raw
             .fields
             .into_iter()
-            .enumerate()
-            .map(|(data, proto)| {
-                Field::from_proto(proto).map(|field| (Indexes { data, expected: 0 }, field))
-            })
-            .collect::<Result<GenericArray<(Indexes, Field), Q::NumColumns>, MissingTypeInfo>>()?;
+            .map(Field::from_proto)
+            .collect::<Result<GenericArray<Field, Q::NumColumns>, MissingTypeInfo>>()?;
 
         Ok(Self { fields })
     }

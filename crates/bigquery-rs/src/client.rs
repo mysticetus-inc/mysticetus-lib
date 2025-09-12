@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use bigquery_resources_rs::ErrorProto;
 use bigquery_resources_rs::query::{QueryRequest, QueryString};
-use gcp_auth_provider::{Auth, ProjectId, Scopes};
+use gcp_auth_channel::{Auth, Scope};
 use http::header::HeaderValue;
 use reqwest::{IntoUrl, Response, Url};
 
@@ -33,7 +33,7 @@ impl BigQueryClient {
         base_url
             .path_segments_mut()
             .expect("can be a base")
-            .push(auth.project_id().as_str());
+            .push(auth.project_id());
 
         Self {
             inner: Arc::new(InnerClient {
@@ -52,13 +52,13 @@ impl BigQueryClient {
         Ok(Self::new_from_parts(auth, client))
     }
 
-    pub async fn new(scopes: impl Into<Scopes>) -> Result<Self, Error> {
-        let auth = Auth::new_detect().with_scopes(scopes.into()).await?;
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        let auth = Auth::new(project_id, scope).await?;
         Self::new_from_auth(auth)
     }
 
     #[inline]
-    pub fn project_id(&self) -> ProjectId {
+    pub fn project_id(&self) -> &'static str {
         self.inner.project_id()
     }
 
@@ -83,15 +83,12 @@ impl BigQueryClient {
 }
 
 impl InnerClient {
-    pub(crate) fn project_id(&self) -> ProjectId {
+    pub(crate) fn project_id(&self) -> &'static str {
         self.auth.project_id()
     }
 
     async fn get_auth_header(&self) -> Result<HeaderValue, Error> {
-        match self.auth.get_header() {
-            gcp_auth_provider::GetHeaderResult::Cached(cached) => Ok(cached.header),
-            gcp_auth_provider::GetHeaderResult::Refreshing(fut) => Ok(fut.await?.header),
-        }
+        self.auth.get_header().await.map_err(Error::from)
     }
 
     pub(crate) fn base_url(&self) -> &Url {

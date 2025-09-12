@@ -89,7 +89,10 @@ where
         mut request: http::Request<BytesBody>,
     ) -> future::RequestCollect<'_, Conn> {
         insert_headers_for_request(&mut request);
-        future::Request::new(std::borrow::Cow::Borrowed(&self.client), request).collect()
+
+        future::RequestCollect::Requesting {
+            request: future::Request::new(&self.client, request),
+        }
     }
 
     pub fn request_json<T>(
@@ -107,31 +110,6 @@ pin_project_lite::pin_project! {
     #[derive(Clone)]
     pub(crate) struct BytesBody {
         bytes: Option<Bytes>,
-    }
-}
-
-struct PreviewBody<'a>(&'a [u8]);
-
-impl std::fmt::Debug for PreviewBody<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        const MAX_PREVIEW_LEN: usize = 50;
-        match self.0.get(..MAX_PREVIEW_LEN) {
-            Some(body) => write!(f, "\"{}...\"", bstr::BStr::new(body)),
-            _ => write!(f, "{:?}", bstr::BStr::new(self.0)),
-        }
-    }
-}
-
-impl std::fmt::Debug for BytesBody {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.bytes {
-            Some(ref body) if !body.is_empty() => f
-                .debug_struct("BytesBody")
-                .field("len", &body.len())
-                .field("head", &PreviewBody(body))
-                .finish_non_exhaustive(),
-            _ => f.pad("BytesBody::Empty"),
-        }
     }
 }
 

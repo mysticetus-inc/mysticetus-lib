@@ -14,7 +14,7 @@ pub enum Error {
     #[error(transparent)]
     ValidateToken(#[from] crate::auth::ValidateTokenError),
     #[error(transparent)]
-    Auth(#[from] gcp_auth_provider::Error),
+    Auth(#[from] gcp_auth_channel::Error),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }

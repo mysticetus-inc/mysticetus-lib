@@ -1,37 +1,33 @@
 use std::sync::Arc;
 
-use gcp_auth_provider::service::AuthSvc;
+use gcp_auth_channel::AuthChannel;
+use gcp_auth_channel::channel::headers::WithHeaders;
 use http::HeaderValue;
-use net_utils::header::headers::AttachHeaders;
 use protos::storage::{Object, storage_client};
-use tonic::transport::Channel;
 
 use super::Error;
 use crate::get::GetBuilder;
 use crate::read::ReadBuilder;
 use crate::write::WriteBuilder;
 
-pub type ChannelWithHeaders =
-    AuthSvc<AttachHeaders<Channel, [(http::HeaderName, http::HeaderValue); 2]>>;
-
 #[derive(Debug, Clone)]
 pub struct BucketClient {
     qualified_bucket: Arc<str>,
-    channel: ChannelWithHeaders,
+    channel: super::HeaderAuthChannel,
 }
 
 impl BucketClient {
-    pub(crate) fn new(channel: AuthSvc<Channel>, bucket: &str) -> Self {
+    pub(crate) fn new(channel: AuthChannel, bucket: &str) -> Self {
         let qualified_bucket = format!("projects/_/buckets/{bucket}");
 
-        let project_id_param = HeaderValue::from_str(channel.auth().project_id().as_str())
-            .expect("invalid project_id");
+        let project_id_param =
+            HeaderValue::from_str(channel.auth().project_id()).expect("invalid project_id");
 
         let request_params = HeaderValue::from_str(&format!("bucket={}", qualified_bucket))
             .expect("invalid bucket name");
 
-        let channel = channel.map(|svc| {
-            AttachHeaders::new(
+        let channel = channel.wrap_service(|svc| {
+            WithHeaders::new(
                 svc,
                 [
                     (super::GOOG_PROJ_ID_HEADER, project_id_param),
@@ -61,11 +57,13 @@ impl BucketClient {
         self.qualified_bucket.as_ref()
     }
 
-    pub(crate) fn client(&self) -> storage_client::StorageClient<ChannelWithHeaders> {
+    pub(crate) fn client(&self) -> storage_client::StorageClient<super::HeaderAuthChannel> {
         storage_client::StorageClient::new(self.channel.clone())
     }
 
-    pub(crate) fn client_mut(&mut self) -> storage_client::StorageClient<&mut ChannelWithHeaders> {
+    pub(crate) fn client_mut(
+        &mut self,
+    ) -> storage_client::StorageClient<&mut super::HeaderAuthChannel> {
         storage_client::StorageClient::new(&mut self.channel)
     }
 

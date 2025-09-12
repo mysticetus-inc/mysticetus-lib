@@ -1,11 +1,11 @@
 #![feature(maybe_uninit_slice, result_flattening)]
-use std::path::PathBuf;
+use std::path::Path;
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
+use std::time::Duration;
 
 use futures::{Future, Stream};
-use gcp_auth_provider::service::AuthSvc;
-use gcp_auth_provider::{Auth, Scopes};
+use gcp_auth_channel::{Auth, AuthChannel, Scope};
 use protos::pubsub::{self, Topic, publisher_client};
 use tokio::sync::mpsc::{self, Receiver};
 use tokio::task::JoinHandle;
@@ -26,62 +26,95 @@ pub use topic::TopicClient;
 const PUBSUB_URL: &str = "https://pubsub.googleapis.com";
 
 const PUBSUB_DOMAIN: &str = "pubsub.googleapis.com";
+// const PUBSUB_SCOPE: &[&str] = &["https://www.googleapis.com/auth/pubsub"];
+
+const DEFAULT_KEEPALIVE_DURATION: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone)]
 pub struct PubSubClient {
-    pub(crate) channel: AuthSvc<Channel>,
+    pub(crate) channel: AuthChannel,
 }
 
-fn channel_config() -> gcp_auth_provider::channel::ChannelOptions {
-    let mut cfg = gcp_auth_provider::channel::ChannelOptions::new(PUBSUB_URL);
-    cfg.domain(PUBSUB_DOMAIN).default_tls();
-    cfg
+async fn build_channel() -> Result<Channel, Error> {
+    Channel::from_static(PUBSUB_URL)
+        .tcp_keepalive(Some(DEFAULT_KEEPALIVE_DURATION))
+        .tls_config(
+            tonic::transport::ClientTlsConfig::new()
+                .domain_name(PUBSUB_DOMAIN)
+                .with_enabled_roots(),
+        )?
+        .connect()
+        .await
+        .map_err(Error::from)
+}
+
+#[inline]
+async fn build_auth_manager(project_id: &'static str, scope: Scope) -> Result<Auth, Error> {
+    Auth::new(project_id, scope).await.map_err(Error::from)
 }
 
 impl PubSubClient {
-    pub async fn new() -> Result<Self, Error> {
-        let channel = Auth::builder()
-            .channel(channel_config())
-            .auth(Auth::new_detect())
-            .build()
-            .await?;
+    pub async fn new(project_id: &'static str, scope: Scope) -> Result<Self, Error> {
+        let (auth, channel) =
+            tokio::try_join!(build_auth_manager(project_id, scope), build_channel())?;
+
+        let channel = AuthChannel::builder()
+            .with_channel(channel)
+            .with_auth(auth)
+            .build();
 
         debug!(
             message = "initialized PubSubClient",
-            project_id = %channel.auth().project_id()
+            project_id = channel.auth().project_id()
         );
 
         Ok(Self { channel })
     }
 
-    pub async fn from_service_account(
-        path: impl Into<PathBuf>,
-        scopes: impl Into<Scopes>,
-    ) -> Result<Self, Error> {
-        let channel = Auth::builder()
-            .channel(channel_config())
-            .auth(Auth::from_service_account_file(path.into(), scopes.into()))
-            .build()
-            .await?;
+    pub async fn from_service_account<S>(
+        project_id: &'static str,
+        path: S,
+        scope: Scope,
+    ) -> Result<Self, Error>
+    where
+        S: AsRef<Path>,
+    {
+        let (auth, channel) = tokio::try_join!(
+            async move {
+                Auth::new_from_service_account_file(project_id, path.as_ref(), scope)
+                    .await
+                    .map_err(Error::from)
+            },
+            build_channel()
+        )?;
+
+        let channel = AuthChannel::builder()
+            .with_channel(channel)
+            .with_auth(auth)
+            .build();
 
         debug!(
             message = "initialized PubSubClient",
-            project_id = %channel.auth().project_id(),
+            project_id = channel.auth().project_id(),
         );
 
         Ok(Self { channel })
     }
 
-    pub async fn from_auth(auth: Auth) -> Result<Self, Error> {
-        let channel = Auth::builder()
-            .auth(auth)
-            .channel(channel_config())
-            .build()
-            .await?;
+    pub async fn from_auth_manager<A>(auth_manager: A) -> Result<Self, Error>
+    where
+        A: Into<Auth>,
+    {
+        let channel = build_channel().await?;
+
+        let channel = AuthChannel::builder()
+            .with_channel(channel)
+            .with_auth(auth_manager.into())
+            .build();
 
         debug!(
             message = "initialized PubSubClient",
-            project_id = %channel.auth().project_id(),
+            project_id = channel.auth().project_id(),
         );
 
         Ok(Self { channel })
@@ -91,8 +124,7 @@ impl PubSubClient {
     where
         T: AsRef<str>,
     {
-        let req_topic =
-            util::make_default_topic(self.channel.auth().project_id().as_str(), topic.as_ref());
+        let req_topic = util::make_default_topic(self.channel.auth().project_id(), topic.as_ref());
 
         debug!(
             message = "creating topic...",
@@ -101,7 +133,7 @@ impl PubSubClient {
 
         // clone the client here, that way we can use it for the initail request and avoid
         // the need to make &self -> &mut self
-        let mut channel = self.channel.clone();
+        let mut channel = self.channel.clone().with_scope(Scope::PubSub);
         let topic = publisher_client::PublisherClient::new(&mut channel)
             .create_topic(req_topic)
             .await?
@@ -123,7 +155,10 @@ impl PubSubClient {
     where
         S: AsRef<str>,
     {
-        TopicClient::new_from_name(topic.as_ref(), self.channel.clone())
+        TopicClient::new_from_name(
+            topic.as_ref(),
+            self.channel.clone().with_scope(Scope::PubSub),
+        )
     }
 
     #[cfg(feature = "subscriber")]
@@ -151,14 +186,12 @@ impl PubSubClient {
     where
         S: AsRef<str>,
     {
-        let topic = util::make_qualified_topic_name(
-            self.channel.auth().project_id().as_str(),
-            topic.as_ref(),
-        );
+        let topic =
+            util::make_qualified_topic_name(self.channel.auth().project_id(), topic.as_ref());
 
         debug!(message = "retrieving topic...", topic = topic.as_str());
 
-        let mut channel = self.channel.clone();
+        let mut channel = self.channel.clone().with_scope(Scope::PubSub);
 
         let topic = publisher_client::PublisherClient::new(&mut channel)
             .get_topic(pubsub::GetTopicRequest { topic })
@@ -175,8 +208,8 @@ impl PubSubClient {
 
     #[must_use = "'TopicList' is a stream that must be polled"]
     pub fn list_topics(&self) -> TopicList {
-        let project_id = self.channel.auth().project_id().clone();
-        let mut channel = self.channel.clone();
+        let project_id = self.channel.auth().project_id();
+        let mut channel = self.channel.clone().with_scope(Scope::PubSub);
 
         let (tx, rx) = mpsc::channel(2);
 
@@ -282,7 +315,7 @@ impl Stream for TopicList {
 async fn test_list() -> Result<(), Error> {
     use futures::StreamExt;
 
-    let client = PubSubClient::new().await?;
+    let client = PubSubClient::new("mysticetus-oncloud", Scope::PubSub).await?;
 
     let mut list = vec![];
     let mut stream = client.list_topics();

@@ -1,12 +1,10 @@
 //! Inner gRPC channel that handles authentication
 
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
 
 use futures::{Future, TryFutureExt};
 use gcp_auth_channel::channel::AuthChannel;
-use gcp_auth_channel::channel::headers::GoogRequestParams;
 use gcp_auth_channel::{Auth, Scope};
 use protos::firestore::firestore_client;
 use tonic::Code;
@@ -46,9 +44,18 @@ async fn build_auth(project_id: &'static str, scope: Scope) -> crate::Result<Aut
 /// Newtype to the specific type of [`firestore_client::FirestoreClient`] that we'll be using here.
 #[derive(Debug, Clone)]
 pub struct FirestoreClient {
-    qualified_db_path: Arc<str>,
-    channel: AuthChannel<GoogRequestParams<Channel>>,
+    channel: AuthChannel,
 }
+
+/*
+fn wrap_auth_channel(channel: AuthChannel) -> crate::Result<AuthService> {
+    channel
+        .attach_header()
+        .static_key("x-goog-request-params")
+        .parse_value("this")?
+        .into_intercepted()
+}
+*/
 
 /// Helper trait to convert errors representing 404s as [`Ok(None)`]
 pub(crate) trait ResponseExt<R> {
@@ -68,25 +75,15 @@ impl<R> ResponseExt<R> for Result<tonic::Response<R>, tonic::Status> {
 
 impl FirestoreClient {
     #[inline]
-    pub(crate) fn get(
-        &self,
-    ) -> firestore_client::FirestoreClient<AuthChannel<GoogRequestParams<Channel>>> {
+    pub(crate) fn get(&self) -> firestore_client::FirestoreClient<AuthChannel> {
         firestore_client::FirestoreClient::new(self.channel.clone())
     }
 
     pub fn auth(&self) -> &Auth {
         self.channel.auth()
     }
-    pub(crate) fn from_auth_channel(qualified_db_path: Arc<str>, channel: AuthChannel) -> Self {
-        match channel.parse_goog_request_param(&[("database", qualified_db_path.as_ref())]) {
-            Ok(channel) => Self {
-                channel,
-                qualified_db_path,
-            },
-            Err((_, error)) => {
-                panic!("qualified database path is invalid: {qualified_db_path:?} - {error}")
-            }
-        }
+    pub(crate) fn from_auth_channel(channel: AuthChannel) -> Self {
+        Self { channel }
     }
 
     fn new_inner(auth: Auth, channel: Channel) -> Self {

@@ -205,10 +205,10 @@ async fn upload_body_inner(
         }
     };
 
-    let auth = shared.auth.get_header().into_header().await?;
+    let auth_header = shared.auth.get_header().await?;
     let request = builder
         .query(&[("name", name)]) // reqwest handles encoding query params, so we dont need to do it here
-        .header(header::AUTHORIZATION, auth.header)
+        .header(header::AUTHORIZATION, auth_header)
         .header(header::CONTENT_LENGTH, len)
         .header(header::CONTENT_TYPE, content_type)
         .body(body)

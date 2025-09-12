@@ -19,7 +19,11 @@ pub use bigquery_resources_rs as resources;
 
 #[tokio::test]
 async fn test_table_get() -> crate::Result<()> {
-    let client = BigQueryClient::new(gcp_auth_provider::Scope::BigQueryReadOnly).await?;
+    let client = BigQueryClient::new(
+        "mysticetus-oncloud",
+        gcp_auth_channel::Scope::BigQueryReadOnly,
+    )
+    .await?;
 
     let table = client
         .dataset("oncloud_production")

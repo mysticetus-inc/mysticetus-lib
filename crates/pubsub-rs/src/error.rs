@@ -3,7 +3,7 @@ pub enum Error {
     #[error("{0}")]
     Transport(#[from] Box<dyn std::error::Error + Send + Sync>),
     #[error("{0}")]
-    Auth(#[from] gcp_auth_provider::Error),
+    Auth(#[from] gcp_auth_channel::GcpAuthError),
     #[error("{0}")]
     InvalidHeaderName(#[from] http::header::InvalidHeaderName),
     #[error("{0}")]
@@ -16,18 +16,21 @@ pub enum Error {
     Internal(&'static str),
 }
 
-impl From<gcp_auth_provider::channel::ChannelError> for Error {
-    fn from(value: gcp_auth_provider::channel::ChannelError) -> Self {
-        match value {
-            gcp_auth_provider::channel::ChannelError::Auth(auth) => Self::Auth(auth),
-            gcp_auth_provider::channel::ChannelError::Transport(e) => Self::from(e),
-        }
-    }
-}
-
 impl From<tonic::transport::Error> for Error {
     fn from(value: tonic::transport::Error) -> Self {
         Self::Transport(Box::new(value))
+    }
+}
+
+impl From<gcp_auth_channel::Error> for Error {
+    fn from(auth_err: gcp_auth_channel::Error) -> Self {
+        match auth_err {
+            gcp_auth_channel::Error::Auth(auth_err) => Self::Auth(auth_err),
+            gcp_auth_channel::Error::Channel(err) => Self::Transport(err),
+            gcp_auth_channel::Error::Transport(trans_err) => Self::Transport(trans_err.into()),
+            gcp_auth_channel::Error::InvalidHeaderName(header) => Self::InvalidHeaderName(header),
+            gcp_auth_channel::Error::InvalidHeaderValue(val) => Self::InvalidHeaderValue(val),
+        }
     }
 }
 

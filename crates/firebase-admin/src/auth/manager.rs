@@ -11,20 +11,20 @@ const OOB_URL: &str = "https://identitytoolkit.googleapis.com/v1/accounts:sendOo
 #[derive(Debug, Clone)]
 pub struct AuthManager {
     base_url: Arc<reqwest::Url>,
-    auth: gcp_auth_provider::Auth,
+    auth: gcp_auth_channel::Auth,
     client: reqwest::Client,
 }
 
 impl AuthManager {
-    pub async fn new(scope: gcp_auth_provider::Scope) -> crate::Result<Self> {
-        let auth = gcp_auth_provider::Auth::new_detect()
-            .with_scopes(scope)
-            .await?;
-
+    pub async fn new(
+        project_id: &'static str,
+        scope: gcp_auth_channel::Scope,
+    ) -> crate::Result<Self> {
+        let auth = gcp_auth_channel::Auth::new(project_id, scope).await?;
         Ok(Self::from_auth(auth))
     }
 
-    pub fn from_parts(auth: gcp_auth_provider::Auth, client: reqwest::Client) -> Self {
+    pub fn from_parts(auth: gcp_auth_channel::Auth, client: reqwest::Client) -> Self {
         let base_url = Arc::new(
             reqwest::Url::parse(&format!("{BASE_URL}/projects/{}", auth.project_id()))
                 .expect("invalid project id?"),
@@ -37,7 +37,7 @@ impl AuthManager {
         }
     }
 
-    pub fn from_auth(auth: gcp_auth_provider::Auth) -> Self {
+    pub fn from_auth(auth: gcp_auth_channel::Auth) -> Self {
         let client = reqwest::Client::builder()
             .user_agent("firebase-admin-rs")
             .build()
@@ -56,10 +56,7 @@ impl AuthManager {
         method: reqwest::Method,
         build_request: impl FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
     ) -> crate::Result<reqwest::Response> {
-        let auth_header = match self.auth.get_header() {
-            gcp_auth_provider::GetHeaderResult::Cached(cached) => cached.header,
-            gcp_auth_provider::GetHeaderResult::Refreshing(fut) => fut.await?.header,
-        };
+        let auth_header = self.auth.get_header().await?;
 
         let builder = self
             .client
@@ -116,11 +113,14 @@ mod tests {
         static MANAGER: OnceCell<AuthManager> = OnceCell::const_new();
         MANAGER
             .get_or_init(|| async {
-                let auth = gcp_auth_provider::Auth::new_detect()
-                    .with_scopes(gcp_auth_provider::Scope::CloudPlatformAdmin)
-                    .await
-                    .unwrap();
-
+                let auth = gcp_auth_channel::Auth::new(
+                    "mysticetus-oncloud",
+                    // std::env::var("GOOGLE_APPLICATION_CREDENTIALS")
+                    //     .expect("`$GOOGLE_APPLICATION_CREDENTIALS` is unset"),
+                    gcp_auth_channel::Scope::CloudPlatformAdmin,
+                )
+                .await
+                .unwrap();
                 println!("{auth:#?}");
                 AuthManager::from_auth(auth)
             })

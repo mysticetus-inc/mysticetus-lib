@@ -1,23 +1,24 @@
 use bytes::Bytes;
-use gcp_auth_provider::service::AuthSvc;
-use net_utils::header::GoogRequestParam;
+use gcp_auth_channel::AuthChannel;
 use protos::tasks;
 use timestamp::Timestamp;
-use tonic::transport::Channel;
 
 use crate::http::HttpRequestBuilder;
+
+const GOOG_REQUEST_PARAMS: http::HeaderName =
+    http::HeaderName::from_static("x-goog-request-params");
 
 #[derive(Debug)]
 pub struct TaskQueueClient {
     queue: Box<str>,
-    channel: AuthSvc<Channel>,
+    channel: AuthChannel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TaskId(Box<str>);
 
 impl TaskQueueClient {
-    pub(crate) fn new(channel: AuthSvc<Channel>, queue: Box<str>) -> Self {
+    pub(crate) fn new(channel: AuthChannel, queue: Box<str>) -> Self {
         Self { queue, channel }
     }
 
@@ -36,10 +37,11 @@ impl TaskQueueClient {
         let metadata = http::HeaderValue::from_maybe_shared(header_bytes)
             .expect("this should always be valid");
 
-        let mut client = tasks::cloud_tasks_client::CloudTasksClient::new(GoogRequestParam::new(
-            self.channel.clone(),
-            metadata,
-        ));
+        let mut client = tasks::cloud_tasks_client::CloudTasksClient::new(
+            self.channel
+                .clone()
+                .attach_header(GOOG_REQUEST_PARAMS, metadata),
+        );
 
         let task = client.create_task(request).await?.into_inner();
         Ok(task)

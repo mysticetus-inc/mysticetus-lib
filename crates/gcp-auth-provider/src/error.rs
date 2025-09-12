@@ -13,57 +13,9 @@ pub enum Error {
     #[error(transparent)]
     RsaError(#[from] RsaError),
     #[error(transparent)]
-    Response(#[from] Box<ResponseError>),
+    Response(#[from] ResponseError),
     #[error("no authentication provider was found")]
     NoProviderFound,
-}
-
-impl Error {
-    /// Returns 'true' if the inner error is a `hyper-util` connect error.
-    pub fn is_connect_error(&self) -> bool {
-        match self {
-            Error::Hyper(HyperError::HyperUtil(err)) => err.is_connect(),
-            _ => false,
-        }
-    }
-
-    /// Whether this error represents a failure that's fatal, and therefore shouldn't be retried.
-    /// This is a best effort function, and might return false for certain fatal errors.
-    ///
-    /// For now, this only returns true for http responses that return 4XX statuses (client errors)
-    /// or if [`hyper::Error::is_user`] is true.
-    pub fn is_fatal(&self) -> bool {
-        match self {
-            Self::Response(resp) => resp.status.is_client_error(),
-            Self::Hyper(HyperError::Hyper(hyp)) => hyp.is_user(),
-            _ => false,
-        }
-    }
-
-    /// Shorthand for creating an [Io] variant, passing directly to [`std::io::Error::new`].
-    pub(crate) fn io(
-        kind: std::io::ErrorKind,
-        message: impl Into<Box<dyn std::error::Error + Send + Sync>>,
-    ) -> Self {
-        Self::Io(std::io::Error::new(kind, message.into()))
-    }
-
-    /// Shorthand for creating an [Io] variant, passing directly to [`std::io::Error::new`]
-    /// with [std::io::ErrorKind::InvalidData]
-    pub(crate) fn invalid_data(
-        message: impl Into<Box<dyn std::error::Error + Send + Sync>>,
-    ) -> Self {
-        Self::io(std::io::ErrorKind::InvalidData, message.into())
-    }
-}
-
-/// TODO: switch this to the specific Error variant if we add it later on,
-/// instead of just piggybacking off of an io error
-impl From<crate::project_id::InvalidProjectId> for Error {
-    #[inline]
-    fn from(value: crate::project_id::InvalidProjectId) -> Self {
-        Self::invalid_data(value)
-    }
 }
 
 impl From<serde_json::Error> for Error {
@@ -72,7 +24,7 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum RsaError {
     #[error(transparent)]
     KeyRejected(#[from] KeyRejected),
@@ -233,7 +185,7 @@ impl std::error::Error for ResponseError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 enum ResponseErrorKind {
     Json(serde_json::Value),
     Text(Bytes),

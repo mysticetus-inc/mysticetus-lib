@@ -38,7 +38,7 @@ impl<'a, D> DatasetClient<'a, D> {
         let mut request = QueryRequest::new(query);
 
         request.default_dataset = Some(DatasetReference {
-            project_id: S::from(self.client.project_id().as_str()),
+            project_id: S::from(self.client.project_id()),
             dataset_id: S::from(self.dataset_name.clone()),
         });
 
@@ -111,8 +111,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_table_list() -> crate::Result<()> {
-        let client =
-            super::super::BigQueryClient::new(gcp_auth_provider::Scope::BigQueryReadOnly).await?;
+        let client = super::super::BigQueryClient::new(
+            "mysticetus-boem",
+            gcp_auth_channel::Scope::BigQueryReadOnly,
+        )
+        .await?;
 
         let dataset_client = client.dataset("main");
 

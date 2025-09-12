@@ -2,12 +2,7 @@ use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Version, head
 use http_body::Body;
 pub use size::Size;
 use timestamp::Duration;
-
 pub const TRACE_CTX_HEADER: HeaderName = HeaderName::from_static("x-cloud-trace-context");
-
-pub(crate) const RESPONSE_STATUS_KEY: &str = "__resp_status__";
-pub(crate) const RESPONSE_SIZE_KEY: &str = "__resp_size__";
-pub(crate) const RESPONSE_LATENCY_KEY: &str = "__resp_latency__";
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,7 +47,7 @@ impl HttpRequest {
             .exact()
             .and_then(Size::new)
             .or_else(|| try_read_content_len(request.headers()))
-            .unwrap_or_else(Size::unknown);
+            .unwrap_or(Size::unknown());
 
         Self {
             protocol: request.version(),
@@ -66,16 +61,27 @@ impl HttpRequest {
             latency: None,
         }
     }
-}
 
-pub(crate) fn get_response_size<B: Body>(response: &http::Response<B>) -> Size {
-    response
-        .body()
-        .size_hint()
-        .exact()
-        .and_then(Size::new)
-        .or_else(|| try_read_content_len(response.headers()))
-        .unwrap_or(Size::unknown())
+    pub fn update_from_response<B: Body>(
+        &mut self,
+        latency: Duration,
+        response: &http::Response<B>,
+    ) {
+        self.status = Some(response.status());
+        self.latency = Some(latency);
+
+        let response_size = response
+            .body()
+            .size_hint()
+            .exact()
+            .and_then(Size::new)
+            .or_else(|| try_read_content_len(response.headers()))
+            .unwrap_or(Size::unknown());
+
+        if !response_size.is_unknown() {
+            self.response_size = response_size;
+        }
+    }
 }
 
 fn try_read_content_len(headers: &HeaderMap) -> Option<Size> {
@@ -91,18 +97,17 @@ mod serialize {
     use timestamp::Duration;
 
     #[inline]
-    pub(super) fn protocol<S>(version: &Version, serializer: S) -> Result<S::Ok, S::Error>
+    pub(super) fn protocol<S>(vers: &Version, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        match *version {
+        match *vers {
             Version::HTTP_09 => serializer.serialize_str("HTTP/0.9"),
             Version::HTTP_10 => serializer.serialize_str("HTTP/1.0"),
             Version::HTTP_11 => serializer.serialize_str("HTTP/1.1"),
             Version::HTTP_2 => serializer.serialize_str("HTTP/2"),
             Version::HTTP_3 => serializer.serialize_str("HTTP/3"),
-            // this branch should never hit, at least until http/4 is a thing
-            _ => serializer.collect_str(&format_args!("{version:?}")),
+            _ => serializer.collect_str(&format_args!("{vers:?}")),
         }
     }
 
@@ -194,72 +199,6 @@ mod serialize {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct RequestTrace {
-    pub trace_header: Option<HeaderValue>,
-    pub request: HttpRequest,
-}
-
-impl RequestTrace {
-    pub fn new<B: Body>(request: &http::Request<B>) -> Self {
-        Self {
-            trace_header: request.headers().get(TRACE_CTX_HEADER).cloned(),
-            request: HttpRequest::from_request(&request),
-        }
-    }
-}
-
-/// Helper type to format the logging trace in the correct format,
-/// without allocating
-pub struct TraceHeader<'a> {
-    project_id: &'static str,
-    header: &'a HeaderValue,
-}
-
-impl<'a> TraceHeader<'a> {
-    #[inline]
-    pub fn new(project_id: &'static str, header: &'a HeaderValue) -> Self {
-        Self { project_id, header }
-    }
-}
-
-impl std::fmt::Display for TraceHeader<'_> {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self { project_id, header } = self;
-
-        let trace_bytes = header.as_bytes();
-
-        let trace = match memchr::memchr(b'/', trace_bytes) {
-            Some(end_index) => &trace_bytes[..end_index],
-            None => trace_bytes,
-        };
-
-        if trace.is_ascii() {
-            // SAFETY: we just checked it was valid ascii. This should only ever be ascii and
-            // not utf8, so we only check for ascii to avoid the extra overhead from
-            // checking utf8
-            let trace_str = unsafe { std::str::from_utf8_unchecked(trace) };
-            write!(f, "projects/{project_id}/traces/{trace_str}")
-        } else {
-            // if the trace isn't ascii, something is probably wrong,
-            // but write it anyways in the hopes google can interpret it
-            let trace_escaped = trace.escape_ascii();
-            write!(f, "projects/{project_id}/traces/{trace_escaped}")
-        }
-    }
-}
-
-impl serde::Serialize for TraceHeader<'_> {
-    #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.collect_str(self)
-    }
-}
-
 pub mod size {
     /// A newtype for request/response sizes, with a niche value
     /// of [`u64::MAX`] indicating the value is unknown. Given no API
@@ -267,15 +206,9 @@ pub mod size {
     /// we can safely assume that we'll never encounter that [`u64::MAX`] in
     /// the real world, and worst case if we get an incorrect content len,
     /// we'll just skip logging the value.
-    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     #[repr(transparent)]
     pub struct Size(u64);
-
-    impl std::fmt::Debug for Size {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_tuple("Size").field(&self.get()).finish()
-        }
-    }
 
     impl std::fmt::Display for Size {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

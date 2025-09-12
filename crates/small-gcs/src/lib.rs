@@ -85,10 +85,8 @@ where
         if let reqwest::header::Entry::Vacant(vacant) =
             request.headers_mut().entry(reqwest::header::AUTHORIZATION)
         {
-            vacant.insert(match client.auth.get_header() {
-                gcp_auth_provider::GetHeaderResult::Cached(cache) => cache.header,
-                gcp_auth_provider::GetHeaderResult::Refreshing(fut) => fut.await?.header,
-            });
+            let header = client.auth.get_header().await?;
+            vacant.insert(header);
         }
 
         let resp = client.client.execute(request).await?;
@@ -106,7 +104,7 @@ where
             match (&mut $maybe_request, $resp.status().as_u16()) {
                 (Some(_), 429 | 500..=599) => (),
                 (Some(request), 401 | 403) => {
-                    client.auth.revoke_token();
+                    client.auth.revoke_token(true);
                     request.headers_mut().remove(reqwest::header::AUTHORIZATION);
                 }
                 _ => return Ok($resp),
@@ -157,9 +155,10 @@ async fn test_client() -> Result<(), Error> {
     let path = "VNE.0522.Fugro.RPS.GOExplorer.GP.Jul.2022-443155/SignOffs/GOExplorerVis/\
                 2022-10-21/GOExplorerVis-2022-10-21-2358-Final-Edited-EPE-epe-KD-epe-[KD].\
                 Mysticetus";
-    let mut client = BucketClient::new_with_scope(
-        gcp_auth_provider::Scope::GcsReadWrite,
+    let mut client = BucketClient::new(
+        "mysticetus-oncloud",
         "mysticetus-replicated-data",
+        gcp_auth_channel::Scope::GcsReadWrite,
     )
     .await?;
 

@@ -6,8 +6,8 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-# doc tests need to be disabled, since the generated code usually includes
-# comments that are flagged as doc tests, but aren't, causing tons of test
+# doctests need to be disabled, since the generated code usually includes
+# comments that are flagged as doctests, but arent, causing tons of test
 # failure warnings.
 doctest = false
 # built docs also need to be disabled, there's lots of invalid comments that

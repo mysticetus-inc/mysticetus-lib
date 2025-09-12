@@ -66,10 +66,6 @@ mod transaction;
 mod util;
 mod value;
 
-// re-export `protos` so downstream consumers can get
-// access to raw protobuf types when needed
-pub use protos;
-
 pub mod timestamp;
 
 use std::borrow::Cow;

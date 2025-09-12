@@ -1,337 +1,202 @@
-#![cfg_attr(feature = "gcloud", feature(exit_status_error))]
-
-mod cache;
+#[cfg(feature = "application-default")]
+mod application_default;
 mod client;
+#[cfg(feature = "emulator")]
+pub mod emulator;
 mod error;
+mod future;
+#[cfg(feature = "gcloud")]
+pub mod gcloud;
+pub mod metadata;
 mod project_id;
-pub mod scope;
+mod scope;
+pub mod service_account;
 mod token;
 mod util;
 
-#[cfg(feature = "channel")]
-pub mod channel;
-pub mod providers;
-pub mod service;
-
-use std::path::{Path, PathBuf};
-use std::pin::Pin;
-use std::sync::Arc;
-
-pub use cache::GetHeaderResult;
 pub use error::{Error, ResponseError};
-use futures::FutureExt;
+pub use future::GetTokenFuture;
 pub use project_id::ProjectId;
-pub use providers::{DetectFuture, GetTokenFuture, Provider};
 pub use scope::{Scope, Scopes};
 pub use token::Token;
 
-pub use crate::providers::TokenProvider;
-use crate::providers::{LoadProviderResult, ScopedTokenProvider, UnscopedProvider};
-
 pub type Result<T> = core::result::Result<T, Error>;
 
-#[derive(Clone)]
-pub struct Auth {
-    inner: Arc<dyn cache::TokenCache>,
+#[derive(Debug)]
+pub enum Provider {
+    #[cfg(feature = "application-default")]
+    ApplicationDefault(application_default::ApplicationDefault),
+    #[cfg(feature = "emulator")]
+    Emulator(emulator::EmulatorProvider),
+    #[cfg(feature = "gcloud")]
+    GCloud(gcloud::GCloudProvider),
+    MetadataServer(metadata::MetadataServer),
+    ServiceAccount(service_account::ServiceAccount),
 }
 
-pin_project_lite::pin_project! {
-    pub struct AuthDetectFuture {
-        #[pin]
-        fut: futures::future::Map<
-            DetectFuture<'static>,
-            fn(<DetectFuture<'static> as Future>::Output) -> Result<std::result::Result<Auth, UnscopedProvider>>,
-        >,
-    }
-}
-
-impl AuthDetectFuture {
-    pub fn cloud_platform_admin(self) -> ScopedAuthDetectFuture {
-        self.with_scopes(Scopes::CLOUD_PLATFORM_ADMIN)
+impl Provider {
+    #[cfg(feature = "emulator")]
+    pub const fn new_emulator() -> Self {
+        Self::Emulator(emulator::EmulatorProvider)
     }
 
-    pub fn cloud_platform_read_only(self) -> ScopedAuthDetectFuture {
-        self.with_scopes(Scopes::CLOUD_PLATFORM_READ_ONLY)
-    }
+    pub async fn detect() -> Result<(Self, ProjectId)> {
+        let mut ctx = InitContext::default();
 
-    pub fn with_scopes(self, scopes: impl Into<Scopes>) -> ScopedAuthDetectFuture {
-        ScopedAuthDetectFuture {
-            fut: self.fut,
-            scopes: scopes.into(),
+        if let Some((service_account, project_id)) =
+            service_account::ServiceAccount::try_load(&mut ctx).await?
+        {
+            return Ok((Self::ServiceAccount(service_account), project_id));
         }
-    }
-}
 
-impl Future for AuthDetectFuture {
-    type Output = Result<std::result::Result<Auth, UnscopedProvider>>;
-
-    #[inline]
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        self.project().fut.poll(cx)
-    }
-}
-
-pin_project_lite::pin_project! {
-    pub struct ScopedAuthDetectFuture {
-        #[pin]
-        fut: futures::future::Map<
-            DetectFuture<'static>,
-            fn(<DetectFuture<'static> as Future>::Output) -> Result<std::result::Result<Auth, UnscopedProvider>>,
-        >,
-        scopes: Scopes,
-    }
-}
-
-impl Future for ScopedAuthDetectFuture {
-    type Output = Result<Auth>;
-
-    #[inline]
-    fn poll(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let this = self.project();
-
-        std::task::Poll::Ready(Ok(match std::task::ready!(this.fut.poll(cx))? {
-            Ok(prov) => prov,
-            Err(unscoped) => unscoped.with_scope(*this.scopes),
-        }))
-    }
-}
-
-pub type AuthMetadataFuture = futures::future::Map<
-    providers::metadata::LoadFuture<'static>,
-    fn(<providers::metadata::LoadFuture<'static> as Future>::Output) -> Result<Auth>,
->;
-
-pin_project_lite::pin_project! {
-    pub struct AuthServiceAccountFuture {
-        #[pin]
-        inner: providers::service_account::TryLoadFuture<'static>,
-        scopes: Scopes,
-    }
-}
-impl Future for AuthServiceAccountFuture {
-    type Output = Result<Auth>;
-
-    #[inline]
-    fn poll(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let this = self.project();
-        let load_result = std::task::ready!(this.inner.poll(cx))?;
-
-        let mapped_result = load_result.map_provider(|provider| provider.with_scopes(*this.scopes));
-
-        std::task::Poll::Ready(Ok(Auth::new_from_provider(mapped_result)))
-    }
-}
-
-impl Auth {
-    #[cfg(feature = "channel")]
-    pub fn builder() -> channel::AuthChannelBuilder<(), ()> {
-        channel::AuthChannelBuilder::default()
-    }
-
-    #[cfg(feature = "channel")]
-    pub fn build_channel(&self) -> channel::AuthChannelBuilder<Auth, ()> {
-        channel::AuthChannelBuilder::default().auth(self.clone())
-    }
-
-    pub fn get_header(&self) -> cache::GetHeaderResult<'_> {
-        cache::GetHeaderResult::get(&self.inner)
-    }
-
-    /// Identical to calling [tower::Layer<Svc>::layer], but takes
-    /// and owned Auth, avoiding an extra clone.
-    #[inline]
-    pub fn into_service<Svc>(self, svc: Svc) -> service::AuthSvc<Svc> {
-        service::AuthSvc { svc, auth: self }
-    }
-
-    pub fn project_id(&self) -> ProjectId {
-        self.inner.project_id()
-    }
-
-    pub fn revoke_token(&self) {
-        self.inner.revoke(cache::StartNewRequestOnRevoke::Yes);
-    }
-
-    pub fn new_detect() -> AuthDetectFuture {
-        AuthDetectFuture {
-            fut: Provider::detect().map(Self::from_any_provider_res),
+        if let Some((metadata, project_id)) = metadata::MetadataServer::try_load(&mut ctx).await? {
+            return Ok((Self::MetadataServer(metadata), project_id));
         }
-    }
 
-    pub fn new_metadata() -> AuthMetadataFuture {
-        providers::metadata::MetadataServer::new()
-            .start_token_request()
-            .map(|result| result.map(Self::new_from_provider))
-    }
-
-    pub fn from_service_account_file(
-        path: impl Into<PathBuf>,
-        scopes: impl Into<Scopes>,
-    ) -> AuthServiceAccountFuture {
-        let inner = providers::service_account::ServiceAccount::new_from_path(path.into());
-
-        AuthServiceAccountFuture {
-            inner,
-            scopes: scopes.into(),
+        #[cfg(feature = "application-default")]
+        if let Some((app, project_id)) =
+            application_default::ApplicationDefault::try_load(&mut ctx).await?
+        {
+            return Ok((Self::ApplicationDefault(app), project_id));
         }
+
+        #[cfg(feature = "gcloud")]
+        if let Some((gcloud, project_id)) = gcloud::GCloudProvider::try_load().await? {
+            return Ok((Self::GCloud(gcloud), project_id));
+        }
+
+        Err(Error::NoProviderFound)
     }
 
-    fn from_any_provider(
-        res: LoadProviderResult<'static, Provider>,
-    ) -> std::result::Result<Self, UnscopedProvider> {
-        let LoadProviderResult {
-            provider,
-            project_id,
-            token_future,
-        } = res;
-
-        match provider {
-            Provider::MetadataServer(metadata) => Ok(Self::new_from_provider(LoadProviderResult {
-                provider: metadata,
-                project_id,
-                token_future,
-            })),
-            Provider::ServiceAccount(svc) => Err(UnscopedProvider::ServiceAccount(project_id, svc)),
-            #[cfg(feature = "gcloud")]
-            Provider::GCloud(gcloud) => Ok(Self::new_from_provider(LoadProviderResult {
-                provider: gcloud,
-                project_id,
-                token_future,
-            })),
+    pub fn token_provider_name(&self) -> &'static str {
+        match self {
             #[cfg(feature = "application-default")]
-            Provider::ApplicationDefault(app_def) => {
-                Err(UnscopedProvider::ApplicationDefault(project_id, app_def))
-            }
+            Self::ApplicationDefault(app) => app.name(),
             #[cfg(feature = "emulator")]
-            Provider::Emulator(emulator) => Ok(Self::new_from_provider(LoadProviderResult {
-                provider: emulator,
-                project_id,
-                token_future,
-            })),
+            Self::Emulator(emulator) => emulator.name(),
+            #[cfg(feature = "gcloud")]
+            Self::GCloud(gcloud) => gcloud.name(),
+            Self::MetadataServer(ms) => ms.name(),
+            Self::ServiceAccount(svc) => svc.name(),
         }
     }
 
-    fn from_any_provider_res(
-        result: Result<LoadProviderResult<'static, Provider>>,
-    ) -> Result<std::result::Result<Self, UnscopedProvider>> {
-        result.map(Self::from_any_provider)
-    }
-
-    pub fn new_from_provider<T: TokenProvider + 'static>(
-        load_res: LoadProviderResult<'static, T>,
-    ) -> Self {
-        let LoadProviderResult {
-            provider,
-            project_id,
-            token_future,
-        } = load_res;
-
-        Self {
-            inner: Arc::new(cache::CachedTokenProvider::new(
-                provider,
-                project_id,
-                token_future,
-            )),
+    pub fn as_token_provider(&self) -> Option<&dyn TokenProvider> {
+        match self {
+            #[cfg(feature = "gcloud")]
+            Self::GCloud(gcloud) => Some(gcloud),
+            #[cfg(feature = "emulator")]
+            Self::Emulator(emulator) => Some(emulator),
+            Self::MetadataServer(meta) => Some(meta),
+            _ => None,
         }
     }
-}
 
-impl std::fmt::Debug for Auth {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Auth")
-            .field("project_id", &self.inner.project_id())
-            .field("provider", &self.inner.provider_name())
-            .field("cache", &self.inner)
-            .finish()
-    }
-}
-
-impl PartialEq for Auth {
-    fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.inner, &other.inner)
-            || (self.inner.provider_name() == other.inner.provider_name()
-                && self.inner.project_id() == other.inner.project_id())
-    }
-}
-
-impl<Svc> tower::Layer<Svc> for Auth {
-    type Service = service::AuthSvc<Svc>;
-
-    fn layer(&self, svc: Svc) -> Self::Service {
-        service::AuthSvc {
-            auth: self.clone(),
-            svc,
+    pub fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_> {
+        match self {
+            #[cfg(feature = "application-default")]
+            Self::ApplicationDefault(app) => app.get_scoped_token(scopes),
+            #[cfg(feature = "gcloud")]
+            Self::GCloud(gcloud) => gcloud.get_token(),
+            #[cfg(feature = "emulator")]
+            Self::Emulator(emulator) => emulator.get_token(),
+            Self::MetadataServer(meta) => meta.get_token(),
+            Self::ServiceAccount(acct) => acct.get_scoped_token(scopes),
         }
     }
 }
 
-pin_project_lite::pin_project! {
-    pub struct SharedAuthFuture<F> {
-        #[pin]
-        inner: Arc<parking_lot::Mutex<SharedInner<F>>>,
+/// Base trait for token providers. Actual provider impls
+/// are defined by the supertraits [`ScopedTokenProvider`] and [`TokenProvider`].
+pub trait BaseTokenProvider: std::fmt::Debug + Send + Sync {
+    fn name(&self) -> &'static str;
+}
+
+impl<B: BaseTokenProvider> BaseTokenProvider for &B {
+    #[inline]
+    fn name(&self) -> &'static str {
+        B::name(self)
     }
 }
 
-impl<F> Clone for SharedAuthFuture<F> {
-    fn clone(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
+impl BaseTokenProvider for Provider {
+    fn name(&self) -> &'static str {
+        self.token_provider_name()
+    }
+}
+
+impl ScopedTokenProvider for Provider {
+    #[inline]
+    fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_> {
+        self.get_scoped_token(scopes)
+    }
+}
+
+pub trait ScopedTokenProvider: BaseTokenProvider {
+    fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_>;
+
+    fn into_scoped(self, scopes: Scopes) -> ScopedProvider<Self>
+    where
+        Self: Sized,
+    {
+        ScopedProvider {
+            provider: self,
+            scopes,
         }
     }
 }
 
-pin_project_lite::pin_project! {
-    #[project = SharedInnerProjection]
-    enum SharedInner<F> {
-        Error,
-        Done { auth: Auth, },
-        Pending {
-            #[pin]
-            fut: F,
-        }
-    }
-}
-
-impl<F> Future for SharedAuthFuture<F>
+impl<S> ScopedTokenProvider for &S
 where
-    F: Future<Output = Result<Auth>> + Unpin,
+    S: ScopedTokenProvider,
 {
-    type Output = Result<Auth>;
-
-    fn poll(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let this = self.project();
-
-        let mut guard = this.inner.lock();
-
-        loop {
-            match Pin::new(&mut *guard).project() {
-                SharedInnerProjection::Error => todo!(),
-                SharedInnerProjection::Done { auth } => {
-                    return std::task::Poll::Ready(Ok(auth.clone()));
-                }
-                SharedInnerProjection::Pending { fut } => match std::task::ready!(fut.poll(cx)) {
-                    Ok(auth) => {
-                        *guard = SharedInner::Done { auth: auth.clone() };
-                        return std::task::Poll::Ready(Ok(auth));
-                    }
-                    Err(error) => {
-                        *guard = SharedInner::Error;
-                        return std::task::Poll::Ready(Err(error));
-                    }
-                },
-            }
-        }
+    #[inline]
+    fn get_scoped_token(&self, scopes: Scopes) -> GetTokenFuture<'_> {
+        S::get_scoped_token(self, scopes)
     }
+}
+
+fn _assert_scoped_token_provider_dyn(_: &dyn ScopedTokenProvider) {}
+
+/// For providers that don't need any scopes to generate a token.
+pub trait TokenProvider: BaseTokenProvider {
+    fn get_token(&self) -> GetTokenFuture<'_>;
+}
+
+impl<S> TokenProvider for &S
+where
+    S: TokenProvider,
+{
+    #[inline]
+    fn get_token(&self) -> GetTokenFuture<'_> {
+        <S as TokenProvider>::get_token(self)
+    }
+}
+
+fn _assert_token_provider_dyn(_: &dyn TokenProvider) {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScopedProvider<P> {
+    provider: P,
+    scopes: Scopes,
+}
+
+impl<B: BaseTokenProvider> BaseTokenProvider for ScopedProvider<B> {
+    #[inline]
+    fn name(&self) -> &'static str {
+        self.provider.name()
+    }
+}
+
+impl<P: ScopedTokenProvider> TokenProvider for ScopedProvider<P> {
+    #[inline]
+    fn get_token(&self) -> GetTokenFuture<'_> {
+        self.provider.get_scoped_token(self.scopes)
+    }
+}
+
+#[derive(Debug, Default)]
+struct InitContext {
+    http: Option<client::HttpClient>,
+    https: Option<client::HttpsClient>,
 }

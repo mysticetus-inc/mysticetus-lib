@@ -26,7 +26,7 @@ impl<S> QueryBuilder<S> {
         S: From<&'static str>,
     {
         self.request.default_dataset = Some(bigquery_resources_rs::DatasetReference {
-            project_id: S::from(self.client.project_id().as_str()),
+            project_id: S::from(self.client.project_id()),
             dataset_id: dataset_id.into(),
         });
 
@@ -149,9 +149,10 @@ mod query_tests {
 
     #[tokio::test]
     async fn test_query() -> crate::Result<()> {
-        let dataset = BigQueryClient::new(gcp_auth_provider::Scope::BigQueryReadOnly)
-            .await?
-            .into_dataset::<&'static str>("main");
+        let dataset =
+            BigQueryClient::new("mysticetus-boem", gcp_auth_channel::Scope::BigQueryReadOnly)
+                .await?
+                .into_dataset::<&'static str>("main");
 
         const QUERY: QueryString = query!("SELECT * FROM current_projects LIMIT 10");
 

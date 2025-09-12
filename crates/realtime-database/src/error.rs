@@ -14,7 +14,7 @@ pub enum Error {
     #[error(transparent)]
     InvalidEvent(#[from] InvalidEvent),
     #[error(transparent)]
-    Auth(#[from] gcp_auth_provider::Error),
+    Auth(#[from] gcp_auth_channel::Error),
     #[error(transparent)]
     RealtimeDatabase(#[from] RealtimeDbError),
     #[error(transparent)]
@@ -39,6 +39,13 @@ impl Error {
         E: Into<SerdeError>,
     {
         Self::DeserializeError(de_err.into())
+    }
+
+    pub(crate) fn ser<E>(ser_err: E) -> Self
+    where
+        E: Into<SerdeError>,
+    {
+        Self::SerializeError(ser_err.into())
     }
 }
 

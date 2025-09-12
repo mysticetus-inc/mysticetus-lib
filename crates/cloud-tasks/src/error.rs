@@ -1,24 +1,13 @@
-use gcp_auth_provider::channel::ChannelError;
-
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] gcp_auth_provider::Error),
+    Auth(#[from] gcp_auth_channel::Error),
     #[error(transparent)]
     Status(#[from] tonic::Status),
     #[error(transparent)]
     MissingProtoField(#[from] MissingProtoField),
     #[error(transparent)]
     Transport(#[from] tonic::transport::Error),
-}
-
-impl From<ChannelError> for Error {
-    fn from(value: ChannelError) -> Self {
-        match value {
-            ChannelError::Auth(auth) => Self::Auth(auth),
-            ChannelError::Transport(transport) => Self::Transport(transport),
-        }
-    }
 }
 
 impl Error {

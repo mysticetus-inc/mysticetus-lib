@@ -68,10 +68,6 @@ where
     Fut: TryFuture + Future<Output = Result<Fut::Ok, Fut::Error>>,
     Fut::Error: std::error::Error,
 {
-    if rustls::crypto::CryptoProvider::get_default().is_none() {
-        _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
-    }
-
     // use an inner future so we can inspect the result to log errors
     // without explicitly needing to in external user-code
     let inner_fut = async move {

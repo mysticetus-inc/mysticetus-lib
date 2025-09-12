@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 
-use gcp_auth_provider::{Auth, Scope};
+use gcp_auth_channel::{Auth, Scope};
 
 use crate::client::Client;
 
@@ -21,6 +21,7 @@ impl DatabaseRef<'_> {
 }
 
 pub struct RealtimeDbBuilder<'a> {
+    project_id: &'static str,
     db_ref: DatabaseRef<'a>,
     auth_manager: Option<Auth>,
     silent_print: bool,
@@ -28,8 +29,9 @@ pub struct RealtimeDbBuilder<'a> {
 }
 
 impl<'a> RealtimeDbBuilder<'a> {
-    pub fn new() -> Self {
+    pub fn new(project_id: &'static str) -> Self {
         Self {
+            project_id,
             db_ref: DatabaseRef::ProjectId,
             auth_manager: None,
             silent_print: false,
@@ -61,40 +63,41 @@ impl RealtimeDbBuilder<'_> {
 impl RealtimeDbBuilder<'_> {
     pub async fn from_service_account_file<P>(mut self, path: P) -> Result<Self, crate::Error>
     where
-        P: Into<PathBuf>,
+        P: AsRef<Path>,
     {
         let scope = if self.use_cloud_platform_admin_scope {
             Scope::CloudPlatformAdmin
         } else {
-            Scope::RealtimeDatabase
+            Scope::FirestoreRealtimeDatabase
         };
 
-        let auth_manager = Auth::from_service_account_file(path.into(), scope).await?;
+        let auth_manager =
+            Auth::new_from_service_account_file(self.project_id, path, scope).await?;
 
         self.auth_manager = Some(auth_manager);
         Ok(self)
     }
 
     pub async fn build(self) -> Result<crate::RealtimeDatabase, crate::Error> {
+        let db_url = self.db_ref.to_url(&self.project_id);
+
         let http_client = reqwest::Client::builder()
             .user_agent("realtime-database-rs")
             .build()?;
 
-        let auth = match self.auth_manager {
-            Some(auth) => auth,
+        let scope = if self.use_cloud_platform_admin_scope {
+            Scope::CloudPlatformAdmin
+        } else {
+            Scope::FirestoreRealtimeDatabase
+        };
+
+        let client = match self.auth_manager {
+            Some(auth) => Client::new(db_url, auth, http_client, self.silent_print),
             None => {
-                Auth::new_detect()
-                    .with_scopes(if self.use_cloud_platform_admin_scope {
-                        Scope::CloudPlatformAdmin
-                    } else {
-                        Scope::RealtimeDatabase
-                    })
-                    .await?
+                let auth = Auth::new(self.project_id, scope).await?;
+                Client::new(db_url, auth, http_client, self.silent_print)
             }
         };
-        let db_url = self.db_ref.to_url(&auth.project_id());
-
-        let client = Client::new(db_url, auth, http_client, self.silent_print);
 
         Ok(crate::RealtimeDatabase { client })
     }

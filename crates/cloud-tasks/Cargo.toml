@@ -19,10 +19,7 @@ path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
 thiserror.workspace = true
 net-utils = { path = "../net-utils", features = ["tonic"] }
 prost.workspace = true
-gcp-auth-provider = { path = "../gcp-auth-provider", features = [
-    "channel",
-    "channel-tls",
-] }
+gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
 tonic = { workspace = true, features = ["transport", "tls-webpki-roots"] }
 http.workspace = true
 bytes.workspace = true

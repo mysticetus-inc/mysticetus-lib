@@ -12,7 +12,6 @@ tonic = { workspace = true, optional = true }
 tower = { workspace = true, features = ["retry"], optional = true }
 pin-project-lite.workspace = true
 bytes.workspace = true
-bytes-utils.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 rand.workspace = true
@@ -20,11 +19,9 @@ tracing.workspace = true
 thiserror.workspace = true
 timestamp = { path = "../timestamp" }
 http.workspace = true
-http-body.workspace = true
 axum.workspace = true
 num-traits.workspace = true
 tokio-util.workspace = true
-parking_lot.workspace = true
 phf = { version = "0.11.3", features = ["macros"] }
 path-aware-serde = { path = "../path-aware-serde", features = ["json"] }
 
