@@ -66,9 +66,14 @@ pub fn current() -> Option<Id> {
     with_ref(|spans| spans.last().cloned()).flatten()
 }
 
-/// Enters the given span, making it the current span.
-pub fn enter(id: &Id) {
-    with_mut(|spans| spans.push(id.clone()));
+/// Enters the given span, making it the current span. Returns true
+/// if this is the first instance of this span being active in this TLS stack.
+pub fn enter(id: &Id) -> bool {
+    with_mut(|spans| {
+        let duplicate = spans.iter().any(|existing| existing == id);
+        spans.push(id.clone());
+        !duplicate
+    })
 }
 
 /// Exits the span given by 'id'. Returns true if it was found and removed,
