@@ -93,7 +93,7 @@ impl<T: TokenProvider + Send + Sync + 'static> super::TokenCache for CachedToken
                         message = "brand new token from request already expired?",
                         now = ?timestamp,
                         token_expires_at = ?token.expires_at(),
-                        token_expired = timestamp <= token.expires_at(),
+                        token_valid = timestamp <= token.expires_at(),
                         provider = ?self.provider,
                     );
                 }

@@ -110,9 +110,9 @@ impl Token {
         let now = timestamp::Timestamp::now();
 
         if now <= self.expires_at {
-            Err(now)
-        } else {
             Ok((self.expires_at - now).into())
+        } else {
+            Err(now)
         }
     }
 }
