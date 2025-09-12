@@ -116,7 +116,43 @@ impl<MkWriter: MakeWriter> tracing::Subscriber for Subscriber<MkWriter> {
 
     #[inline]
     fn enabled(&self, metadata: &tracing::Metadata<'_>) -> bool {
-        &self.filter >= metadata.level() && self.records.enabled(metadata)
+        #[cfg(feature = "debug-logging")]
+        {
+            let level_enabled = &self.filter >= metadata.level();
+            let records_enabled = self.records.enabled(metadata);
+
+            println!(
+                "Subscriber - {:?} level enabled: {level_enabled} - records {records_enabled}",
+                metadata.level()
+            );
+
+            level_enabled && records_enabled
+        }
+        #[cfg(not(feature = "debug-logging"))]
+        {
+            &self.filter >= metadata.level() && self.records.enabled(metadata)
+        }
+    }
+
+    #[inline]
+    fn event_enabled(&self, event: &tracing::Event<'_>) -> bool {
+        #[cfg(feature = "debug-logging")]
+        {
+            let level_enabled = &self.filter >= event.metadata().level();
+            let records_enabled = self.records.event_enabled(event);
+
+            println!(
+                "Subscriber event - {:?} level enabled: {level_enabled} - records \
+                 {records_enabled}",
+                event.metadata().level()
+            );
+
+            level_enabled && records_enabled
+        }
+        #[cfg(not(feature = "debug-logging"))]
+        {
+            &self.filter >= event.metadata().level() && self.records.event_enabled(event)
+        }
     }
 
     #[inline]
@@ -162,11 +198,6 @@ impl<MkWriter: MakeWriter> tracing::Subscriber for Subscriber<MkWriter> {
     #[inline]
     fn max_level_hint(&self) -> Option<tracing::level_filters::LevelFilter> {
         Some(self.filter)
-    }
-
-    #[inline]
-    fn event_enabled(&self, event: &tracing::Event<'_>) -> bool {
-        &self.filter >= event.metadata().level() && self.records.event_enabled(event)
     }
 
     #[inline]
