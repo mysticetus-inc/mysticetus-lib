@@ -23,7 +23,8 @@ pub struct Operation {
     pub done: bool,
     /// The operation result, which can be either an `error` or a valid `response`.
     /// If `done` == `false`, neither `error` nor `response` is set.
-    /// If `done` == `true`, exactly one of `error` or `response` is set.
+    /// If `done` == `true`, exactly one of `error` or `response` can be set.
+    /// Some services might not provide the result.
     #[prost(oneof = "operation::Result", tags = "4, 5")]
     pub result: ::core::option::Option<operation::Result>,
 }
@@ -31,7 +32,8 @@ pub struct Operation {
 pub mod operation {
     /// The operation result, which can be either an `error` or a valid `response`.
     /// If `done` == `false`, neither `error` nor `response` is set.
-    /// If `done` == `true`, exactly one of `error` or `response` is set.
+    /// If `done` == `true`, exactly one of `error` or `response` can be set.
+    /// Some services might not provide the result.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
@@ -39,7 +41,7 @@ pub mod operation {
         /// The error result of the operation in case of failure or cancellation.
         #[prost(message, tag = "4")]
         Error(super::super::rpc::Status),
-        /// The normal response of the operation in case of success.  If the original
+        /// The normal, successful response of the operation.  If the original
         /// method returns no data on success, such as `Delete`, the response is
         /// `google.protobuf.Empty`.  If the original method is standard
         /// `Get`/`Create`/`Update`, the response should be the resource.  For other
@@ -51,7 +53,8 @@ pub mod operation {
         Response(super::super::protobuf::Any),
     }
 }
-/// The request message for [Operations.GetOperation][google.longrunning.Operations.GetOperation].
+/// The request message for
+/// [Operations.GetOperation][google.longrunning.Operations.GetOperation].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -112,7 +115,8 @@ pub struct DeleteOperationRequest {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
-/// The request message for [Operations.WaitOperation][google.longrunning.Operations.WaitOperation].
+/// The request message for
+/// [Operations.WaitOperation][google.longrunning.Operations.WaitOperation].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -130,13 +134,12 @@ pub struct WaitOperationRequest {
 ///
 /// Example:
 ///
-///    rpc LongRunningRecognize(LongRunningRecognizeRequest)
-///        returns (google.longrunning.Operation) {
-///      option (google.longrunning.operation_info) = {
-///        response_type: "LongRunningRecognizeResponse"
-///        metadata_type: "LongRunningRecognizeMetadata"
-///      };
-///    }
+///      rpc Export(ExportRequest) returns (google.longrunning.Operation) {
+///        option (google.longrunning.operation_info) = {
+///          response_type: "ExportResponse"
+///          metadata_type: "ExportMetadata"
+///        };
+///      }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -175,12 +178,12 @@ pub mod operations_client {
     /// Manages long-running operations with an API service.
     ///
     /// When an API method normally takes long time to complete, it can be designed
-    /// to return [Operation][google.longrunning.Operation] to the client, and the client can use
-    /// this interface to receive the real response asynchronously by polling the
-    /// operation resource, or pass the operation resource to another API (such as
-    /// Google Cloud Pub/Sub API) to receive the response.  Any API service that
-    /// returns long-running operations should implement the `Operations` interface
-    /// so developers can have a consistent client experience.
+    /// to return [Operation][google.longrunning.Operation] to the client, and the
+    /// client can use this interface to receive the real response asynchronously by
+    /// polling the operation resource, or pass the operation resource to another API
+    /// (such as Pub/Sub API) to receive the response.  Any API service that returns
+    /// long-running operations should implement the `Operations` interface so
+    /// developers can have a consistent client experience.
     #[derive(Debug, Clone)]
     pub struct OperationsClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -262,14 +265,6 @@ pub mod operations_client {
         }
         /// Lists operations that match the specified filter in the request. If the
         /// server doesn't support this method, it returns `UNIMPLEMENTED`.
-        ///
-        /// NOTE: the `name` binding allows API services to override the binding
-        /// to use different resource name schemes, such as `users/*/operations`. To
-        /// override the binding, API services can add a binding such as
-        /// `"/v1/{name=users/*}/operations"` to their service configuration.
-        /// For backwards compatibility, the default name includes the operations
-        /// collection id, however overriding users must ensure the name binding
-        /// is the parent resource, without the operations collection id.
         pub async fn list_operations(
             &mut self,
             request: impl tonic::IntoRequest<super::ListOperationsRequest>,
@@ -341,7 +336,7 @@ pub mod operations_client {
         /// operation completed despite cancellation. On successful cancellation,
         /// the operation is not deleted; instead, it becomes an operation with
         /// an [Operation.error][google.longrunning.Operation.error] value with a
-        /// [google.rpc.Status.code][google.rpc.Status.code] of 1, corresponding to
+        /// [google.rpc.Status.code][google.rpc.Status.code] of `1`, corresponding to
         /// `Code.CANCELLED`.
         pub async fn cancel_operation(
             &mut self,

@@ -47,8 +47,6 @@ impl<Cols: ArrayLength> FieldIndex<Cols> {
             })
             .collect::<Result<GenericArray<(Indexes, Field), Q::NumColumns>, MissingTypeInfo>>()?;
 
-        
-        
         Ok(Self { fields })
     }
 

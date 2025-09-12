@@ -39,6 +39,7 @@ members = [
 version = "0.0.0"
 
 [workspace.dependencies]
+rustls = "0.23"
 apache-avro = "0.17"
 tokio = "1.44"
 tokio-util = "0.7"

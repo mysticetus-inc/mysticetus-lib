@@ -334,6 +334,9 @@ pub struct TransactionOptions {
     /// `INVALID_ARGUMENT` error.
     #[prost(bool, tag = "5")]
     pub exclude_txn_from_change_streams: bool,
+    /// Isolation level for the transaction.
+    #[prost(enumeration = "transaction_options::IsolationLevel", tag = "6")]
+    pub isolation_level: i32,
     /// Required. The type of transaction.
     #[prost(oneof = "transaction_options::Mode", tags = "1, 3, 2")]
     pub mode: ::core::option::Option<transaction_options::Mode>,
@@ -370,17 +373,28 @@ pub mod transaction_options {
         pub enum ReadLockMode {
             /// Default value.
             ///
-            /// If the value is not specified, the pessimistic read lock is used.
+            /// * If isolation level is `REPEATABLE_READ`, then it is an error to specify
+            ///   `read_lock_mode`. Locking semantics default to `OPTIMISTIC`. No validation checks
+            ///   are done for reads, except for:
+            ///      1. reads done as part of queries that use `SELECT FOR UPDATE`
+            ///      2. reads done as part of statements with a `LOCK_SCANNED_RANGES` hint
+            ///      3. reads done as part of DML statements
+            ///    to validate that the data that was served at the snapshot time is
+            ///    unchanged at commit time.
+            /// * At all other isolation levels, if `read_lock_mode` is the default value, then
+            ///   pessimistic read lock is used.
             Unspecified = 0,
             /// Pessimistic lock mode.
             ///
             /// Read locks are acquired immediately on read.
+            /// Semantics described only applies to `SERIALIZABLE` isolation.
             Pessimistic = 1,
             /// Optimistic lock mode.
             ///
             /// Locks for reads within the transaction are not acquired on read.
             /// Instead the locks are acquired on a commit to validate that
             /// read/queried data has not changed since the transaction started.
+            /// Semantics described only applies to `SERIALIZABLE` isolation.
             Optimistic = 2,
         }
         impl ReadLockMode {
@@ -490,6 +504,61 @@ pub mod transaction_options {
             /// timestamp negotiation overhead of `max_staleness`.
             #[prost(message, tag = "5")]
             ExactStaleness(super::super::super::super::protobuf::Duration),
+        }
+    }
+    /// `IsolationLevel` is used when setting `isolation_level` for a transaction.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum IsolationLevel {
+        /// Default value.
+        ///
+        /// If the value is not specified, the `SERIALIZABLE` isolation level is
+        /// used.
+        Unspecified = 0,
+        /// All transactions appear as if they executed in a serial order, even if
+        /// some of the reads, writes, and other operations of distinct transactions
+        /// actually occurred in parallel. Spanner assigns commit timestamps that
+        /// reflect the order of committed transactions to implement this property.
+        /// Spanner offers a stronger guarantee than serializability called external
+        /// consistency. For further details, please refer to
+        /// <https://cloud.google.com/spanner/docs/true-time-external-consistency#serializability.>
+        Serializable = 1,
+        /// All reads performed during the transaction observe a consistent snapshot
+        /// of the database, and the transaction will only successfully commit in the
+        /// absence of conflicts between its updates and any concurrent updates that
+        /// have occurred since that snapshot. Consequently, in contrast to
+        /// `SERIALIZABLE` transactions, only write-write conflicts are detected in
+        /// snapshot transactions.
+        ///
+        /// This isolation level does not support Read-only and Partitioned DML
+        /// transactions.
+        ///
+        /// When `REPEATABLE_READ` is specified on a read-write transaction, the
+        /// locking semantics default to `OPTIMISTIC`.
+        RepeatableRead = 2,
+    }
+    impl IsolationLevel {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "ISOLATION_LEVEL_UNSPECIFIED",
+                Self::Serializable => "SERIALIZABLE",
+                Self::RepeatableRead => "REPEATABLE_READ",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "ISOLATION_LEVEL_UNSPECIFIED" => Some(Self::Unspecified),
+                "SERIALIZABLE" => Some(Self::Serializable),
+                "REPEATABLE_READ" => Some(Self::RepeatableRead),
+                _ => None,
+            }
         }
     }
     /// Required. The type of transaction.
@@ -1206,6 +1275,9 @@ pub enum TypeCode {
     /// For example, `P1Y2M3DT4H5M6.5S` represents time duration of 1 year, 2
     /// months, 3 days, 4 hours, 5 minutes, and 6.5 seconds.
     Interval = 16,
+    /// Encoded as `string`, in lower-case hexa-decimal format, as described
+    /// in RFC 9562, section 4.
+    Uuid = 17,
 }
 impl TypeCode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1230,6 +1302,7 @@ impl TypeCode {
             Self::Proto => "PROTO",
             Self::Enum => "ENUM",
             Self::Interval => "INTERVAL",
+            Self::Uuid => "UUID",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1251,6 +1324,7 @@ impl TypeCode {
             "PROTO" => Some(Self::Proto),
             "ENUM" => Some(Self::Enum),
             "INTERVAL" => Some(Self::Interval),
+            "UUID" => Some(Self::Uuid),
             _ => None,
         }
     }
@@ -1321,11 +1395,10 @@ pub struct ResultSet {
     #[prost(message, optional, tag = "1")]
     pub metadata: ::core::option::Option<ResultSetMetadata>,
     /// Each element in `rows` is a row whose format is defined by
-    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. The ith element
-    /// in each row matches the ith field in
-    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. Elements are
-    /// encoded based on type as described
-    /// [here][google.spanner.v1.TypeCode].
+    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. The ith
+    /// element in each row matches the ith field in
+    /// [metadata.row_type][google.spanner.v1.ResultSetMetadata.row_type]. Elements
+    /// are encoded based on type as described [here][google.spanner.v1.TypeCode].
     #[prost(message, repeated, tag = "2")]
     pub rows: ::prost::alloc::vec::Vec<super::super::protobuf::ListValue>,
     /// Query plan and execution statistics for the SQL statement that
@@ -1335,17 +1408,14 @@ pub struct ResultSet {
     /// modified, unless executed using the
     /// [ExecuteSqlRequest.QueryMode.PLAN][google.spanner.v1.ExecuteSqlRequest.QueryMode.PLAN]
     /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
-    /// Other fields may or may not be populated, based on the
+    /// Other fields might or might not be populated, based on the
     /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode].
     #[prost(message, optional, tag = "3")]
     pub stats: ::core::option::Option<ResultSetStats>,
-    /// Optional. A precommit token will be included if the read-write transaction
-    /// is on a multiplexed session.
-    /// The precommit token with the highest sequence number from this transaction
-    /// attempt should be passed to the
+    /// Optional. A precommit token is included if the read-write transaction is on
+    /// a multiplexed session. Pass the precommit token with the highest sequence
+    /// number from this transaction attempt to the
     /// [Commit][google.spanner.v1.Spanner.Commit] request for this transaction.
-    /// This feature is not yet supported and will result in an UNIMPLEMENTED
-    /// error.
     #[prost(message, optional, tag = "5")]
     pub precommit_token: ::core::option::Option<MultiplexedSessionPrecommitToken>,
 }
@@ -1369,13 +1439,14 @@ pub struct PartialResultSet {
     /// Most values are encoded based on type as described
     /// [here][google.spanner.v1.TypeCode].
     ///
-    /// It is possible that the last value in values is "chunked",
+    /// It's possible that the last value in values is "chunked",
     /// meaning that the rest of the value is sent in subsequent
     /// `PartialResultSet`(s). This is denoted by the
-    /// [chunked_value][google.spanner.v1.PartialResultSet.chunked_value] field. Two or more
-    /// chunked values can be merged to form a complete value as follows:
+    /// [chunked_value][google.spanner.v1.PartialResultSet.chunked_value] field.
+    /// Two or more chunked values can be merged to form a complete value as
+    /// follows:
     ///
-    ///    * `bool/number/null`: cannot be chunked
+    ///    * `bool/number/null`: can't be chunked
     ///    * `string`: concatenate the strings
     ///    * `list`: concatenate the lists. If the last element in a list is a `string`, `list`, or
     ///      `object`, merge it with the first element in the next list by applying these rules
@@ -1385,28 +1456,28 @@ pub struct PartialResultSet {
     ///
     /// Some examples of merging:
     ///
-    ///      # Strings are concatenated.
+    ///      Strings are concatenated.
     ///      "foo", "bar" => "foobar"
     ///
-    ///      # Lists of non-strings are concatenated.
+    ///      Lists of non-strings are concatenated.
     ///      \[2, 3\], \[4\] => \[2, 3, 4\]
     ///
-    ///      # Lists are concatenated, but the last and first elements are merged
-    ///      # because they are strings.
+    ///      Lists are concatenated, but the last and first elements are merged
+    ///      because they are strings.
     ///      \["a", "b"\], \["c", "d"\] => \["a", "bc", "d"\]
     ///
-    ///      # Lists are concatenated, but the last and first elements are merged
-    ///      # because they are lists. Recursively, the last and first elements
-    ///      # of the inner lists are merged because they are strings.
+    ///      Lists are concatenated, but the last and first elements are merged
+    ///      because they are lists. Recursively, the last and first elements
+    ///      of the inner lists are merged because they are strings.
     ///      \["a", ["b", "c"]\], \[["d"\], "e"] => \["a", ["b", "cd"\], "e"]
     ///
-    ///      # Non-overlapping object fields are combined.
+    ///      Non-overlapping object fields are combined.
     ///      {"a": "1"}, {"b": "2"} => {"a": "1", "b": 2"}
     ///
-    ///      # Overlapping object fields are merged.
+    ///      Overlapping object fields are merged.
     ///      {"a": "1"}, {"a": "2"} => {"a": "12"}
     ///
-    ///      # Examples of merging objects containing lists of strings.
+    ///      Examples of merging objects containing lists of strings.
     ///      {"a": \["1"\]}, {"a": \["2"\]} => {"a": \["12"\]}
     ///
     /// For a more complete example, suppose a streaming SQL query is
@@ -1422,7 +1493,6 @@ pub struct PartialResultSet {
     ///      {
     ///        "values": \["orl"\]
     ///        "chunked_value": true
-    ///        "resume_token": "Bqp2..."
     ///      }
     ///      {
     ///        "values": \["d"\]
@@ -1432,11 +1502,17 @@ pub struct PartialResultSet {
     /// This sequence of `PartialResultSet`s encodes two rows, one
     /// containing the field value `"Hello"`, and a second containing the
     /// field value `"World" = "W" + "orl" + "d"`.
+    ///
+    /// Not all `PartialResultSet`s contain a `resume_token`. Execution can only be
+    /// resumed from a previously yielded `resume_token`. For the above sequence of
+    /// `PartialResultSet`s, resuming the query with `"resume_token": "Af65..."`
+    /// yields results from the `PartialResultSet` with value "orl".
     #[prost(message, repeated, tag = "2")]
     pub values: ::prost::alloc::vec::Vec<super::super::protobuf::Value>,
-    /// If true, then the final value in [values][google.spanner.v1.PartialResultSet.values] is
-    /// chunked, and must be combined with more values from subsequent `PartialResultSet`s
-    /// to obtain a complete field value.
+    /// If true, then the final value in
+    /// [values][google.spanner.v1.PartialResultSet.values] is chunked, and must be
+    /// combined with more values from subsequent `PartialResultSet`s to obtain a
+    /// complete field value.
     #[prost(bool, tag = "3")]
     pub chunked_value: bool,
     /// Streaming calls might be interrupted for a variety of reasons, such
@@ -1448,21 +1524,22 @@ pub struct PartialResultSet {
     pub resume_token: ::prost::bytes::Bytes,
     /// Query plan and execution statistics for the statement that produced this
     /// streaming result set. These can be requested by setting
-    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode] and are sent
-    /// only once with the last response in the stream.
-    /// This field will also be present in the last response for DML
-    /// statements.
+    /// [ExecuteSqlRequest.query_mode][google.spanner.v1.ExecuteSqlRequest.query_mode]
+    /// and are sent only once with the last response in the stream. This field is
+    /// also present in the last response for DML statements.
     #[prost(message, optional, tag = "5")]
     pub stats: ::core::option::Option<ResultSetStats>,
-    /// Optional. A precommit token will be included if the read-write transaction
-    /// is on a multiplexed session.
-    /// The precommit token with the highest sequence number from this transaction
-    /// attempt should be passed to the
+    /// Optional. A precommit token is included if the read-write transaction
+    /// has multiplexed sessions enabled. Pass the precommit token with the highest
+    /// sequence number from this transaction attempt to the
     /// [Commit][google.spanner.v1.Spanner.Commit] request for this transaction.
-    /// This feature is not yet supported and will result in an UNIMPLEMENTED
-    /// error.
     #[prost(message, optional, tag = "8")]
     pub precommit_token: ::core::option::Option<MultiplexedSessionPrecommitToken>,
+    /// Optional. Indicates whether this is the last `PartialResultSet` in the
+    /// stream. The server might optionally set this field. Clients shouldn't rely
+    /// on this field being set in all cases.
+    #[prost(bool, tag = "9")]
+    pub last: bool,
 }
 /// Metadata about a [ResultSet][google.spanner.v1.ResultSet] or
 /// [PartialResultSet][google.spanner.v1.PartialResultSet].
@@ -1471,7 +1548,7 @@ pub struct PartialResultSet {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetMetadata {
     /// Indicates the field names and types for the rows in the result
-    /// set.  For example, a SQL query like `"SELECT UserId, UserName FROM
+    /// set. For example, a SQL query like `"SELECT UserId, UserName FROM
     /// Users"` could return a `row_type` value like:
     ///
     ///      "fields": [
@@ -1503,7 +1580,8 @@ pub struct ResultSetMetadata {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ResultSetStats {
-    /// [QueryPlan][google.spanner.v1.QueryPlan] for the query associated with this result.
+    /// [QueryPlan][google.spanner.v1.QueryPlan] for the query associated with this
+    /// result.
     #[prost(message, optional, tag = "1")]
     pub query_plan: ::core::option::Option<QueryPlan>,
     /// Aggregated statistics from the execution of the query. Only present when
@@ -1531,7 +1609,7 @@ pub mod result_set_stats {
         /// Standard DML returns an exact count of rows that were modified.
         #[prost(int64, tag = "3")]
         RowCountExact(i64),
-        /// Partitioned DML does not offer exactly-once semantics, so it
+        /// Partitioned DML doesn't offer exactly-once semantics, so it
         /// returns a lower bound of the rows modified.
         #[prost(int64, tag = "4")]
         RowCountLowerBound(i64),
@@ -2000,6 +2078,17 @@ pub struct ExecuteSqlRequest {
     /// `partition_token`, the API returns an `INVALID_ARGUMENT` error.
     #[prost(bool, tag = "16")]
     pub data_boost_enabled: bool,
+    /// Optional. If set to true, this statement marks the end of the transaction.
+    /// The transaction should be committed or aborted after this statement
+    /// executes, and attempts to execute any other requests against this
+    /// transaction (including reads and queries) will be rejected.
+    ///
+    /// For DML statements, setting this option may cause some error reporting to
+    /// be deferred until commit time (e.g. validation of unique constraints).
+    /// Given this, successful execution of a DML statement should not be assumed
+    /// until a subsequent Commit call completes successfully.
+    #[prost(bool, tag = "17")]
+    pub last_statement: bool,
 }
 /// Nested message and enum types in `ExecuteSqlRequest`.
 pub mod execute_sql_request {
@@ -2145,6 +2234,17 @@ pub struct ExecuteBatchDmlRequest {
     /// Common options for this request.
     #[prost(message, optional, tag = "5")]
     pub request_options: ::core::option::Option<RequestOptions>,
+    /// Optional. If set to true, this request marks the end of the transaction.
+    /// The transaction should be committed or aborted after these statements
+    /// execute, and attempts to execute any other requests against this
+    /// transaction (including reads and queries) will be rejected.
+    ///
+    /// Setting this option may cause some error reporting to be deferred until
+    /// commit time (e.g. validation of unique constraints). Given this, successful
+    /// execution of statements should not be assumed until a subsequent Commit
+    /// call completes successfully.
+    #[prost(bool, tag = "6")]
+    pub last_statements: bool,
 }
 /// Nested message and enum types in `ExecuteBatchDmlRequest`.
 pub mod execute_batch_dml_request {

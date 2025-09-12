@@ -70,6 +70,29 @@ impl DayOfWeek {
         }
     }
 }
+/// Represents a time of day. The date and time zone are either not significant
+/// or are specified elsewhere. An API may choose to allow leap seconds. Related
+/// types are [google.type.Date][google.type.Date] and
+/// `google.protobuf.Timestamp`.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct TimeOfDay {
+    /// Hours of day in 24 hour format. Should be from 0 to 23. An API may choose
+    /// to allow the value "24:00:00" for scenarios like business closing time.
+    #[prost(int32, tag = "1")]
+    pub hours: i32,
+    /// Minutes of hour of day. Must be from 0 to 59.
+    #[prost(int32, tag = "2")]
+    pub minutes: i32,
+    /// Seconds of minutes of the time. Must normally be from 0 to 59. An API may
+    /// allow the value 60 if it allows leap-seconds.
+    #[prost(int32, tag = "3")]
+    pub seconds: i32,
+    /// Fractions of seconds in nanoseconds. Must be from 0 to 999,999,999.
+    #[prost(int32, tag = "4")]
+    pub nanos: i32,
+}
 /// A `CalendarPeriod` represents the abstract concept of a time period that has
 /// a canonical start. Grammatically, "the start of the current
 /// `CalendarPeriod`." All calendar times begin at midnight UTC.

@@ -149,6 +149,8 @@ pub mod condition {
         PostponedRetry = 15,
         /// An internal error occurred. Further information may be in the message.
         Internal = 16,
+        /// User-provided VPC network was not found.
+        VpcNetworkNotFound = 17,
     }
     impl CommonReason {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -174,6 +176,7 @@ pub mod condition {
                 Self::ImmediateRetry => "IMMEDIATE_RETRY",
                 Self::PostponedRetry => "POSTPONED_RETRY",
                 Self::Internal => "INTERNAL",
+                Self::VpcNetworkNotFound => "VPC_NETWORK_NOT_FOUND",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -196,6 +199,7 @@ pub mod condition {
                 "IMMEDIATE_RETRY" => Some(Self::ImmediateRetry),
                 "POSTPONED_RETRY" => Some(Self::PostponedRetry),
                 "INTERNAL" => Some(Self::Internal),
+                "VPC_NETWORK_NOT_FOUND" => Some(Self::VpcNetworkNotFound),
                 _ => None,
             }
         }
@@ -408,6 +412,13 @@ pub struct Container {
     /// Names of the containers that must start before this container.
     #[prost(string, repeated, tag = "12")]
     pub depends_on: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Base image for this container. Only supported for services. If set, it
+    /// indicates that the service is enrolled into automatic base image update.
+    #[prost(string, tag = "13")]
+    pub base_image_uri: ::prost::alloc::string::String,
+    /// Output only. The build info of the container image.
+    #[prost(message, optional, tag = "15")]
+    pub build_info: ::core::option::Option<BuildInfo>,
 }
 /// ResourceRequirements describes the compute resource requirements.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -585,10 +596,9 @@ pub struct SecretVolumeSource {
     /// * Internally, a umask of 0222 will be applied to any non-zero value.
     /// * This is an integer representation of the mode bits. So, the octal
     /// integer value should look exactly as the chmod numeric notation with a
-    /// leading zero. Some examples: for chmod 777 (a=rwx), set to 0777 (octal) or
-    /// 511 (base-10). For chmod 640 (u=rw,g=r), set to 0640 (octal) or
-    /// 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or 493
-    /// (base-10).
+    /// leading zero. Some examples: for chmod 640 (u=rw,g=r), set to 0640 (octal)
+    /// or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or
+    /// 493 (base-10).
     /// * This might be in conflict with other options that affect the
     /// file mode, like fsGroup, and the result can be other mode bits set.
     ///
@@ -620,10 +630,9 @@ pub struct VersionToPath {
     /// * Internally, a umask of 0222 will be applied to any non-zero value.
     /// * This is an integer representation of the mode bits. So, the octal
     /// integer value should look exactly as the chmod numeric notation with a
-    /// leading zero. Some examples: for chmod 777 (a=rwx), set to 0777 (octal) or
-    /// 511 (base-10). For chmod 640 (u=rw,g=r), set to 0640 (octal) or
-    /// 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or 493
-    /// (base-10).
+    /// leading zero. Some examples: for chmod 640 (u=rw,g=r), set to 0640 (octal)
+    /// or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or
+    /// 493 (base-10).
     /// * This might be in conflict with other options that affect the
     /// file mode, like fsGroup, and the result can be other mode bits set.
     #[prost(int32, tag = "3")]
@@ -843,6 +852,19 @@ pub struct GrpcAction {
     #[prost(string, tag = "2")]
     pub service: ::prost::alloc::string::String,
 }
+/// Build information of the image.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BuildInfo {
+    /// Output only. Entry point of the function when the image is a Cloud Run
+    /// function.
+    #[prost(string, tag = "1")]
+    pub function_target: ::prost::alloc::string::String,
+    /// Output only. Source code location of the image.
+    #[prost(string, tag = "2")]
+    pub source_location: ::prost::alloc::string::String,
+}
 /// VPC Access settings. For more information on sending traffic to a VPC
 /// network, visit <https://cloud.google.com/run/docs/configuring/connecting-vpc.>
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -998,6 +1020,11 @@ pub struct ServiceScaling {
     /// Optional. The scaling mode for the service.
     #[prost(enumeration = "service_scaling::ScalingMode", tag = "3")]
     pub scaling_mode: i32,
+    /// Optional. total instance count for the service in manual scaling mode. This
+    /// number of instances is divided among all revisions with specified traffic
+    /// based on the percent of traffic they are receiving.
+    #[prost(int32, optional, tag = "6")]
+    pub manual_instance_count: ::core::option::Option<i32>,
 }
 /// Nested message and enum types in `ServiceScaling`.
 pub mod service_scaling {
@@ -1046,6 +1073,53 @@ pub struct NodeSelector {
     /// Required. GPU accelerator type to attach to an instance.
     #[prost(string, tag = "1")]
     pub accelerator: ::prost::alloc::string::String,
+}
+/// Describes the Build step of the function that builds a container from the
+/// given source.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct BuildConfig {
+    /// Output only. The Cloud Build name of the latest successful deployment of
+    /// the function.
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+    /// The Cloud Storage bucket URI where the function source code is located.
+    #[prost(string, tag = "2")]
+    pub source_location: ::prost::alloc::string::String,
+    /// Optional. The name of the function (as defined in source code) that will be
+    /// executed. Defaults to the resource name suffix, if not specified. For
+    /// backward compatibility, if function with given name is not found, then the
+    /// system will try to use function named "function".
+    #[prost(string, tag = "3")]
+    pub function_target: ::prost::alloc::string::String,
+    /// Optional. Artifact Registry URI to store the built image.
+    #[prost(string, tag = "4")]
+    pub image_uri: ::prost::alloc::string::String,
+    /// Optional. The base image used to build the function.
+    #[prost(string, tag = "5")]
+    pub base_image: ::prost::alloc::string::String,
+    /// Optional. Sets whether the function will receive automatic base image
+    /// updates.
+    #[prost(bool, tag = "6")]
+    pub enable_automatic_updates: bool,
+    /// Optional. Name of the Cloud Build Custom Worker Pool that should be used to
+    /// build the Cloud Run function. The format of this field is
+    /// `projects/{project}/locations/{region}/workerPools/{workerPool}` where
+    /// `{project}` and `{region}` are the project id and region respectively where
+    /// the worker pool is defined and `{workerPool}` is the short name of the
+    /// worker pool.
+    #[prost(string, tag = "7")]
+    pub worker_pool: ::prost::alloc::string::String,
+    /// Optional. User-provided build-time environment variables for the function
+    #[prost(map = "string, string", tag = "8")]
+    pub environment_variables:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    /// Optional. Service account to be used for building the container. The format
+    /// of this field is
+    /// `projects/{projectId}/serviceAccounts/{serviceAccountEmail}`.
+    #[prost(string, tag = "9")]
+    pub service_account: ::prost::alloc::string::String,
 }
 /// Allowed ingress traffic for the Container.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -1231,13 +1305,21 @@ pub struct RevisionTemplate {
     #[prost(string, tag = "14")]
     pub encryption_key: ::prost::alloc::string::String,
     /// Optional. Sets the maximum number of requests that each serving instance
-    /// can receive. If not specified or 0, defaults to 80 when requested
-    /// `CPU >= 1` and defaults to 1 when requested `CPU < 1`.
+    /// can receive. If not specified or 0, concurrency defaults to 80 when
+    /// requested `CPU >= 1` and defaults to 1 when requested `CPU < 1`.
     #[prost(int32, tag = "15")]
     pub max_instance_request_concurrency: i32,
     /// Optional. Enables service mesh connectivity.
     #[prost(message, optional, tag = "16")]
     pub service_mesh: ::core::option::Option<ServiceMesh>,
+    /// Optional. The action to take if the encryption key is revoked.
+    #[prost(enumeration = "EncryptionKeyRevocationAction", tag = "17")]
+    pub encryption_key_revocation_action: i32,
+    /// Optional. If encryption_key_revocation_action is SHUTDOWN, the duration
+    /// before shutting down all instances. The minimum increment is 1 hour.
+    #[prost(message, optional, tag = "18")]
+    pub encryption_key_shutdown_duration:
+        ::core::option::Option<super::super::super::protobuf::Duration>,
     /// Optional. Enable session affinity.
     #[prost(bool, tag = "19")]
     pub session_affinity: bool,
@@ -1247,6 +1329,9 @@ pub struct RevisionTemplate {
     /// Optional. The node selector for the revision template.
     #[prost(message, optional, tag = "21")]
     pub node_selector: ::core::option::Option<NodeSelector>,
+    /// Optional. True if GPU zonal redundancy is disabled on this revision.
+    #[prost(bool, optional, tag = "24")]
+    pub gpu_zonal_redundancy_disabled: ::core::option::Option<bool>,
 }
 /// Holds a single traffic routing entry for the Service. Allocations can be done
 /// to a specific Revision name, or pointing to the latest Ready Revision.
@@ -1506,7 +1591,7 @@ pub struct Service {
     #[prost(message, optional, tag = "9")]
     pub delete_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// Output only. For a deleted resource, the time after which it will be
-    /// permamently deleted.
+    /// permanently deleted.
     #[prost(message, optional, tag = "10")]
     pub expire_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
     /// Output only. Email address of the authenticated creator.
@@ -1533,7 +1618,7 @@ pub struct Service {
     /// Set the launch stage to a preview stage on input to allow use of preview
     /// features in that stage. On read (or output), describes whether the resource
     /// uses preview features.
-    /// <p>
+    ///
     /// For example, if ALPHA is provided as input, but only BETA and GA-level
     /// features are used, this field will be BETA on output.
     #[prost(enumeration = "super::super::super::api::LaunchStage", tag = "16")]
@@ -1611,6 +1696,9 @@ pub struct Service {
     /// Output only. Reserved for future use.
     #[prost(bool, tag = "38")]
     pub satisfies_pzs: bool,
+    /// Optional. Configuration for building a Cloud Run function.
+    #[prost(message, optional, tag = "41")]
+    pub build_config: ::core::option::Option<BuildConfig>,
     /// Output only. Returns true if the Service is currently being acted upon by
     /// the system to bring it into the desired state.
     ///
@@ -1618,7 +1706,7 @@ pub struct Service {
     /// will asynchronously perform all necessary steps to bring the Service to the
     /// desired serving state. This process is called reconciliation.
     /// While reconciliation is in process, `observed_generation`,
-    /// `latest_ready_revison`, `traffic_statuses`, and `uri` will have transient
+    /// `latest_ready_revision`, `traffic_statuses`, and `uri` will have transient
     /// values that might mismatch the intended state: Once reconciliation is over
     /// (and this field is false), there are two possible outcomes: reconciliation
     /// succeeded and the serving state matches the Service, or there was an error,
@@ -2035,7 +2123,8 @@ pub struct Revision {
     /// [Google Cloud Platform Launch
     /// Stages](<https://cloud.google.com/terms/launch-stages>). Cloud Run supports
     /// `ALPHA`, `BETA`, and `GA`.
-    /// <p>Note that this value might not be what was used
+    ///
+    /// Note that this value might not be what was used
     /// as input. For example, if ALPHA was provided as input in the parent
     /// resource, but only BETA and GA-level features are were, this field will be
     /// BETA.
@@ -2118,6 +2207,13 @@ pub struct Revision {
     /// The node selector for the revision.
     #[prost(message, optional, tag = "40")]
     pub node_selector: ::core::option::Option<NodeSelector>,
+    /// Optional. Output only. True if GPU zonal redundancy is disabled on this
+    /// revision.
+    #[prost(bool, optional, tag = "48")]
+    pub gpu_zonal_redundancy_disabled: ::core::option::Option<bool>,
+    /// Output only. Email address of the authenticated creator.
+    #[prost(string, tag = "49")]
+    pub creator: ::prost::alloc::string::String,
     /// Output only. A system-generated fingerprint for this version of the
     /// resource. May be used to detect modification conflict during updates.
     #[prost(string, tag = "99")]
