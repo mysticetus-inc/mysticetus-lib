@@ -14,9 +14,9 @@ doctest = false
 
 
 [features]
-default = ["firestore-admin"]                    # Enabling by default during dev work
+default = ["firestore-admin"]                # Enabling by default during dev work
 firestore-admin = ["protos/firestore-admin"]
-local-gcloud = ["gcp-auth-channel/local-gcloud"]
+gcloud = ["gcp-auth-provider/gcloud"]
 
 [dependencies]
 tokio = { workspace = true, features = [
@@ -48,7 +48,7 @@ parking_lot = "0.12.0"
 async-recursion = "1.0.0"
 net-utils = { path = "../net-utils", features = ["tonic"] }
 
-gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+gcp-auth-provider.path = "../gcp-auth-provider"
 pin-project-lite.workspace = true
 rand.workspace = true
 

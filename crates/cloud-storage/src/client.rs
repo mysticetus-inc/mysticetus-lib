@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use gcp_auth_channel::{Auth, AuthChannel};
+use gcp_auth_provider::Auth;
+use gcp_auth_provider::service::AuthSvc;
 use tonic::transport::{Channel, ClientTlsConfig};
 
 const STORAGE_DOMAIN: &str = "storage.googleapis.com";
@@ -9,7 +10,7 @@ const DEFUALT_KEEPALIVE_DUR: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone)]
 pub struct StorageClient {
-    channel: AuthChannel,
+    channel: AuthSvc<Channel>,
 }
 
 async fn build_channel() -> crate::Result<Channel> {
@@ -26,26 +27,18 @@ async fn build_channel() -> crate::Result<Channel> {
         .map_err(crate::Error::from)
 }
 
-async fn build_auth(
-    project_id: &'static str,
-    scope: gcp_auth_channel::Scope,
-) -> crate::Result<Auth> {
-    Auth::new(project_id, scope)
+async fn build_auth(scopes: gcp_auth_provider::Scopes) -> crate::Result<Auth> {
+    Auth::new_detect()
+        .with_scopes(scopes)
         .await
         .map_err(crate::Error::from)
 }
 
 impl StorageClient {
-    pub async fn new(
-        project_id: &'static str,
-        scope: gcp_auth_channel::Scope,
-    ) -> crate::Result<Self> {
-        let (auth, channel) = tokio::try_join!(build_auth(project_id, scope), build_channel())?;
+    pub async fn new(scopes: gcp_auth_provider::Scopes) -> crate::Result<Self> {
+        let (auth, channel) = tokio::try_join!(build_auth(scopes), build_channel())?;
 
-        let channel = AuthChannel::builder()
-            .with_channel(channel)
-            .with_auth(auth)
-            .build();
+        let channel = auth.into_service(channel);
 
         Ok(Self { channel })
     }
@@ -53,10 +46,7 @@ impl StorageClient {
     pub async fn from_auth(auth: Auth) -> crate::Result<Self> {
         let channel = build_channel().await?;
 
-        let channel = AuthChannel::builder()
-            .with_channel(channel)
-            .with_auth(auth)
-            .build();
+        let channel = auth.into_service(channel);
 
         Ok(Self { channel })
     }
@@ -71,10 +61,7 @@ impl StorageClient {
             auth_future.await.map_err(Into::into)
         },)?;
 
-        let channel = AuthChannel::builder()
-            .with_channel(channel)
-            .with_auth(auth)
-            .build();
+        let channel = auth.into_service(channel);
 
         Ok(Self { channel })
     }
@@ -84,27 +71,20 @@ impl StorageClient {
         self.channel.auth()
     }
 
-    pub async fn from_service_account<P>(
-        project_id: &'static str,
-        scope: gcp_auth_channel::Scope,
-        path: P,
-    ) -> crate::Result<Self>
-    where
-        P: AsRef<std::path::Path>,
-    {
+    pub async fn from_service_account(
+        scopes: gcp_auth_provider::Scopes,
+        path: impl Into<std::path::PathBuf>,
+    ) -> crate::Result<Self> {
         let (auth, channel) = tokio::try_join!(
             async move {
-                Auth::new_from_service_account_file(project_id, path.as_ref(), scope)
+                Auth::from_service_account_file(path.into(), scopes)
                     .await
                     .map_err(crate::Error::from)
             },
             build_channel()
         )?;
 
-        let channel = AuthChannel::builder()
-            .with_channel(channel)
-            .with_auth(auth)
-            .build();
+        let channel = auth.into_service(channel);
 
         Ok(Self { channel })
     }

@@ -16,8 +16,6 @@ const DEFAULT_DATABASE: &str = "(default)";
 /// Firestore client for a single database.
 #[derive(Clone, Debug)]
 pub struct Firestore {
-    /// The fully qualified database path, pre-formatted for quick use.
-    qualified_db_path: Arc<str>,
     /// The inner auth channel
     pub(crate) client: FirestoreClient,
 }

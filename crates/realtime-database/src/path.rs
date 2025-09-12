@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::slice::{Iter, IterMut};
-use std::vec::IntoIter;
 
 const SEP_STR: &str = "/";
 const SEP_CHAR: char = '/';
@@ -378,42 +377,6 @@ impl<'a> DoubleEndedIterator for PathIterMut<'a> {
 impl<'a> ExactSizeIterator for PathIterMut<'a> {
     fn len(&self) -> usize {
         self.0.len()
-    }
-}
-
-enum InnerIntoPathIter<'a> {
-    Ref(IntoIter<Cow<'a, str>>),
-    Owned(IntoIter<String>),
-}
-
-pub struct IntoPathIter<'a>(InnerIntoPathIter<'a>);
-
-impl<'a> Iterator for IntoPathIter<'a> {
-    type Item = Cow<'a, str>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match &mut self.0 {
-            InnerIntoPathIter::Ref(i) => i.next(),
-            InnerIntoPathIter::Owned(i) => i.next().map(Cow::Owned),
-        }
-    }
-}
-
-impl<'a> DoubleEndedIterator for IntoPathIter<'a> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        match &mut self.0 {
-            InnerIntoPathIter::Ref(i) => i.next_back(),
-            InnerIntoPathIter::Owned(i) => i.next_back().map(Cow::Owned),
-        }
-    }
-}
-
-impl<'a> ExactSizeIterator for IntoPathIter<'a> {
-    fn len(&self) -> usize {
-        match &self.0 {
-            InnerIntoPathIter::Ref(i) => i.len(),
-            InnerIntoPathIter::Owned(i) => i.len(),
-        }
     }
 }
 

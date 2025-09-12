@@ -1,212 +1,186 @@
-use std::fmt;
-use std::sync::Arc;
-
-use dashmap::DashMap;
-use subscriber::SubscriberHandle;
-use trace_layer::ActiveTraces;
-use tracing::Subscriber;
-use tracing_subscriber::fmt::format::Writer;
-use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::util::SubscriberInitExt;
-
+#![feature(layout_for_ptr, box_as_ptr)]
 mod http_request;
+mod json;
 mod middleware;
-mod payload;
+pub mod options;
+mod registry;
+mod severity;
 mod subscriber;
-pub mod trace_layer;
-mod types;
 mod utils;
 
-#[cfg(all(tracing_unstable, feature = "valuable"))]
-mod valuable;
+pub use options::{DefaultLogOptions, LogOptions};
+pub use severity::Severity;
+pub use subscriber::builder::LoggingBuilder;
+// re-export `tracing` and `tracing-subscriber`
+pub use tracing;
+pub use tracing_subscriber;
 
-#[inline]
-pub fn init_logging(project_id: &'static str, stage: Stage) -> middleware::TraceLayer {
-    init_logging_opt(project_id, stage, DefaultLogOptions)
-}
+#[cfg(test)]
+mod test_utils;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Stage {
-    #[default]
     Dev,
     Test,
     Production,
 }
 
-pub fn init_logging_opt<Options>(
-    project_id: &'static str,
-    stage: Stage,
-    options: Options,
-) -> middleware::TraceLayer
-where
-    Options: LogOptions,
-{
-    let inner = Arc::new(DashMap::with_capacity_and_hasher(
-        128,
-        fxhash::FxBuildHasher::default(),
-    ));
-
-    let handle = SubscriberHandle::new(Arc::clone(&inner));
-
-    let traces = ActiveTraces::new(inner);
-
-    let formatter = GoogleLogEventFormatter {
-        stage,
-        project_id,
-        traces: traces.clone(),
-        options,
-    };
-
-    tracing_subscriber::fmt::SubscriberBuilder::default()
-        .json()
-        .event_format(formatter)
-        .finish()
-        .with(traces)
-        .init();
-
-    middleware::TraceLayer::new(handle)
-}
-
-type DefaultSubscriber<O> = tracing_subscriber::fmt::Subscriber<
-    tracing_subscriber::fmt::format::JsonFields,
-    GoogleLogEventFormatter<O>,
->;
-
-struct SpanInfo {}
-
-impl<O: LogOptions> tracing_subscriber::Layer<DefaultSubscriber<O>> for SpanInfo {
-    fn on_new_span(
-        &self,
-        attrs: &tracing::span::Attributes<'_>,
-        id: &tracing::span::Id,
-        ctx: tracing_subscriber::layer::Context<'_, DefaultSubscriber<O>>,
-    ) {
+/// Defers to [Stage::detect]
+impl Default for Stage {
+    #[inline]
+    fn default() -> Self {
+        Self::detect()
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct GoogleLogEventFormatter<O = DefaultLogOptions> {
-    project_id: &'static str,
-    stage: Stage,
-    traces: ActiveTraces,
-    options: O,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum TryGetBacktrace {
-    #[default]
-    No,
-    Yes,
-    Force,
-}
-
-pub trait LogOptions: Send + Sync + Clone + 'static {
-    fn include_http_info(&self, meta: &tracing::Metadata<'_>) -> bool;
-
-    fn treat_as_error(&self, meta: &tracing::Metadata<'_>) -> bool;
-
-    fn include_stage(&self, stage: Stage, meta: &tracing::Metadata<'_>) -> bool;
-
-    fn include_timestamp(&self, stage: Stage, meta: &tracing::Metadata<'_>) -> bool;
-
-    fn try_get_backtrace(
-        &self,
-        meta: &tracing::Metadata<'_>,
-        error: &(dyn std::error::Error + 'static),
-    ) -> TryGetBacktrace;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct DefaultLogOptions;
-
-impl LogOptions for DefaultLogOptions {
-    fn include_http_info(&self, meta: &tracing::Metadata<'_>) -> bool {
-        // include the http info on everything but verbose tracing
-        !matches!(*meta.level(), tracing::Level::TRACE | tracing::Level::DEBUG)
-    }
-
-    fn treat_as_error(&self, meta: &tracing::Metadata<'_>) -> bool {
-        matches!(*meta.level(), tracing::Level::ERROR)
-    }
-
-    fn include_timestamp(&self, _stage: Stage, _meta: &tracing::Metadata<'_>) -> bool {
-        true
-    }
-
-    fn include_stage(&self, _stage: Stage, _meta: &tracing::Metadata<'_>) -> bool {
-        true
-    }
-
-    fn try_get_backtrace(
-        &self,
-        meta: &tracing::Metadata<'_>,
-        _error: &(dyn std::error::Error + 'static),
-    ) -> TryGetBacktrace {
-        if self.treat_as_error(meta) {
-            TryGetBacktrace::Yes
+impl Stage {
+    pub const fn detect() -> Self {
+        if cfg!(test) {
+            Stage::Test
+        } else if cfg!(all(not(test), debug_assertions)) {
+            Stage::Dev
         } else {
-            TryGetBacktrace::No
+            Stage::Production
         }
     }
 }
 
-impl<Opts> GoogleLogEventFormatter<Opts>
+/// Casts an [`std::error::Error`] type into a log-able [`tracing::Value`],
+/// via the [`&(dyn std::error::Error + 'static)`] impl
+pub fn err<E>(error: &E) -> impl tracing::Value + '_
 where
-    Opts: LogOptions,
+    E: std::error::Error + 'static,
 {
-    fn try_format_event_json<S, N>(
-        &self,
-        ctx: &FmtContext<'_, S, N>,
-        writer: &mut Writer<'_>,
-        event: &tracing::Event<'_>,
-    ) -> serde_json::Result<()>
-    where
-        S: Subscriber,
-        for<'a> S: LookupSpan<'a>,
-        for<'b> N: FormatFields<'b> + 'static,
-    {
-        use serde::Serialize;
-
-        let entry = types::LogEntry::new(
-            self.project_id,
-            ctx,
-            self.stage,
-            &self.options,
-            &self.traces,
-            event,
-        );
-
-        let mut serializer = serde_json::Serializer::new(utils::IoAdapter(writer));
-
-        entry.serialize(&mut serializer)?;
-
-        Ok(())
-    }
+    error as &(dyn std::error::Error + 'static)
 }
 
-impl<Opts, S, N> FormatEvent<S, N> for GoogleLogEventFormatter<Opts>
-where
-    Opts: LogOptions,
-    S: Subscriber,
-    for<'a> S: LookupSpan<'a>,
-    for<'b> N: FormatFields<'b> + 'static,
-{
-    fn format_event(
-        &self,
-        ctx: &FmtContext<'_, S, N>,
-        mut writer: Writer<'_>,
-        event: &tracing::Event<'_>,
-    ) -> fmt::Result {
-        if let Err(err) = self.try_format_event_json(ctx, &mut writer, event) {
-            write!(writer, "error serializing log json: {err:#?}")?;
-            if err.is_io() {
-                return Err(fmt::Error);
+#[macro_export]
+macro_rules! alert {
+    ($error:expr, $($t:tt)+) => {
+        $crate::tracing::error!(error = $crate::err($error), alert = true, $($t)+)
+    };
+    ($error:expr $(,)?) => {
+        $crate::tracing::error!(message = "fatal error", error = $crate::err($error), alert = true)
+    };
+}
+
+pub(crate) mod keys {
+    pub const ALERT_ERROR_NAME: &str = "@type";
+    pub const ALERT_ERROR_VALUE: &str =
+        "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent";
+
+    pub const TRACE_KEY: &str = "logging.googleapis.com/trace";
+    pub const TIMESTAMP_KEY: &str = "timestamp";
+    pub const SEVERITY_KEY: &str = "severity";
+    pub const SPAN_ID_KEY: &str = "logging.googleapis.com/spanId";
+    pub const HTTP_REQUEST_KEY: &str = "httpRequest";
+    pub const LABELS_KEY: &str = "logging.googleapis.com/labels";
+    pub const SOURCE_LOCATION_KEY: &str = "logging.googleapis.com/sourceLocation";
+}
+
+#[cfg(test)]
+mod tests {
+    use test_utils::{EchoService, EmptyBody, MakeTestWriter};
+    use tower::{Layer, Service};
+    use tracing_subscriber::util::SubscriberInitExt;
+
+    use super::*;
+
+    const TEST_HEADER: http::HeaderValue = http::HeaderValue::from_static("gcp-logging-test");
+    const TEST_URI: &str = "https://a-real-uri.com";
+
+    use crate::http_request::TRACE_CTX_HEADER;
+    const TEST_TRACE_VALUE: http::HeaderValue = http::HeaderValue::from_static("test-trace");
+
+    fn make_request_and_service() -> (
+        http::Request<EmptyBody>,
+        EchoService<for<'a> fn(&'a http::Request<EmptyBody>)>,
+    ) {
+        let req = http::Request::builder()
+            .header(http::header::ORIGIN, TEST_HEADER)
+            .header(TRACE_CTX_HEADER, TEST_TRACE_VALUE)
+            .uri(TEST_URI)
+            .body(EmptyBody)
+            .expect("should be valid");
+
+        fn echo_inner(req: &http::Request<EmptyBody>) {
+            assert_eq!(req.uri(), TEST_URI);
+            assert_eq!(req.headers().get(http::header::ORIGIN), Some(&TEST_HEADER));
+            tracing::info!(
+                message = "got request",
+                uri = %req.uri(),
+                headers = ?req.headers(),
+                label.echo = "echo",
+            );
+        }
+
+        (req, EchoService(echo_inner))
+    }
+
+    macro_rules! run_in_new_span {
+        ($span_name:literal[$($field:ident $(. $subfield:ident)? = $value:expr),* $(,)?] $b:block) => {{
+            let span = tracing::info_span!($span_name, $($field$(.$subfield)? = $value,)*);
+
+            use tracing::Instrument;
+
+           let ret = (async move { $b }).instrument(span).await;
+           println!("dropped {}", $span_name);
+           ret
+        }};
+    }
+
+    #[tracing::instrument(follows_from = follows.clone())]
+    async fn do_stuff(follows: &[Option<tracing::Id>; 1]) {
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        tracing::info!(message = "finished stuff, doing a bit more");
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
+
+    #[tokio::test]
+    async fn test_json_format() {
+        let (rx, make_writer) = MakeTestWriter::<false>::new();
+
+        let subscriber = LoggingBuilder::new_from_stage(Stage::Test)
+            .project_id("mysticetus-oncloud")
+            .with_writer(make_writer)
+            .build();
+
+        let handle = subscriber.handle();
+
+        let _default_guard = subscriber.set_default();
+
+        let (req, svc) = make_request_and_service();
+
+        // artificially nest in a bunch of spans, that way we can test
+        // span/scope iteration, etc
+        run_in_new_span! {
+            "first_span"[first = true] {
+                run_in_new_span! {
+                    "second_span"[second = true, label.test = true] {
+                        run_in_new_span! {
+                            "innermost_span"[last = true, field = "test"] {
+                                let mut svc = handle.layer(svc);
+                                let fut = svc.call(req);
+                                let follows = middleware::current_request_span_id();
+                                let follows = [follows];
+                                let (res, ()) = tokio::join!(fut, do_stuff(&follows));
+                                let resp = res.unwrap();
+                                tracing::info!(
+                                    message = "finished",
+                                    response = ?resp,
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
-        // acts like a flush
-        writer.write_str("\n")
+
+        let events = rx.try_iter().collect::<Vec<Vec<_>>>();
+
+        for (i, event) in events.iter().enumerate() {
+            std::fs::write(format!("new_event_json_bytes_{i}.json"), event).unwrap();
+        }
     }
 }

@@ -3,7 +3,7 @@ use crate::resources::ErrorProto;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Auth(#[from] gcp_auth_channel::Error),
+    Auth(#[from] gcp_auth_provider::Error),
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]

@@ -6,7 +6,7 @@ version.workspace = true
 [dependencies]
 # needed to get table schemas for certain gRPC operations
 reqwest = { workspace = true, features = ["json"] }
-gcp-auth-channel = { path = "../gcp-auth-channel", features = ["channel"] }
+gcp-auth-provider.path = "../gcp-auth-provider"
 bigquery-resources-rs = { path = "../bigquery-resources-rs" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

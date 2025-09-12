@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use protos::firestore::TransactionOptions;
 use protos::firestore::transaction_options::{Mode, ReadOnly, read_only};
 
@@ -8,19 +9,27 @@ pub struct TransactionBuilder {
     client: Firestore,
 }
 
+const READ_WRITE_OPTIONS: TransactionOptions = TransactionOptions {
+    mode: Some(Mode::ReadWrite(
+        protos::firestore::transaction_options::ReadWrite {
+            retry_transaction: Bytes::new(),
+        },
+    )),
+};
+
+const DEFAULT_READ_ONLY_OPTIONS: TransactionOptions = TransactionOptions {
+    mode: Some(Mode::ReadOnly(ReadOnly {
+        consistency_selector: None,
+    })),
+};
+
 impl TransactionBuilder {
     pub(crate) fn new(client: Firestore) -> Self {
         Self { client }
     }
 
     pub async fn read_only(self) -> crate::Result<Transaction<Firestore>> {
-        let opts = TransactionOptions {
-            mode: Some(Mode::ReadOnly(ReadOnly {
-                consistency_selector: None,
-            })),
-        };
-
-        Transaction::start(self.client, Some(opts)).await
+        Transaction::start(self.client, DEFAULT_READ_ONLY_OPTIONS).await
     }
 
     pub async fn read_only_at(
@@ -33,10 +42,10 @@ impl TransactionBuilder {
             })),
         };
 
-        Transaction::start(self.client, Some(opts)).await
+        Transaction::start(self.client, opts).await
     }
 
     pub async fn read_write(self) -> crate::Result<Transaction<Firestore>> {
-        Transaction::start(self.client, None).await
+        Transaction::start(self.client, READ_WRITE_OPTIONS).await
     }
 }
