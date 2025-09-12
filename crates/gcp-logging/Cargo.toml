@@ -72,6 +72,7 @@ hashbrown = "0.15.4"
 
 [features]
 default = ["valuable", "deadlock"]
+debug-logging = []
 valuable = [
     "dep:valuable",
     "dep:valuable-serde",

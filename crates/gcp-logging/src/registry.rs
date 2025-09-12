@@ -310,12 +310,20 @@ impl tracing::Subscriber for Records {
     }
 
     fn enter(&self, id: &Id) {
+        #[cfg(feature = "debug-logging")]
+        {
+            println!("entering {id:?}");
+        }
         if spans::enter(id) {
             self.clone_span(id);
         }
     }
 
     fn exit(&self, id: &Id) {
+        #[cfg(feature = "debug-logging")]
+        {
+            println!("exiting {id:?}");
+        }
         if spans::exit(id) {
             tracing::dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
         }
