@@ -256,6 +256,12 @@ impl tracing::Subscriber for Records {
 
         let mut data = self.data.create().expect("uh oh");
         let id = idx_to_id(data.key());
+
+        #[cfg(feature = "debug-logging")]
+        {
+            println!("resetting data: {id:?}");
+        }
+
         data.reset(&id, attrs, parent, self);
         drop(data);
         id
