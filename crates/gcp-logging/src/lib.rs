@@ -141,14 +141,15 @@ mod tests {
     async fn test_json_format() {
         let (rx, make_writer) = MakeTestWriter::<false>::new();
 
-        let subscriber = LoggingBuilder::new_from_stage(Stage::Test)
+        let handle = LoggingBuilder::new_from_stage(Stage::Test)
             .project_id("mysticetus-oncloud")
             .with_writer(make_writer)
-            .build();
+            .build()
+            .init();
 
-        let handle = subscriber.handle();
+        // let handle = subscriber.handle();
 
-        let _default_guard = subscriber.set_default();
+        // let _default_guard = subscriber.set_default();
 
         let (req, svc) = make_request_and_service();
 

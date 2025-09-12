@@ -20,3 +20,15 @@ impl MakeWriter for StdoutWriter {
         std::io::stdout().lock()
     }
 }
+
+pub struct NullWriter;
+
+impl MakeWriter for NullWriter {
+    type Writer<'a> = std::io::Sink;
+
+    const NEEDS_BUFFERING: bool = false;
+
+    fn make_writer(&self) -> Self::Writer<'_> {
+        std::io::sink()
+    }
+}

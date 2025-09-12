@@ -310,14 +310,12 @@ impl tracing::Subscriber for Records {
     }
 
     fn enter(&self, id: &Id) {
-        println!("entering {id:?}");
         if spans::enter(id) {
             self.clone_span(id);
         }
     }
 
     fn exit(&self, id: &Id) {
-        println!("exiting {id:?}");
         if spans::exit(id) {
             tracing::dispatcher::get_default(|dispatch| dispatch.try_close(id.clone()));
         }

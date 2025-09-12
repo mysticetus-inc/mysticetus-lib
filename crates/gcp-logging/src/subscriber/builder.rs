@@ -5,6 +5,7 @@ use super::writer::{MakeWriter, StdoutWriter};
 use super::{Handle, Subscriber};
 use crate::Stage;
 use crate::options::{DefaultLogOptions, LogOptions};
+use crate::subscriber::writer::NullWriter;
 
 pub struct LoggingBuilder<O: LogOptions = DefaultLogOptions, MkWriter: MakeWriter = StdoutWriter> {
     pub(crate) options: O,
@@ -55,6 +56,10 @@ where
             stage: self.stage,
             make_writer,
         }
+    }
+
+    pub fn null_writer(self) -> LoggingBuilder<O, NullWriter> {
+        self.with_writer(NullWriter)
     }
 
     pub fn with_filter<F2>(self, filter: LevelFilter) -> LoggingBuilder<O, W> {
