@@ -3,7 +3,7 @@ use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use std::time::Instant;
 
-use gcp_auth_channel::AuthChannel;
+use gcp_auth_provider::service::AuthSvc;
 use protos::spanner::spanner_client::SpannerClient;
 use protos::spanner::{self, DeleteSessionRequest};
 

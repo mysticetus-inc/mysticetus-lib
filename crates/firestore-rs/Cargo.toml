@@ -19,6 +19,7 @@ firestore-admin = ["protos/firestore-admin"]
 gcloud = ["gcp-auth-provider/gcloud"]
 
 [dependencies]
+http.workspace = true
 tokio = { workspace = true, features = [
     "macros",
     "rt-multi-thread",

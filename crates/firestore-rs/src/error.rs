@@ -8,7 +8,7 @@ use path_aware_serde::{Error as PathAwareError, Path};
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Auth error: {0}")]
-    Auth(#[from] gcp_auth_channel::Error),
+    Auth(#[from] gcp_auth_provider::Error),
     #[error("Transport error: {0}")]
     Transport(#[from] tonic::transport::Error),
     #[error("Status: {0}")]

@@ -393,7 +393,7 @@ fn test_extract_db_path() {
 }
 
 #[allow(unused_mut, unused_variables)]
-#[cfg(test)]
+#[cfg(all(test, feature = "gcloud"))]
 mod tests {
     use std::collections::HashMap;
 
@@ -407,10 +407,9 @@ mod tests {
 
     async fn get_client() -> &'static Firestore {
         async fn init() -> Firestore {
-            let auth = gcp_auth_channel::Auth::new_gcloud(
-                "mysticetus-oncloud",
-                gcp_auth_channel::Scope::Firestore,
-            );
+            let gcloud = gcp_auth_provider::providers::gcloud::GCloudProvider::new();
+
+            let auth = gcp_auth_provider::Auth::new_gcloud(gcp_auth_channel::Scope::Firestore);
 
             firestore::Firestore::from_auth_manager_future(std::future::ready(auth))
                 .await

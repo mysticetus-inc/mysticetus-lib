@@ -1,4 +1,4 @@
-#![feature(layout_for_ptr, box_as_ptr)]
+#![feature(layout_for_ptr, box_as_ptr, let_chains)]
 mod http_request;
 mod json;
 mod middleware;

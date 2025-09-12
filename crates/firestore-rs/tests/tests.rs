@@ -3,7 +3,7 @@ use rand::Rng;
 use rand::rngs::ThreadRng;
 
 async fn get_client() -> Firestore {
-    Firestore::new("mysticetus-oncloud", gcp_auth_channel::Scope::Firestore)
+    Firestore::new(gcp_auth_provider::Scope::Firestore)
         .await
         .expect("should be able to build client")
 }
