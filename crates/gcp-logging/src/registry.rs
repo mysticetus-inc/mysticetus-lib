@@ -222,6 +222,24 @@ impl Records {
         let refer = self.data.get(id_to_idx(id))?;
         Some(DataRef::new(refer, self))
     }
+
+    fn actually_close_span(&self, id: &Id, span: &DataRef<'_>) {
+        if let Some(follows) = NonZeroU64::new(span.follows.swap(0, Ordering::SeqCst)) {
+            self.with_dispatcher(|dispatcher| {
+                dispatcher.try_close(Id::from_non_zero_u64(follows));
+            });
+        }
+
+        self.data.clear(id_to_idx(id));
+    }
+
+    fn with_dispatcher<O>(&self, mut f: impl FnMut(&tracing::Dispatch) -> O) -> O {
+        if let Some(dispatcher) = self.dispatcher() {
+            f(&dispatcher)
+        } else {
+            tracing::dispatcher::get_default(f)
+        }
+    }
 }
 
 impl tracing::Subscriber for Records {
@@ -290,7 +308,7 @@ impl tracing::Subscriber for Records {
         } else {
             debug_assert!(
                 false,
-                "record called on non-existant span: {span:?} - {values:?}"
+                "record called on non-existent span: {span:?} - {values:?}"
             );
         }
     }
@@ -298,6 +316,11 @@ impl tracing::Subscriber for Records {
     #[inline]
     fn record_follows_from(&self, span: &Id, follows: &Id) {
         if let Some(span) = self.get(span) {
+            #[cfg(feature = "debug-logging")]
+            {
+                println!("record_follows_from {span:?} follows {follows:?}");
+            }
+
             span.follows
                 .store(self.clone_span(follows).into_u64(), Ordering::SeqCst);
         } else {
@@ -369,6 +392,16 @@ impl tracing::Subscriber for Records {
             None => panic!("tried to drop a ref to {:?}, but no such span exists!", id),
         };
 
+        // if we're actually closing, handle it separately
+        if data
+            .closing
+            .compare_exchange(true, false, Ordering::SeqCst, Ordering::Relaxed)
+            .is_ok()
+        {
+            self.actually_close_span(&id, &data);
+            return true;
+        }
+
         let refs = data.ref_count.fetch_sub(1, Ordering::Release);
 
         #[cfg(feature = "debug-logging")]
@@ -394,33 +427,26 @@ impl tracing::Subscriber for Records {
 
         std::sync::atomic::fence(Ordering::Acquire);
 
-        if let Some(dispatcher) = closing.then(|| self.dispatcher()).flatten() {
-            if let Some(follows_id) = follows_id {
+        if closing {
+            self.with_dispatcher(|dispatch| {
+                if let Some(ref follows) = follows_id {
+                    #[cfg(feature = "debug-logging")]
+                    {
+                        println!("try_close dispatcher {id:?} - follows {follows_id:?}");
+                    }
+
+                    dispatch.try_close(follows.clone());
+                }
+
                 #[cfg(feature = "debug-logging")]
                 {
-                    println!("try_close dispatcher {id:?} - follows {follows_id:?}");
+                    println!("try_close dispatcher {id:?}");
                 }
-                dispatcher.try_close(follows_id);
-            }
-
-            #[cfg(feature = "debug-logging")]
-            {
-                println!("try_close dispatcher {id:?}");
-            }
-            dispatcher.try_close(id);
+                dispatch.try_close(id.clone())
+            })
         } else {
-            if let Some(follows_id) = follows_id {
-                #[cfg(feature = "debug-logging")]
-                {
-                    println!("try_close {id:?} - follows {follows_id:?}");
-                }
-
-                self.try_close(follows_id);
-            }
-            self.data.clear(id_to_idx(&id));
+            false
         }
-
-        true
     }
 
     unsafe fn downcast_raw(&self, id: std::any::TypeId) -> Option<*const ()> {
