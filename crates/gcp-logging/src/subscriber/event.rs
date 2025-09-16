@@ -107,8 +107,8 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
             }
         }
 
-        if !self.has_emitted_http && dbg!(options.include_http_info(self.event.metadata())) {
-            if let Some(http) = dbg!(read_data.http_request()) {
+        if !self.has_emitted_http && options.include_http_info(self.event.metadata()) {
+            if let Some(http) = read_data.http_request() {
                 map.serialize_entry(keys::HTTP_REQUEST_KEY, &http)?;
                 self.has_emitted_http = true;
             }
