@@ -1,22 +1,17 @@
-use std::cell::RefCell;
 use std::io::Write;
 use std::ops::ControlFlow;
-use std::sync::Arc;
 
 use serde::ser::SerializeMap;
 use timestamp::Timestamp;
-use tracing::Event;
-use tracing::field::{Field, Visit};
+use tracing::field::Field;
 use tracing::span::Id;
-use tracing_subscriber::registry::{LookupSpan, SpanRef};
 
 use super::RecordError;
-use crate::http_request::TraceHeader;
 use crate::options::TryGetBacktrace;
 use crate::registry::{DataRef, ReadOptions, Records};
 use crate::subscriber::MakeWriter;
 use crate::utils::HexBytes;
-use crate::{LogOptions, Severity, Stage, keys};
+use crate::{Severity, Stage, keys};
 
 const LABEL_PREFIX: &str = "label.";
 
@@ -112,8 +107,8 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
             }
         }
 
-        if !self.has_emitted_http && options.include_http_info(self.event.metadata()) {
-            if let Some(http) = read_data.http_request() {
+        if !self.has_emitted_http && dbg!(options.include_http_info(self.event.metadata())) {
+            if let Some(http) = dbg!(read_data.http_request()) {
                 map.serialize_entry(keys::HTTP_REQUEST_KEY, &http)?;
                 self.has_emitted_http = true;
             }

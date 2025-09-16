@@ -51,7 +51,7 @@ impl ReadOptions<'_> {
 
     #[inline]
     pub fn include_http_info(&self, meta: &Metadata<'_>) -> bool {
-        self.options.treat_as_error(meta)
+        self.options.include_http_info(meta)
     }
 
     #[inline]

@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, Version, header};
 use http_body::Body;
 pub use size::Size;
@@ -27,6 +29,11 @@ pub struct HttpRequest {
     user_agent: Option<HeaderValue>,
     #[serde(
         skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize::opt_socket_addr"
+    )]
+    remote_ip: Option<SocketAddr>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
         serialize_with = "serialize::opt_header"
     )]
     referer: Option<HeaderValue>,
@@ -45,7 +52,10 @@ pub struct HttpRequest {
 }
 
 impl HttpRequest {
-    pub fn from_request<B: Body>(request: &http::Request<B>) -> Self {
+    pub fn from_request<B: Body>(
+        request: &http::Request<B>,
+        remote_ip: Option<SocketAddr>,
+    ) -> Self {
         let request_size = request
             .body()
             .size_hint()
@@ -59,6 +69,7 @@ impl HttpRequest {
             request_method: request.method().clone(),
             request_url: request.uri().clone(),
             request_size,
+            remote_ip,
             referer: request.headers().get(header::REFERER).cloned(),
             user_agent: request.headers().get(header::USER_AGENT).cloned(),
             status: None,
@@ -112,6 +123,20 @@ mod serialize {
         S: serde::Serializer,
     {
         serializer.serialize_str(meth.as_str())
+    }
+
+    #[inline]
+    pub(super) fn opt_socket_addr<S>(
+        addr: &Option<std::net::SocketAddr>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match addr {
+            None => serializer.serialize_none(),
+            Some(addr) => serializer.serialize_some(&format_args!("{addr}")),
+        }
     }
 
     #[inline]
@@ -201,10 +226,10 @@ pub struct RequestTrace {
 }
 
 impl RequestTrace {
-    pub fn new<B: Body>(request: &http::Request<B>) -> Self {
+    pub fn new<B: Body>(request: &http::Request<B>, remote_ip: Option<SocketAddr>) -> Self {
         Self {
             trace_header: request.headers().get(TRACE_CTX_HEADER).cloned(),
-            request: HttpRequest::from_request(&request),
+            request: HttpRequest::from_request(&request, remote_ip),
         }
     }
 }

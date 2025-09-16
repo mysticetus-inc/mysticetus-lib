@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use std::net::SocketAddr;
 use std::num::NonZeroU64;
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
@@ -410,11 +411,11 @@ impl std::fmt::Debug for NewRequest {
 }
 
 impl NewRequest {
-    pub(crate) fn new<B: Body>(req: &http::Request<B>) -> Self {
+    pub(crate) fn new<B: Body>(req: &http::Request<B>, remote_ip: Option<SocketAddr>) -> Self {
         Self {
             inner: Cell::new(Some(RequestData {
                 trace_header: req.headers().get(TRACE_CTX_HEADER).cloned(),
-                http: HttpRequest::from_request(req),
+                http: HttpRequest::from_request(req, remote_ip),
             })),
         }
     }

@@ -52,7 +52,11 @@ pub struct DefaultLogOptions;
 impl LogOptions for DefaultLogOptions {
     fn include_http_info(&self, meta: &tracing::Metadata<'_>) -> bool {
         // include the http info on everything but verbose tracing
-        !matches!(*meta.level(), tracing::Level::TRACE | tracing::Level::DEBUG)
+        dbg!(meta);
+        dbg!(!matches!(
+            *meta.level(),
+            tracing::Level::TRACE | tracing::Level::DEBUG
+        ))
     }
 
     fn treat_as_error(&self, meta: &tracing::Metadata<'_>) -> bool {

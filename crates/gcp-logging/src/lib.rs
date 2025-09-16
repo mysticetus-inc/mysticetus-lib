@@ -81,6 +81,8 @@ pub(crate) mod keys {
 
 #[cfg(test)]
 mod tests {
+    use std::net::SocketAddr;
+
     use test_utils::{EchoService, EmptyBody, MakeTestWriter};
     use tower::{Layer, Service};
     use tracing_subscriber::util::SubscriberInitExt;
@@ -99,8 +101,13 @@ mod tests {
     ) {
         let req = http::Request::builder()
             .header(http::header::ORIGIN, TEST_HEADER)
+            .header(http::header::USER_AGENT, "fake-user-agent")
             .header(TRACE_CTX_HEADER, TEST_TRACE_VALUE)
             .uri(TEST_URI)
+            .extension(axum::extract::ConnectInfo(SocketAddr::from((
+                [0, 0, 0, 0],
+                1234,
+            ))))
             .body(EmptyBody)
             .expect("should be valid");
 

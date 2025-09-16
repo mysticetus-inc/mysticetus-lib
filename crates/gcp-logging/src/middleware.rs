@@ -1,9 +1,11 @@
 use std::convert::Infallible;
 use std::future::Future;
+use std::net::{SocketAddr, SocketAddrV4};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
+use axum::extract::ConnectInfo;
 use axum::response::{IntoResponse, Response};
 use futures::TryFuture;
 use http_body::Body;
@@ -67,9 +69,14 @@ where
         use crate::registry::{NewRequest, REQUEST_KEY};
         use crate::utils::ErrorPassthrough;
 
+        let remote_ip = req
+            .extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ConnectInfo(sock)| *sock);
+
         let span = tracing::info_span! {
             "request",
-            { REQUEST_KEY } = ErrorPassthrough(NewRequest::new(&req)).as_dyn(),
+            { REQUEST_KEY } = ErrorPassthrough(NewRequest::new(&req, remote_ip)).as_dyn(),
             { RESPONSE_LATENCY_KEY } = Empty,
             { RESPONSE_SIZE_KEY } = Empty,
             { RESPONSE_STATUS_KEY } = Empty,
