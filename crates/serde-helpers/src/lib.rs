@@ -20,6 +20,7 @@ pub mod from_str;
 pub mod inline_str_dst;
 pub mod key_capture;
 pub mod kvp;
+pub mod macros;
 pub mod map_error;
 pub mod match_kvp;
 pub mod never_visitor;

@@ -92,13 +92,52 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
         Ok(())
     }
 
+    fn emit_data_ref<M>(
+        &mut self,
+        map: &mut M,
+        data_ref: DataRef<'_>,
+        options: &ReadOptions<'_>,
+    ) -> Result<bool, RecordError>
+    where
+        M: SerializeMap<Error = path_aware_serde::Error<serde_json::Error>> + ?Sized,
+    {
+        let mut parent_span_has_labels = false;
+
+        let read_data = data_ref.read();
+
+        if !self.has_emitted_trace {
+            if let Some(trace) = read_data.trace(self.records) {
+                map.serialize_entry(keys::TRACE_KEY, &trace)?;
+                self.has_emitted_trace = true;
+            }
+        }
+
+        if !self.has_emitted_http && options.include_http_info(self.event.metadata()) {
+            if let Some(http) = read_data.http_request() {
+                map.serialize_entry(keys::HTTP_REQUEST_KEY, &http)?;
+                self.has_emitted_http = true;
+            }
+        }
+
+        read_data.visit_fields(|key, value| {
+            if key.starts_with(LABEL_PREFIX) {
+                parent_span_has_labels |= self.request_span_id.as_ref() != Some(data_ref.id());
+                Ok(())
+            } else {
+                map.serialize_entry(key, &value)
+            }
+        })?;
+
+        Ok(parent_span_has_labels)
+    }
+
     fn emit_to_map<M>(mut self, map: &mut M) -> Result<(), RecordError>
     where
         M: SerializeMap<Error = path_aware_serde::Error<serde_json::Error>> + ?Sized,
     {
         let mut options = None;
 
-        let (ts, mut severity, event_has_labels) = self.emit_event(map, &mut options)?;
+        let (ts, severity, event_has_labels) = self.emit_event(map, &mut options)?;
 
         let options = options.unwrap_or_else(|| self.records.options());
 
@@ -119,56 +158,26 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
             map.serialize_entry(keys::TIMESTAMP_KEY, &ProtoTimestamp(ts))?;
         }
 
-        let request_span_data = self
-            .request_span_id
-            .as_ref()
-            .and_then(|id| self.records.get(id));
-
-        let mut request_span_data_read = None;
-
-        if let Some(ref req_span_data) = request_span_data {
-            let req_read = request_span_data_read.insert(req_span_data.read());
-
-            if let Some(trace) = req_read.trace(self.records) {
-                map.serialize_entry(keys::TRACE_KEY, &trace)?;
-                self.has_emitted_trace = true;
-            }
-
-            if options.include_http_info(self.event.metadata()) {
-                if let Some(http) = req_read.http_request() {
-                    map.serialize_entry(keys::HTTP_REQUEST_KEY, &http)?;
-                    self.has_emitted_http = true;
-                }
-            }
-        }
-
-        request_span_data_read = None;
-        drop(request_span_data);
-
         let mut parent_span_has_labels = false;
 
-        if let Some(event_data) = self.event_data {
+        if let Some(event_data) = self.event_data.take() {
             serialize_span_id(event_data.id(), map)?;
+            event_data.visit_all(
+                |data_ref| match self.emit_data_ref(map, data_ref, &options) {
+                    Ok(parent_has_labels) => {
+                        parent_span_has_labels |= parent_has_labels;
+                        ControlFlow::Continue(())
+                    }
+                    Err(error) => ControlFlow::Break(error),
+                },
+            );
+        } else {
+            if let Some(ref id) = self.request_span_id {
+                serialize_span_id(id, map)?;
+            }
 
-            if let Some(error) = event_data.visit_all(|data_ref| {
-                let read = if Some(data_ref.id()) == self.request_span_id.as_ref() {
-                    request_span_data_read
-                        .take()
-                        .unwrap_or_else(|| data_ref.read())
-                } else {
-                    data_ref.read()
-                };
-
-                if let Err(error) = read.visit_fields(|key, value| {
-                    map.serialize_entry(key, &value)?;
-                    Ok(())
-                }) {
-                    return ControlFlow::Break(error);
-                }
-
-                ControlFlow::Continue(())
-            }) {
-                return Err(error);
+            for data_ref in self.records.scope_iter(self.request_span_id.clone()) {
+                self.emit_data_ref(map, data_ref, &options)?;
             }
         }
 
@@ -184,6 +193,7 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
         let stage_label = options.include_stage(self.event.metadata());
 
         match (stage_label, event_has_labels, parent_span_has_labels) {
+            (false, false, false) => (),
             (true, false, false) => {
                 #[derive(serde::Serialize)]
                 struct StageLabels {
@@ -197,7 +207,6 @@ impl<'a, 'event> EventEmitter<'a, 'event> {
                     },
                 )?;
             }
-            (false, false, false) => (),
             _ => (),
         }
 

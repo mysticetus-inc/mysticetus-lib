@@ -17,6 +17,7 @@ use tracing_core::span::Current;
 use crate::{DefaultLogOptions, LogOptions, Stage};
 
 mod data;
+mod iter;
 mod spans;
 mod visitor;
 
@@ -83,6 +84,13 @@ impl Records {
             .parent()
             .and_then(|id| self.get(id))
             .or_else(|| spans::current().and_then(|id| self.get(&id)))
+    }
+
+    pub fn scope_iter(&self, id: impl Into<Option<Id>>) -> iter::SpanDataIter<'_> {
+        iter::SpanDataIter {
+            records: self,
+            next_id: id.into(),
+        }
     }
 
     pub fn new_with(
