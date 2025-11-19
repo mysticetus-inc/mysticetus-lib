@@ -8,12 +8,158 @@ use std::num::NonZeroU8;
 #[repr(transparent)]
 pub struct ProjectId(&'static str);
 
+const PROJECT_ID_MIN_LEN: usize = 6;
+const PROJECT_ID_MAX_LEN: usize = 30;
+
+/*
+const fn debug_panic_on_invalid_project_id(project_id: &'static str) {
+    #[cfg(debug_assertions)]
+    {
+        let Err(error) = validate_project_id(project_id.as_bytes()) else {
+            return;
+        };
+
+        std::intrinsics::const_eval_select(
+            (project_id, error),
+            const_panic_invalid_project_id,
+            panic_invalid_project_id,
+        );
+    }
+}
+
+const fn const_panic_invalid_project_id(project_id: &'static str, error: InvalidProjectId) -> ! {
+    todo!()
+}
+
+fn panic_invalid_project_id(project_id: &'static str, error: InvalidProjectId) -> ! {
+    todo!()
+}
+*/
+
+const fn panic_for_invalid_id(project_id: &'static str, error: InvalidProjectId) -> ! {
+    const fn fmt_ascii_char(byte: &u8) -> &str {
+        if !byte.is_ascii() {
+            ""
+        } else {
+            unsafe { std::str::from_utf8_unchecked(std::slice::from_ref(byte)) }
+        }
+    }
+
+    const fn copy_parts_to_slice(parts: &[&str], dst: *mut u8, dst_len: usize) -> usize {
+        let mut offset = 0;
+        let mut part_index = 0;
+
+        while part_index < parts.len() && offset <= dst_len {
+            let part = parts[part_index];
+
+            let max_len = dst_len - offset;
+
+            let dst_ptr = unsafe { dst.add(offset) };
+            let src_ptr = part.as_bytes().as_ptr();
+
+            let copy_len = if part.len() <= max_len {
+                part.len()
+            } else {
+                max_len
+            };
+
+            unsafe { std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, copy_len) };
+
+            offset += copy_len;
+            part_index += 1;
+        }
+
+        offset
+    }
+
+    macro_rules! const_panic {
+        ($($part:expr),* $(,)?) => {{
+            const MAX_LEN: usize = 1024;
+
+            static mut PANIC_MESSAGE_BYTES: [u8; MAX_LEN] = [0; MAX_LEN];
+
+            let len = copy_parts_to_slice(
+                &[$($part,)*],
+                (&raw mut PANIC_MESSAGE_BYTES).cast(),
+                MAX_LEN,
+            );
+
+            let panic_message = unsafe {
+                let slice = std::slice::from_raw_parts((&raw const PANIC_MESSAGE_BYTES).cast(), len);
+
+                std::str::from_utf8_unchecked(slice)
+            };
+
+            panic!("{}", panic_message)
+        }};
+    }
+
+    use InvalidProjectId::*;
+
+    match error {
+        EmptyString => panic!("project_id can't be an empty string"),
+        NotAscii => {
+            const_panic!("project_id '", project_id, "' is not valid ascii")
+        }
+        TooLong { .. } => {
+            const_panic!("project_id '", project_id, "' is too long, (30< bytes)")
+        }
+        TooShort { .. } => {
+            const_panic!("project_id '", project_id, "' is too short, (<6 bytes)")
+        }
+        LastCharHyphen => const_panic!(
+            "final character of project_id '",
+            project_id,
+            "' cant be a hyphen"
+        ),
+        InvalidChar { ch, .. } => const_panic!(
+            "project_id '",
+            project_id,
+            "' contains an invalid character: '",
+            fmt_ascii_char(&ch),
+            "'"
+        ),
+        FirstCharNotALetter(letter) => const_panic!(
+            "first character of project_id '",
+            project_id,
+            "' is not a letter: '",
+            fmt_ascii_char(&letter),
+            "'"
+        ),
+        ContainsInvalidSubstring { substr, .. } => const_panic!(
+            "project_id '",
+            project_id,
+            "' contains an invalid substring: '",
+            substr,
+            "'",
+        ),
+    }
+}
+
 impl ProjectId {
     #[inline]
     pub const fn new(project_id: &'static str) -> Self {
         #[cfg(debug_assertions)]
-        assert!(matches!(validate_project_id(project_id.as_bytes()), Ok(())));
+        {
+            if let Err(error) = validate_project_id(project_id.as_bytes()) {
+                panic_for_invalid_id(project_id, error);
+            }
+        }
+        Self(project_id)
+    }
 
+    #[inline]
+    pub const fn new_checked(project_id: &'static str) -> Result<Self, InvalidProjectId> {
+        match validate_project_id(project_id.as_bytes()) {
+            Ok(()) => Ok(ProjectId(project_id)),
+            Err(error) => Err(error),
+        }
+    }
+
+    /// Identical to [ProjectId::new] when debug_assertions are disabled, but
+    /// allows project id validation to be skipped when they are enabled.
+    #[inline]
+    pub const fn new_unchecked(project_id: &'static str) -> Self {
         Self(project_id)
     }
 
@@ -161,9 +307,6 @@ impl AsRef<str> for ProjectId {
         self.0
     }
 }
-
-const PROJECT_ID_MIN_LEN: usize = 6;
-const PROJECT_ID_MAX_LEN: usize = 30;
 
 /// Validates that a project id is valid, according to the rules that google as published here:
 ///
