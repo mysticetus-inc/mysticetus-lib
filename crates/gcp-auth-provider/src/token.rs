@@ -115,6 +115,15 @@ impl Token {
             Err(now)
         }
     }
+
+    pub fn new_from_raw_header(header: http::HeaderValue, expires_in: std::time::Duration) -> Self {
+        let expires_at = Timestamp::now() + expires_in;
+        Self {
+            expires_at,
+            header,
+            token_type: (),
+        }
+    }
 }
 
 impl<T> fmt::Debug for Token<T> {
