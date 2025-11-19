@@ -87,6 +87,21 @@ impl Point {
         }
     }
 
+    #[inline]
+    pub const fn new_raw(longitude: f64, latitude: f64) -> Self {
+        let longitude = match Longitude::new_checked(longitude) {
+            Ok(lon) => lon,
+            Err(_err) => panic!("invalid longitude"),
+        };
+
+        let latitude = match Latitude::new_checked(latitude) {
+            Ok(lat) => lat,
+            Err(_err) => panic!("invalid latitude"),
+        };
+
+        Self::new(longitude, latitude)
+    }
+
     /// Assembles a [`Point`] from a longitude and latitude as [`f64`]'s. If either is invalid,
     /// an [`Err`] is returned.
     pub const fn new_checked(longitude: f64, latitude: f64) -> Result<Self, InvalidCoordinate> {
@@ -194,6 +209,42 @@ impl Point {
     /// Returns the longitude, latitute, and optional altitude as a triplet.
     pub const fn as_lon_lat_alt(&self) -> (f64, f64, Option<f64>) {
         (self.longitude.get(), self.latitude.get(), self.altitude)
+    }
+
+    #[inline]
+    pub fn into_normal_vec(self) -> crate::NormalVec {
+        self.into()
+    }
+
+    pub fn circle_around(
+        self,
+        radius_m: f64,
+        points: usize,
+    ) -> impl ExactSizeIterator<Item = crate::NormalVec> {
+        self.into_normal_vec().circle_around(radius_m, points)
+    }
+
+    pub fn circle_around_as_points(
+        self,
+        radius_m: f64,
+        points: usize,
+    ) -> impl ExactSizeIterator<Item = Result<Self, InvalidCoordinate>> {
+        self.circle_around(radius_m, points).map(Self::try_from)
+    }
+
+    pub fn circle_around_to_line(
+        self,
+        radius_m: f64,
+        points: usize,
+    ) -> Result<crate::geom::Line, InvalidCoordinate> {
+        let mut line = crate::geom::Line::with_capacity(points + 1);
+
+        for result in self.circle_around_as_points(radius_m, points) {
+            let point = result?;
+            line.push(point);
+        }
+
+        Ok(line)
     }
 }
 

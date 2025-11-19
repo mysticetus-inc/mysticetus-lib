@@ -24,6 +24,7 @@ macro_rules! impl_nested_geometries {
                 #[doc = "Creates an empty [`"]
                 #[doc = stringify!($name)]
                 #[doc = "`]"]
+                #[inline]
                 pub fn new() -> Self {
                     Self(Vec::new())
                 }
@@ -31,6 +32,7 @@ macro_rules! impl_nested_geometries {
                 #[doc = "Creates a [`"]
                 #[doc = stringify!($name)]
                 #[doc = "`] with 'capacity' pre-allocated"]
+                #[inline]
                 pub fn with_capacity(capacity: usize) -> Self {
                     Self(Vec::with_capacity(capacity))
                 }
@@ -38,6 +40,7 @@ macro_rules! impl_nested_geometries {
                 #[doc = "Pushes an [`"]
                 #[doc = stringify!($inner)]
                 #[doc = "`] to the end of any existing ones."]
+                #[inline]
                 pub fn push(&mut self, inner: $inner) {
                     self.0.push(inner);
                 }
@@ -45,6 +48,7 @@ macro_rules! impl_nested_geometries {
                 #[doc = "Returns the number of inner [`"]
                 #[doc = stringify!($inner)]
                 #[doc = "`] contained within this instance"]
+                #[inline]
                 pub fn len(&self) -> usize {
                     self.0.len()
                 }
@@ -52,6 +56,7 @@ macro_rules! impl_nested_geometries {
                 #[doc = "Whether or not this contains any [`"]
                 #[doc = stringify!($inner)]
                 #[doc = "`]"]
+                #[inline]
                 pub fn is_empty(&self) -> bool {
                     self.0.is_empty()
                 }
@@ -59,6 +64,7 @@ macro_rules! impl_nested_geometries {
                 #[doc = "Returns an [`Iterator`] over references to the inner [`"]
                 #[doc = stringify!($inner)]
                 #[doc = "`]"]
+                #[inline]
                 pub fn iter(&self) -> std::slice::Iter<'_, $inner> {
                     self.0.as_slice().iter()
                 }
@@ -66,6 +72,7 @@ macro_rules! impl_nested_geometries {
                 #[doc = "Returns a slice of the inner [`"]
                 #[doc = stringify!($inner)]
                 #[doc = "`]"]
+                #[inline]
                 pub fn as_slice(&self) -> &[$inner] {
                     self.0.as_slice()
                 }
@@ -88,12 +95,21 @@ macro_rules! impl_nested_geometries {
             }
 
             impl Default for $name {
+                #[inline]
                 fn default() -> Self {
                     Self::new()
                 }
             }
 
+            impl From<$inner> for $name {
+                #[inline]
+                fn from(inner: $inner) -> Self {
+                    Self(vec![inner])
+                }
+            }
+
             impl From<Vec<$inner>> for $name {
+                #[inline]
                 fn from(vec: Vec<$inner>) -> Self {
                     Self(vec)
                 }

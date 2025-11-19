@@ -11,6 +11,15 @@ pub struct Ellipse {
 }
 
 impl Ellipse {
+    pub fn new_circle(center: impl Into<NormalVec>, radius_m: f64) -> Self {
+        Self {
+            center: center.into(),
+            semi_major_bearing_rad: 0.0,
+            semi_major_m: radius_m,
+            semi_minor_m: radius_m,
+        }
+    }
+
     pub fn new<P>(
         center: P,
         semi_major_m: f64,
@@ -28,8 +37,19 @@ impl Ellipse {
         }
     }
 
+    pub fn is_circle(&self) -> bool {
+        f64::EPSILON >= (self.semi_major_m - self.semi_minor_m).abs()
+    }
+
     pub fn to_polygon(&self, output_points: usize) -> Result<Polygon, InvalidCoordinate> {
-        let mut points = Vec::with_capacity(output_points);
+        if self.is_circle() {
+            return self
+                .center
+                .circle_around_into_line(self.semi_major_m, output_points)
+                .map(Polygon::from);
+        }
+
+        let mut points = Line::with_capacity(output_points);
 
         let interval = std::f64::consts::TAU / output_points as f64;
 
@@ -57,7 +77,7 @@ impl Ellipse {
             current_offset += interval;
         }
 
-        Ok(Polygon::from(vec![Line::from(points)]))
+        Ok(Polygon::from(points))
     }
 }
 

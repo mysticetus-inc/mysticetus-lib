@@ -171,12 +171,97 @@ impl_geojson_type!(Feature, FeatureCollection, GeoJson);
 
 #[cfg(test)]
 mod tests {
+    use geo::geom::{Line, Polygon};
     use geometry::Point;
     use properties::base_props::BaseProperties;
     use serde_json::json;
     use timestamp::Timestamp;
+    use uuid::Uuid;
 
     use super::*;
+    use crate::properties::cmd_center_props::LeaseArea;
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+    pub struct LeaseAreaProps<'a> {
+        id: Uuid,
+        data_type: LeaseArea,
+        name: &'a str,
+        parent: &'a str,
+        radius_meters: usize,
+        sort_key: i32,
+    }
+
+    fn generate_ring<'a>(
+        center: Point,
+        radius_meters: usize,
+        sort_key: i32,
+        parent: &'a str,
+        name: &'a str,
+        points: usize,
+    ) -> Feature<Polygon, LeaseAreaProps<'a>> {
+        let center = geo::NormalVec::from_point(center);
+
+        let mut line = Line::with_capacity(points + 1);
+
+        for i in 0..points {
+            let bearing_rad = 2.0 * std::f64::consts::PI * ((i as f64) / (points as f64));
+            let pt = center.extend_point(bearing_rad, radius_meters as f64);
+            let point = pt.try_into_point().unwrap();
+            line.push(point);
+        }
+
+        line.push(line.as_slice()[0]);
+
+        let poly = Polygon::from(line);
+
+        Feature::from_coords_and_properties(
+            poly,
+            LeaseAreaProps {
+                id: Uuid::new_v5(
+                    &uuid::Uuid::NAMESPACE_DNS,
+                    format!("{radius_meters}-{parent}-{name}").as_bytes(),
+                ),
+                data_type: LeaseArea,
+                name,
+                sort_key,
+                parent,
+                radius_meters,
+            },
+        )
+    }
+
+    #[test]
+    fn generate_geojson() {
+        const ESSINGTON_1: (Point, &str) =
+            (Point::new_raw(142.8120570, -39.0957041), "Essington-1");
+
+        const CHARLEMONT_1: (Point, &str) =
+            (Point::new_raw(142.6080531, -39.0142688), "Charlemont-1");
+
+        const RINGS: [(usize, i32, &str); 3] = [
+            (2500, 3, "Whale Action Zone - 2.5km"),
+            (3000, 2, "Glider Exclusion Zone - 3km"),
+            (13000, 1, "Whale Action Zone - 13km"),
+        ];
+
+        // 2.5km - hsl(0, 96%, 44%) - 0.24
+        // 3km - hsl(301, 89%, 46%) - 0.24
+        // 13km - hsl(0, 30%, 96%) - 0.24
+
+        for (center, parent) in [ESSINGTON_1, CHARLEMONT_1] {
+            let mut collection = FeatureCollection::with_capacity(RINGS.len());
+
+            for (radius, sort_key, name) in RINGS {
+                let feature = generate_ring(center, radius, sort_key, parent, name, 256);
+                collection.push(feature);
+            }
+
+            let json = serde_json::to_string_pretty(&collection).unwrap();
+
+            let dst = format!("{parent}-collection.geojson");
+            std::fs::write(&dst, json.as_bytes()).unwrap();
+        }
+    }
 
     #[test]
     fn test_sighting_builder() {

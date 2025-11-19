@@ -124,6 +124,60 @@ impl NormalVec {
 
         Self(dst)
     }
+
+    pub fn circle_around(
+        self,
+        radius_m: f64,
+        points: usize,
+    ) -> impl ExactSizeIterator<Item = Self> + Send + 'static {
+        assert!(1 < points, "a generated circle must have more than 1 point");
+
+        const TWO_PI: f64 = 2.0 * std::f64::consts::PI;
+
+        let make_point_for_index = move |i| {
+            let bearing_rad = TWO_PI * ((i as f64) / (points as f64));
+            self.extend_point(bearing_rad, radius_m)
+        };
+
+        (0..points).map(make_point_for_index)
+    }
+
+    #[inline]
+    pub fn circle_around_as_points(
+        self,
+        radius_m: f64,
+        points: usize,
+    ) -> impl ExactSizeIterator<Item = Result<crate::Point, crate::lng_lat::InvalidCoordinate>>
+    + Send
+    + 'static {
+        self.circle_around(radius_m, points)
+            .map(Self::try_into_point)
+    }
+
+    #[inline]
+    pub fn circle_around_into_line(
+        self,
+        radius_m: f64,
+        points: usize,
+    ) -> Result<crate::geom::Line, crate::lng_lat::InvalidCoordinate> {
+        let mut line = crate::geom::Line::with_capacity(points + 1);
+
+        for result in self.circle_around_as_points(radius_m, points) {
+            let point = result?;
+            line.push(point);
+        }
+
+        if line.as_slice().first() != line.as_slice().last() {
+            line.push(line.as_slice()[0]);
+        }
+
+        Ok(line)
+    }
+
+    #[inline]
+    pub fn try_into_point(self) -> Result<crate::Point, crate::lng_lat::InvalidCoordinate> {
+        self.try_into()
+    }
 }
 
 impl From<crate::Point> for NormalVec {
@@ -136,6 +190,7 @@ impl From<crate::Point> for NormalVec {
 impl TryFrom<NormalVec> for crate::Point {
     type Error = crate::lng_lat::InvalidCoordinate;
 
+    #[inline]
     fn try_from(value: NormalVec) -> Result<Self, Self::Error> {
         let inner = value.0.normalize();
 

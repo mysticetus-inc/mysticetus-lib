@@ -73,7 +73,9 @@ macro_rules! impl_lat_lon {
                         FpCategory::Infinite => {
                             Err(InvalidCoordinate::new(
                                 CoordinateType::$name,
-                                InvalidCoordinateReason::IsInf,
+                                InvalidCoordinateReason::IsInf {
+                                    pos: value.is_sign_positive(),
+                                },
                             ))
                         },
                         _ if Self::MAX_F64 < value => {
@@ -572,6 +574,46 @@ impl InvalidCoordinate {
         Self { coordinate, reason }
     }
 
+    /// Used internally for the const constructors
+    /// that involve checked inputs
+    #[doc(hidden)]
+    #[inline]
+    pub const fn into_const_panic(self) -> ! {
+        use CoordinateType::{Altitude, Latitude, Longitude};
+        use InvalidCoordinateReason::{AboveMaximum, BelowMinimum, IsInf, IsNaN, ParseErr};
+
+        macro_rules! panic_with_coordinate_type {
+            ($coord_type:literal) => {
+                match self.reason {
+                    AboveMaximum { .. } => {
+                        panic!(concat!($coord_type, " is above the maximum allowed values"))
+                    }
+                    BelowMinimum { .. } => {
+                        panic!(concat!($coord_type, " is below the minimum allowed values"))
+                    }
+                    IsNaN => {
+                        panic!(concat!($coord_type, " was NaN"))
+                    }
+                    IsInf { pos: true } => {
+                        panic!(concat!($coord_type, " was positive infinity"))
+                    }
+                    IsInf { pos: false } => {
+                        panic!(concat!($coord_type, " was negative infinity"))
+                    }
+                    ParseErr(_) => {
+                        panic!(concat!("failed to parse ", $coord_type))
+                    }
+                }
+            };
+        }
+
+        match self.coordinate {
+            Altitude => panic_with_coordinate_type!("altitude"),
+            Latitude => panic_with_coordinate_type!("latitude"),
+            Longitude => panic_with_coordinate_type!("longitude"),
+        }
+    }
+
     /// Returns the coordinate type that caused the error.
     pub const fn coordinate(&self) -> CoordinateType {
         self.coordinate
@@ -588,7 +630,9 @@ impl InvalidCoordinate {
 #[cfg_attr(feature = "aide", derive(schemars::JsonSchema))]
 pub enum InvalidCoordinateReason {
     IsNaN,
-    IsInf,
+    IsInf {
+        pos: bool,
+    },
     #[serde(serialize_with = "serialize_display")]
     #[cfg_attr(feature = "aide", schemars(with = "String"))]
     ParseErr(std::num::ParseFloatError),
@@ -614,7 +658,7 @@ impl fmt::Display for InvalidCoordinateReason {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::IsNaN => write!(formatter, "'NaN'"),
-            Self::IsInf => write!(formatter, "infinite"),
+            Self::IsInf { .. } => write!(formatter, "infinite"),
             Self::ParseErr(err) => write!(formatter, "{err}"),
             Self::BelowMinimum { min, value } => {
                 write!(
