@@ -193,3 +193,58 @@ where
         TryMaybeDone::Future(fut) => TryMaybeDone::Future(map_fut(fut)),
     }
 }
+
+#[cfg(feature = "pinned-token-future")]
+pub struct AsyncFnProvider<F> {
+    name: &'static str,
+    f: F,
+}
+
+#[cfg(feature = "pinned-token-future")]
+impl<F> AsyncFnProvider<F> {
+    pub fn new(name: &'static str, f: F) -> Self {
+        Self { name, f }
+    }
+
+    pub fn into_auth(self, project_id: ProjectId) -> crate::Auth
+    where
+        Self: TokenProvider,
+        F: 'static,
+    {
+        crate::Auth::new_from_provider(LoadProviderResult {
+            project_id,
+            provider: self,
+            token_future: TryMaybeDone::Gone,
+        })
+    }
+}
+
+#[cfg(feature = "pinned-token-future")]
+impl<F> std::fmt::Debug for AsyncFnProvider<F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AsyncFnProvider")
+            .field("name", &self.name)
+            .finish_non_exhaustive()
+    }
+}
+
+#[cfg(feature = "pinned-token-future")]
+impl<F: Send + Sync> BaseTokenProvider for AsyncFnProvider<F> {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+}
+
+#[cfg(feature = "pinned-token-future")]
+impl<F, Err> TokenProvider for AsyncFnProvider<F>
+where
+    F: AsyncFn() -> Result<crate::Token, Err> + Send + Sync,
+    crate::Error: From<Err>,
+    for<'a> F::CallRefFuture<'a>: Send + 'static,
+{
+    fn get_token(&self) -> GetTokenFuture<'_> {
+        let future = (self.f)();
+
+        GetTokenFuture::pin(async move { future.await.map_err(crate::Error::from) })
+    }
+}

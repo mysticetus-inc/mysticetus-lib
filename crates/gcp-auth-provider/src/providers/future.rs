@@ -43,6 +43,10 @@ enum Inner<'a, G: Resolver = GaiResolver> {
     },
     #[cfg(feature = "emulator")]
     Emulator,
+    #[cfg(feature = "pinned-token-future")]
+    Pinned {
+        pinned: Pin<Box<dyn Future<Output = Result<Token, Error>> + Send + 'static>>,
+    },
 }
 
 impl<'a, G: Resolver> GetTokenFuture<'a, G> {
@@ -57,6 +61,20 @@ impl<'a, G: Resolver> GetTokenFuture<'a, G> {
     pub(crate) fn new_http_request(req: RequestJson<'a, HttpConnector<G>, Token<Bearer>>) -> Self {
         Self {
             inner: Inner::Http { req },
+        }
+    }
+
+    #[cfg(feature = "pinned-token-future")]
+    pub fn pin(future: impl Future<Output = Result<Token, Error>> + Send + 'static) -> Self {
+        Self::from_pinned(Box::pin(future))
+    }
+
+    #[cfg(feature = "pinned-token-future")]
+    pub fn from_pinned(
+        pinned: Pin<Box<dyn Future<Output = Result<Token, Error>> + Send + 'static>>,
+    ) -> Self {
+        Self {
+            inner: Inner::Pinned { pinned },
         }
     }
 
@@ -134,6 +152,8 @@ impl<'a, G: Resolver> GetTokenFuture<'a, G> {
                 },
                 #[cfg(feature = "emulator")]
                 Inner::Emulator => Inner::Emulator,
+                #[cfg(feature = "pinned-token-future")]
+                Inner::Pinned { pinned } => Inner::Pinned { pinned },
             },
         }
     }
@@ -196,6 +216,8 @@ where
             InnerProjection::GCloud { future, .. } => future.poll(cx),
             #[cfg(feature = "emulator")]
             InnerProjection::Emulator => Poll::Ready(Ok(Token::EMULATOR_TOKEN)),
+            #[cfg(feature = "pinned-token-future")]
+            InnerProjection::Pinned { pinned } => pinned.as_mut().poll(cx),
         }
     }
 }
@@ -220,6 +242,10 @@ impl std::fmt::Debug for GetTokenFuture<'_> {
                 .finish(),
             #[cfg(feature = "emulator")]
             Inner::Emulator => f.pad("GetTokenFuture::Emulator"),
+            #[cfg(feature = "pinned-token-future")]
+            Inner::Pinned { .. } => f
+                .debug_struct("GetTokenFuture::Pinned")
+                .finish_non_exhaustive(),
         }
     }
 }

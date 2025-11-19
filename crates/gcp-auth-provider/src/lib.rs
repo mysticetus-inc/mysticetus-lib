@@ -1,5 +1,5 @@
 #![cfg_attr(feature = "gcloud", feature(exit_status_error))]
-
+#![cfg_attr(feature = "pinned-token-future", feature(async_fn_traits))]
 mod cache;
 mod client;
 mod error;
@@ -13,7 +13,7 @@ pub mod channel;
 pub mod providers;
 pub mod service;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 
