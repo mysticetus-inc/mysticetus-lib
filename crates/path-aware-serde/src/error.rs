@@ -105,6 +105,29 @@ impl<E> Error<E> {
         }
     }
 
+    /// Maps the inner error type to another type.
+    #[inline]
+    pub fn map_error<E2>(self, map: impl FnOnce(E) -> E2) -> Error<E2> {
+        Error {
+            error: map(self.error),
+            path: self.path,
+        }
+    }
+
+    /// Maps the inner error type to another type, fallibly.
+    #[inline]
+    pub fn try_map_error<E2>(
+        self,
+        try_map: impl FnOnce(E) -> Result<E2, E>,
+    ) -> Result<Error<E2>, Self> {
+        let Self { error, path } = self;
+
+        match try_map(error) {
+            Ok(error) => Ok(Error { error, path }),
+            Err(error) => Err(Self { error, path }),
+        }
+    }
+
     /// Returns a reference to the inner error.
     pub fn error(&self) -> &E {
         &self.error
