@@ -381,14 +381,12 @@ impl<'a, B: ?Sized + BufMut> ProtoValueSerializer<'a, B> {
     fn serialize_signed(&mut self, signed: isize) {
         match self.field.field().wire_type() {
             WireType::Varint => self.serialize_varint(Varint::from_signed(signed)),
-            // SAFETY: simple bitcasting
-            WireType::Bits64 => self.serialize_bits64(unsafe { transmute(signed as i64) }),
+            WireType::Bits64 => self.serialize_bits64((signed as i64).cast_unsigned()),
             WireType::LengthDelimited => self.serialize_length_delimited(signed.to_string()),
             WireType::StartGroup | WireType::EndGroup => {
                 unimplemented!("start/end groups not supported")
             }
-            // SAFETY: simple bitcasting
-            WireType::Bits32 => self.buf.put_u32(unsafe { transmute(signed as i32) }),
+            WireType::Bits32 => self.buf.put_u32((signed as i32).cast_unsigned()),
         }
     }
 
