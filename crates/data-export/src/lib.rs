@@ -1,5 +1,3 @@
-#![feature(hash_raw_entry)]
-
 mod error;
 use std::borrow::Cow;
 

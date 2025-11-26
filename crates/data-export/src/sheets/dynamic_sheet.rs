@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use std::hash::BuildHasher;
+
+use hashbrown::HashTable;
 
 use super::BaseSheet;
 use crate::Cell;
@@ -10,7 +12,14 @@ use crate::error::Error;
 pub struct DynamicSheet<'xlsx, C> {
     base: BaseSheet<'xlsx>,
     cols_written: bool,
-    cols: HashMap<C, u16>,
+    cols: HashTable<Col<C>>,
+    hasher: fxhash::FxBuildHasher,
+}
+
+struct Col<C> {
+    col: C,
+    hash: u64,
+    index: u16,
 }
 
 impl<C> super::private::SealedIntoSheet for DynamicSheet<'static, C> {
@@ -20,20 +29,29 @@ impl<C> super::private::SealedIntoSheet for DynamicSheet<'static, C> {
 }
 
 #[inline]
-fn col_index<C: ColHeader>(cols: &mut HashMap<C, u16>, col: &C) -> u16 {
+fn col_index<C: ColHeader>(
+    cols: &mut HashTable<Col<C>>,
+    hasher: &fxhash::FxBuildHasher,
+    col: &C,
+) -> u16 {
     let len = cols.len();
-    let (_, index) = cols
-        .raw_entry_mut()
-        .from_key(col)
-        .or_insert_with(|| (C::clone(col), len as u16));
+    let hash = hasher.hash_one::<&C>(col);
 
-    *index
+    cols.entry(hash, |other| &other.col == col, |exist| exist.hash)
+        .or_insert_with(|| Col {
+            col: C::clone(col),
+            index: len as u16,
+            hash,
+        })
+        .into_mut()
+        .index
 }
 
 #[inline]
 fn add_to_cell<C, I, const PRETTY: bool>(
     cell: &mut Cell<'_>,
-    cols: &mut HashMap<C, u16>,
+    cols: &mut HashTable<Col<C>>,
+    hasher: &fxhash::FxBuildHasher,
     col: &C,
     value: I,
 ) -> Result<(), Error>
@@ -41,7 +59,7 @@ where
     C: ColHeader,
     I: CellContent,
 {
-    cell.set_col(col_index(cols, col));
+    cell.set_col(col_index(cols, hasher, col));
     if PRETTY {
         cell.format_pretty(&value)
     } else {
@@ -52,7 +70,8 @@ where
 #[inline]
 fn add_row<'a, C, R, I, const PRETTY: bool>(
     cell: &mut Cell<'_>,
-    cols: &mut HashMap<C, u16>,
+    cols: &mut HashTable<Col<C>>,
+    hasher: &fxhash::FxBuildHasher,
     row: R,
 ) -> Result<(), Error>
 where
@@ -61,7 +80,7 @@ where
     I: CellContent,
 {
     for (col, value) in row {
-        add_to_cell::<_, _, PRETTY>(cell, cols, col, value)?;
+        add_to_cell::<_, _, PRETTY>(cell, cols, hasher, col, value)?;
     }
 
     Ok(())
@@ -83,7 +102,8 @@ where
         Self {
             base,
             cols_written: false,
-            cols: HashMap::new(),
+            cols: HashTable::new(),
+            hasher: fxhash::FxBuildHasher::default(),
         }
     }
 
@@ -93,7 +113,7 @@ where
         C: 'a,
     {
         for col in cols {
-            col_index(&mut self.cols, col);
+            col_index(&mut self.cols, &self.hasher, col);
         }
     }
 
@@ -109,14 +129,26 @@ where
     where
         I: CellContent,
     {
-        add_to_cell::<_, _, false>(&mut self.base.cell(), &mut self.cols, col, value)
+        add_to_cell::<_, _, false>(
+            &mut self.base.cell(),
+            &mut self.cols,
+            &self.hasher,
+            col,
+            value,
+        )
     }
 
     pub fn add_cell_pretty<I>(&mut self, col: &C, value: I) -> Result<(), Error>
     where
         I: CellContent,
     {
-        add_to_cell::<_, _, true>(&mut self.base.cell(), &mut self.cols, col, value)
+        add_to_cell::<_, _, true>(
+            &mut self.base.cell(),
+            &mut self.cols,
+            &self.hasher,
+            col,
+            value,
+        )
     }
 
     pub fn add_row<'a, R, I>(&mut self, row: R) -> Result<(), Error>
@@ -125,7 +157,12 @@ where
         C: 'a,
         I: CellContent,
     {
-        add_row::<_, _, _, false>(&mut self.base.cell(), &mut self.cols, row.into_iter())?;
+        add_row::<_, _, _, false>(
+            &mut self.base.cell(),
+            &mut self.cols,
+            &self.hasher,
+            row.into_iter(),
+        )?;
         self.incr_row();
         Ok(())
     }
@@ -140,7 +177,7 @@ where
         let mut cell = self.base.cell();
 
         for row in rows {
-            add_row::<_, _, _, false>(&mut cell, &mut self.cols, row.into_iter())?;
+            add_row::<_, _, _, false>(&mut cell, &mut self.cols, &self.hasher, row.into_iter())?;
             cell.incr_row();
         }
 
@@ -155,7 +192,7 @@ where
         let mut cell = self.base.cell();
         *cell.row = 0;
 
-        for (col, index) in self.cols.iter() {
+        for Col { col, index, .. } in self.cols.iter() {
             cell.set_col(*index);
             col.format_pretty(&mut cell)?;
         }

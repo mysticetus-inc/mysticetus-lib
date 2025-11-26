@@ -7,8 +7,7 @@ edition = "2024"
 
 [dependencies]
 thiserror.workspace = true
-# data-structures = { path = "../data-structures" }
-num-traits = "0.2.15"
-# rust_xlsxwriter = { git = "https://github.com/mrudisel/rust_xlsxwriter", branch = "make-worksheet-sync" }
-
+num-traits.workspace = true
 rust_xlsxwriter.workspace = true
+hashbrown.workspace = true
+fxhash.workspace = true

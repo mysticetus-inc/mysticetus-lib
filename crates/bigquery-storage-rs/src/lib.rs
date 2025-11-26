@@ -1,4 +1,4 @@
-#![feature(seek_stream_len, hash_raw_entry)]
+#![feature(seek_stream_len)]
 use std::fmt;
 use std::time::Duration;
 
