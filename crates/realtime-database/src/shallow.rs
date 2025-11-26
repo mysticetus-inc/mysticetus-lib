@@ -56,6 +56,7 @@ where
     }
 }
 
+/*
 pub struct ShallowStringVisitor;
 
 impl<'de> de::Visitor<'de> for ShallowStringVisitor {
@@ -116,6 +117,7 @@ impl<'de> de::Visitor<'de> for ShallowStringVisitor {
         Ok(Shallow { inner })
     }
 }
+*/
 
 pub struct ShallowVisitor<'de, T> {
     _marker: std::marker::PhantomData<(&'de (), T)>,

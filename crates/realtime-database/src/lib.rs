@@ -1,4 +1,4 @@
-#![feature(vec_into_raw_parts, slice_ptr_get, iter_intersperse, fn_traits)]
+#![feature(slice_ptr_get, iter_intersperse, fn_traits)]
 use std::borrow::Cow;
 use std::fmt;
 

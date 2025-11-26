@@ -11,7 +11,8 @@ static ENCODE_SET: &AsciiSet = &percent_encoding::NON_ALPHANUMERIC
     .remove(b'.')
     .remove(b'_');
 
-pub struct Encode<'a>(pub &'a str);
+#[allow(dead_code)]
+pub(crate) struct Encode<'a>(pub &'a str);
 
 impl serde::Serialize for Encode<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

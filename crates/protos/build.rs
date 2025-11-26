@@ -41,6 +41,7 @@ const FILES: &[&str] = &[
     "../../googleapis/google/cloud/tasks/v2/task.proto",
 ];
 
+/*
 macro_rules! derive {
     ($($trait:path),* $(,)?) => {{
         derive!("#[derive(", $($trait,)*)
@@ -59,6 +60,7 @@ macro_rules! derive {
         )
     }}
 }
+*/
 
 const EXTRA_TRAITS: &[(&str, &str)] = &[
     //("google.protobuf.Timestamp", derive!(Eq, PartialOrd, Ord)),

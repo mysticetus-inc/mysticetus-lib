@@ -1,13 +1,10 @@
 #![feature(
-    const_trait_impl,
     exact_size_is_empty,
     extend_one,
     maybe_uninit_write_slice,
     int_roundings,
     mapped_lock_guards,
-    const_type_id,
-    range_into_bounds,
-    // non_lifetime_binders
+    range_into_bounds
 )]
 #[macro_use]
 extern crate tracing;

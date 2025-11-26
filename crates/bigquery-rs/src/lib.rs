@@ -1,4 +1,3 @@
-#![feature(round_char_boundary)]
 mod error;
 pub use error::{Error, MissingField};
 

@@ -130,12 +130,12 @@ pub fn is_dev() -> bool {
     *IS_DEV.get_or_init(check_is_dev)
 }
 
-pub mod serve {
+mod serve {
+    #![allow(dead_code)]
     use std::convert::Infallible;
 
     use axum::Router;
     use axum::extract::Request;
-    use axum::handler::HandlerWithoutStateExt;
     use axum::response::{IntoResponse, Response};
     use tower_service::Service;
 
@@ -238,9 +238,9 @@ pub mod serve {
     all_the_tuples!(impl_handler);
 
     pub async fn serve_with_shutdown<L, S, F, E>(
-        listener: L,
-        router: Router<S>,
-        shutdown_task: F,
+        _listener: L,
+        _router: Router<S>,
+        _shutdown_task: F,
     ) -> Result<(), super::InitError<E>>
     where
         Router<S>:
@@ -250,13 +250,14 @@ pub mod serve {
         todo!()
     }
 }
+
 #[macro_export]
 macro_rules! log_on_error {
-    ($result:expr, $message:literal) => {{
+    ($result:expr, $message:literal $(, $($error_arg:tt)*)?) => {{
         match $result {
             Ok(value) => value,
             Err(error) => {
-                tracing::error!(message = $message, error = ?error);
+                tracing::error!(message = $message, error = ?error $(, $($error_arg)*)?);
                 return Err(error.into());
             }
         }

@@ -1,6 +1,5 @@
 //! A [`Serializer`] (not yet complete) and [`Deserializer`] wrapper, that gives paths to where
 //! an error during serialization/deserialization occurs.
-#![feature(let_chains, const_trait_impl)]
 #![warn(missing_docs)]
 
 mod de;
@@ -21,7 +20,7 @@ pub trait DeserializeExt<'de>
 where
     Self: serde::Deserialize<'de>,
 {
-    /// [`Deserialize::deserialze`], but internally wraps the passed in deserializer to provide
+    /// [`Deserialize::deserialize`], but internally wraps the passed in deserializer to provide
     /// path-aware errors. This changes the return type from `Result<Self, D::Error>` to
     /// `Result<Self, Error<D::Error>>` to account for the wrapped deserialization.
     fn deserialize_path_aware<D>(deserializer: D) -> Result<Self, Error<D::Error>>

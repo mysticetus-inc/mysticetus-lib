@@ -476,18 +476,12 @@ impl Iterator for PackedVarints {
 /// Since rust has [`isize`]/[`usize`], there isn't a need to write separate 32 and 64 bit
 /// versions.
 pub mod zigzag {
-    use std::mem::transmute;
-
     pub const fn encode(val: isize) -> usize {
-        // SAFETY: we're working at a bit-level, so 'as' casts wont work here.
-        unsafe {
-            (transmute::<_, usize>(val) << 1) ^ (transmute::<_, usize>(val >> isize::BITS - 1))
-        }
+        (val.cast_unsigned() << 1) ^ ((val >> isize::BITS - 1).cast_unsigned())
     }
 
     pub const fn decode(val: usize) -> isize {
-        // SAFETY: we're working at a bit-level, so 'as' casts wont work here.
-        unsafe { transmute((val >> 1) ^ (!(val & 1)).wrapping_add(1)) }
+        ((val >> 1) ^ (!(val & 1)).wrapping_add(1)).cast_signed()
     }
 
     #[test]
