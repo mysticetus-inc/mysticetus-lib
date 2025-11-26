@@ -56,11 +56,6 @@ pub fn visit_slice<O>(visitor: impl FnOnce(&[Id]) -> O) -> O {
     })
 }
 
-/// Gets the root span
-pub fn root() -> Option<Id> {
-    with_ref(|spans| spans.first().cloned()).flatten()
-}
-
 /// Gets the current span.
 pub fn current() -> Option<Id> {
     with_ref(|spans| spans.last().cloned()).flatten()

@@ -1,4 +1,4 @@
-#![feature(layout_for_ptr, box_as_ptr, let_chains)]
+#![feature(layout_for_ptr, box_as_ptr)]
 mod http_request;
 mod json;
 mod middleware;
@@ -85,7 +85,6 @@ mod tests {
 
     use test_utils::{EchoService, EmptyBody, MakeTestWriter};
     use tower::{Layer, Service};
-    use tracing_subscriber::util::SubscriberInitExt;
 
     use super::*;
 

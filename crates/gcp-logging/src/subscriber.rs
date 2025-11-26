@@ -1,14 +1,10 @@
-use std::sync::{Arc, OnceLock};
-
 use tracing_core::LevelFilter;
-use tracing_subscriber::Layer;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use crate::options::{DefaultLogOptions, LogOptions};
+use crate::options::LogOptions;
 use crate::registry::Records;
 
 pub mod builder;
-mod filter;
 pub mod handle;
 pub mod writer;
 

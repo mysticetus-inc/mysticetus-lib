@@ -11,12 +11,15 @@ pub enum JsonValue {
 }
 
 impl JsonValue {
+    #[allow(dead_code)]
     pub const ZERO: Self = Self::Primitive(Primitive::Number(Number::Int(0)));
 
     pub const NULL: Self = Self::Primitive(Primitive::Null);
     pub const TRUE: Self = Self::Primitive(Primitive::Bool(true));
+    #[allow(dead_code)]
     pub const FALSE: Self = Self::Primitive(Primitive::Bool(false));
 
+    #[allow(dead_code)]
     pub fn is_error_marker(&self) -> bool {
         match self {
             Self::Map(map) => map
@@ -138,6 +141,19 @@ impl serde::Serialize for JsonValue {
             Self::Primitive(p) => p.serialize(serializer),
             Self::Array(arr) => serializer.collect_seq(arr.iter()),
             Self::Map(map) => serializer.collect_map(map.iter()),
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for JsonValue {
+    #[inline]
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        match deserializer.deserialize_any(Visitor)? {
+            Some(value) => Ok(value),
+            None => Ok(JsonValue::NULL),
         }
     }
 }
@@ -511,7 +527,7 @@ impl<'de> serde::de::Visitor<'de> for KeyCapture<'_> {
         match self.buf {
             Some(_) => Ok(StrOrNumber::Str(Cow::Owned(v))),
             None => {
-                self.buf.insert(v);
+                *self.buf = Some(v);
                 Ok(StrOrNumber::Buffered)
             }
         }
@@ -594,7 +610,7 @@ fn encode_hex_into(bytes: &[u8], buf: &mut Option<String>) -> StrOrNumber<'stati
 
     match buf {
         None => {
-            buf.insert(encoded);
+            *buf = Some(encoded);
             StrOrNumber::Buffered
         }
         Some(_) => StrOrNumber::Str(Cow::Owned(encoded)),

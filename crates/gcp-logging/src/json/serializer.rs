@@ -5,12 +5,6 @@ use crate::json::{JsonValue, Number, Primitive};
 pub(crate) struct JsonSerializer;
 
 impl JsonSerializer {
-    pub fn serialize_or_null(value: impl serde::Serialize) -> JsonValue {
-        value.serialize(JsonSerializer).unwrap_or(JsonValue::NULL)
-    }
-    pub fn try_serialize(value: impl serde::Serialize) -> Option<JsonValue> {
-        value.serialize(JsonSerializer).ok()
-    }
     pub fn serialize(value: impl serde::Serialize) -> JsonValue {
         match value.serialize(JsonSerializer) {
             Ok(serialized) => serialized,

@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 use std::future::Future;
-use std::net::{SocketAddr, SocketAddrV4};
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
@@ -32,7 +32,7 @@ impl<S> Layer<S> for Handle {
     fn layer(&self, svc: S) -> Self::Service {
         TraceService {
             svc,
-            handle: self.clone(),
+            // handle: self.clone(),
         }
     }
 }
@@ -40,7 +40,7 @@ impl<S> Layer<S> for Handle {
 #[derive(Debug, Clone)]
 pub struct TraceService<S> {
     svc: S,
-    handle: Handle,
+    // handle: Handle,
 }
 
 // The bounds need to be essentially the same as the bounds for axum::Router::layer:

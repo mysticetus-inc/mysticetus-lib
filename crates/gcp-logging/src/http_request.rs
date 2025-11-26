@@ -219,21 +219,6 @@ mod serialize {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct RequestTrace {
-    pub trace_header: Option<HeaderValue>,
-    pub request: HttpRequest,
-}
-
-impl RequestTrace {
-    pub fn new<B: Body>(request: &http::Request<B>, remote_ip: Option<SocketAddr>) -> Self {
-        Self {
-            trace_header: request.headers().get(TRACE_CTX_HEADER).cloned(),
-            request: HttpRequest::from_request(&request, remote_ip),
-        }
-    }
-}
-
 /// Helper type to format the logging trace in the correct format,
 /// without allocating
 pub struct TraceHeader<'a> {
