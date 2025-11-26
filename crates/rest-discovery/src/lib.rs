@@ -1,4 +1,4 @@
-#![feature(let_chains, type_changing_struct_update, round_char_boundary)]
+#![feature(type_changing_struct_update)]
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;

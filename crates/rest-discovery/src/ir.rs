@@ -564,7 +564,7 @@ impl GenerateCode<Rust> for TypeDef<'_> {
                 quote_in! { *tokens =>
                     $(for attr in self.attrs.iter() => $attr $['\r'])
                     #[derive($(for derive in self.derive.iter() join (, ) => $derive))]
-                    $(if let Some(derives) = ctx.get_derives(&name) && !derives.is_empty() {
+                    $(if let Some(derives) = ctx.get_derives(&name).filter(|der| !der.is_empty()) {
                         #[derive($(for der in derives join (, ) => $der))]
                     })
                     pub enum $name {
@@ -585,7 +585,7 @@ impl GenerateCode<Rust> for TypeDef<'_> {
                 quote_in! { *tokens =>
                     $(for attr in self.attrs.iter() => $attr $['\r'])
                     #[derive($(for derive in self.derive.iter() join (, ) => $derive))]
-                    $(if let Some(derives) = ctx.get_derives(&name) && !derives.is_empty() {
+                    $(if let Some(derives) = ctx.get_derives(&name).filter(|der| !der.is_empty()) {
                         #[derive($(for der in derives join (, ) => $der))]
                     })
                     $(if default => #[derive($(&Derive::Default))])

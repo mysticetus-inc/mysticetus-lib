@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, let_chains)]
+#![feature(const_trait_impl)]
 
 #[macro_use]
 extern crate tracing;
