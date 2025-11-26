@@ -61,39 +61,18 @@ macro_rules! derive {
 }
 
 const EXTRA_TRAITS: &[(&str, &str)] = &[
-    (
-        "google.protobuf.Timestamp",
-        derive!(Eq, PartialOrd, Ord, Hash),
-    ),
-    (
-        "google.protobuf.Duration",
-        derive!(Eq, PartialOrd, Ord, Hash),
-    ),
-    ("google.protobuf.DoubleValue", derive!(PartialOrd)),
-    ("google.protobuf.FloatValue", derive!(PartialOrd)),
+    //("google.protobuf.Timestamp", derive!(Eq, PartialOrd, Ord)),
+    //("google.protobuf.Duration", derive!(Eq, PartialOrd, Ord)),
+    //("google.protobuf.DoubleValue", derive!(PartialOrd)),
+    //("google.protobuf.FloatValue", derive!(PartialOrd)),
     ("google.protobuf.ListValue", "#[repr(transparent)]"),
     ("google.protobuf.Struct", "#[repr(transparent)]"),
-    (
-        "google.protobuf.Int64Value",
-        derive!(Eq, PartialOrd, Ord, Hash),
-    ),
-    (
-        "google.protobuf.UInt64Value",
-        derive!(Eq, PartialOrd, Ord, Hash),
-    ),
-    (
-        "google.protobuf.Int32Value",
-        derive!(Eq, PartialOrd, Ord, Hash),
-    ),
-    (
-        "google.protobuf.UInt32Value",
-        derive!(Eq, PartialOrd, Ord, Hash),
-    ),
-    (
-        "google.protobuf.BoolValue",
-        derive!(Eq, PartialOrd, Ord, Hash),
-    ),
-    ("google.type.LatLng", derive!(PartialOrd)),
+    //("google.protobuf.Int64Value", derive!(Eq, PartialOrd, Ord)),
+    //("google.protobuf.UInt64Value", derive!(Eq, PartialOrd, Ord)),
+    //("google.protobuf.Int32Value", derive!(Eq, PartialOrd, Ord)),
+    //("google.protobuf.UInt32Value", derive!(Eq, PartialOrd, Ord)),
+    // ("google.protobuf.BoolValue", derive!(Eq, PartialOrd, Ord)),
+    //("google.type.LatLng", derive!(PartialOrd)),
 ];
 
 #[allow(dead_code)]
@@ -128,11 +107,11 @@ fn main() -> std::io::Result<()> {
         println!("cargo:rerun-if-changed={file}");
     }
 
-    let mut cfg = tonic_build::configure()
+    let mut cfg = tonic_prost_build::configure()
         .build_client(true)
         .build_server(false)
         .compile_well_known_types(true)
-        .bytes(["."])
+        .bytes(".")
         .type_attribute(".", "#[derive(serde::Deserialize, serde::Serialize)]")
         .type_attribute(".", "#[serde(rename_all = \"camelCase\")]");
 

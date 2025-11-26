@@ -2,7 +2,7 @@
 /// A schema resource.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Schema {
     /// Required. Name of the schema.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -64,7 +64,7 @@ pub mod schema {
 /// Request for the CreateSchema method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateSchemaRequest {
     /// Required. The name of the project in which to create the schema.
     /// Format is `projects/{project-id}`.
@@ -88,7 +88,7 @@ pub struct CreateSchemaRequest {
 /// Request for the GetSchema method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetSchemaRequest {
     /// Required. The name of the schema to get.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -102,7 +102,7 @@ pub struct GetSchemaRequest {
 /// Request for the `ListSchemas` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListSchemasRequest {
     /// Required. The name of the project in which to list schemas.
     /// Format is `projects/{project-id}`.
@@ -138,7 +138,7 @@ pub struct ListSchemasResponse {
 /// Request for the `ListSchemaRevisions` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListSchemaRevisionsRequest {
     /// Required. The name of the schema to list revisions for.
     #[prost(string, tag = "1")]
@@ -172,7 +172,7 @@ pub struct ListSchemaRevisionsResponse {
 /// Request for CommitSchema method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CommitSchemaRequest {
     /// Required. The name of the schema we are revising.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -185,7 +185,7 @@ pub struct CommitSchemaRequest {
 /// Request for the `RollbackSchema` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RollbackSchemaRequest {
     /// Required. The schema being rolled back with revision id.
     #[prost(string, tag = "1")]
@@ -193,14 +193,14 @@ pub struct RollbackSchemaRequest {
     /// Required. The revision ID to roll back to.
     /// It must be a revision of the same schema.
     ///
-    ///    Example: c7cfa2a8
+    /// Example: c7cfa2a8
     #[prost(string, tag = "2")]
     pub revision_id: ::prost::alloc::string::String,
 }
 /// Request for the `DeleteSchemaRevision` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteSchemaRevisionRequest {
     /// Required. The name of the schema revision to be deleted, with a revision ID
     /// explicitly included.
@@ -218,7 +218,7 @@ pub struct DeleteSchemaRevisionRequest {
 /// Request for the `DeleteSchema` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteSchemaRequest {
     /// Required. Name of the schema to delete.
     /// Format is `projects/{project}/schemas/{schema}`.
@@ -228,7 +228,7 @@ pub struct DeleteSchemaRequest {
 /// Request for the `ValidateSchema` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ValidateSchemaRequest {
     /// Required. The name of the project in which to validate schemas.
     /// Format is `projects/{project-id}`.
@@ -242,12 +242,12 @@ pub struct ValidateSchemaRequest {
 /// Empty for now.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ValidateSchemaResponse {}
 /// Request for the `ValidateMessage` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ValidateMessageRequest {
     /// Required. The name of the project in which to validate schemas.
     /// Format is `projects/{project-id}`.
@@ -266,7 +266,7 @@ pub struct ValidateMessageRequest {
 pub mod validate_message_request {
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum SchemaSpec {
         /// Name of the schema against which to validate.
         ///
@@ -282,7 +282,7 @@ pub mod validate_message_request {
 /// Empty for now.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ValidateMessageResponse {}
 /// View of Schema object fields to be returned by GetSchema and ListSchemas.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -455,7 +455,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/CreateSchema",
             );
@@ -474,7 +474,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/GetSchema");
             let mut req = request.into_request();
@@ -493,7 +493,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.SchemaService/ListSchemas");
             let mut req = request.into_request();
@@ -512,7 +512,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/ListSchemaRevisions",
             );
@@ -531,7 +531,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/CommitSchema",
             );
@@ -550,7 +550,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/RollbackSchema",
             );
@@ -569,7 +569,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/DeleteSchemaRevision",
             );
@@ -589,7 +589,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/DeleteSchema",
             );
@@ -609,7 +609,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/ValidateSchema",
             );
@@ -629,7 +629,7 @@ pub mod schema_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.SchemaService/ValidateMessage",
             );
@@ -645,7 +645,7 @@ pub mod schema_service_client {
 /// A policy constraining the storage of messages published to the topic.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MessageStoragePolicy {
     /// Optional. A list of IDs of Google Cloud regions where messages that are
     /// published to the topic may be persisted in storage. Messages published by
@@ -666,7 +666,7 @@ pub struct MessageStoragePolicy {
 /// Settings for validating messages published against a schema.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SchemaSettings {
     /// Required. The name of the schema that messages published should be
     /// validated against. Format is `projects/{project}/schemas/{schema}`. The
@@ -691,7 +691,7 @@ pub struct SchemaSettings {
 /// Settings for an ingestion data source on a topic.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IngestionDataSourceSettings {
     /// Optional. Platform Logs settings. If unset, no Platform Logs will be
     /// generated.
@@ -709,7 +709,7 @@ pub mod ingestion_data_source_settings {
     /// Ingestion settings for Amazon Kinesis Data Streams.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AwsKinesis {
         /// Output only. An output-only field that indicates the state of the Kinesis
         /// ingestion source.
@@ -750,12 +750,13 @@ pub mod ingestion_data_source_settings {
             Active = 1,
             /// Permission denied encountered while consuming data from Kinesis.
             /// This can happen if:
-            ///    - The provided `aws_role_arn` does not exist or does not have the appropriate
-            ///      permissions attached.
-            ///    - The provided `aws_role_arn` is not set up properly for Identity Federation
-            ///      using `gcp_service_account`.
-            ///    - The Pub/Sub SA is not granted the `iam.serviceAccounts.getOpenIdToken`
-            ///      permission on `gcp_service_account`.
+            ///
+            /// * The provided `aws_role_arn` does not exist or does not have the appropriate
+            ///   permissions attached.
+            /// * The provided `aws_role_arn` is not set up properly for Identity Federation using
+            ///   `gcp_service_account`.
+            /// * The Pub/Sub SA is not granted the `iam.serviceAccounts.getOpenIdToken` permission
+            ///   on `gcp_service_account`.
             KinesisPermissionDenied = 2,
             /// Permission denied encountered while publishing to the topic. This can
             /// happen if the Pub/Sub SA has not been granted the [appropriate publish
@@ -798,7 +799,7 @@ pub mod ingestion_data_source_settings {
     /// Ingestion settings for Cloud Storage.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct CloudStorage {
         /// Output only. An output-only field that indicates the state of the Cloud
         /// Storage ingestion source.
@@ -830,7 +831,7 @@ pub mod ingestion_data_source_settings {
         /// Pub/Sub message.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct TextFormat {
             /// Optional. When unset, '\n' is used.
             #[prost(string, optional, tag = "1")]
@@ -841,7 +842,7 @@ pub mod ingestion_data_source_settings {
         /// message.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct AvroFormat {}
         /// Configuration for reading Cloud Storage data written via [Cloud Storage
         /// subscriptions](<https://cloud.google.com/pubsub/docs/cloudstorage>). The
@@ -849,7 +850,7 @@ pub mod ingestion_data_source_settings {
         /// will be restored when publishing.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct PubSubAvroFormat {}
         /// Possible states for ingestion from Cloud Storage.
         #[derive(serde::Deserialize, serde::Serialize)]
@@ -867,9 +868,10 @@ pub mod ingestion_data_source_settings {
             /// can happen if the Pub/Sub SA has not been granted the
             /// [appropriate
             /// permissions](<https://cloud.google.com/storage/docs/access-control/iam-permissions>):
-            /// - storage.objects.list: to list the objects in a bucket.
-            /// - storage.objects.get: to read the objects in a bucket.
-            /// - storage.buckets.get: to verify the bucket exists.
+            ///
+            /// * storage.objects.list: to list the objects in a bucket.
+            /// * storage.objects.get: to read the objects in a bucket.
+            /// * storage.buckets.get: to verify the bucket exists.
             CloudStoragePermissionDenied = 2,
             /// Permission denied encountered while publishing to the topic. This can
             /// happen if the Pub/Sub SA has not been granted the [appropriate publish
@@ -912,7 +914,7 @@ pub mod ingestion_data_source_settings {
         /// Defaults to text format.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum InputFormat {
             /// Optional. Data from Cloud Storage will be interpreted as text.
             #[prost(message, tag = "3")]
@@ -930,7 +932,7 @@ pub mod ingestion_data_source_settings {
     /// Ingestion settings for Azure Event Hubs.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AzureEventHubs {
         /// Output only. An output-only field that indicates the state of the Event
         /// Hubs ingestion source.
@@ -1026,7 +1028,7 @@ pub mod ingestion_data_source_settings {
     /// Ingestion settings for Amazon MSK.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AwsMsk {
         /// Output only. An output-only field that indicates the state of the Amazon
         /// MSK ingestion source.
@@ -1107,7 +1109,7 @@ pub mod ingestion_data_source_settings {
     /// Ingestion settings for Confluent Cloud.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ConfluentCloud {
         /// Output only. An output-only field that indicates the state of the
         /// Confluent Cloud ingestion source.
@@ -1195,7 +1197,7 @@ pub mod ingestion_data_source_settings {
     /// Only one source type can have settings set.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Optional. Amazon Kinesis Data Streams.
         #[prost(message, tag = "1")]
@@ -1217,7 +1219,7 @@ pub mod ingestion_data_source_settings {
 /// Settings for Platform Logs produced by Pub/Sub.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PlatformLogsSettings {
     /// Optional. The minimum severity level of Platform Logs that will be written.
     #[prost(enumeration = "platform_logs_settings::Severity", tag = "1")]
@@ -1277,7 +1279,7 @@ pub mod platform_logs_settings {
 /// ingesting.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct IngestionFailureEvent {
     /// Required. Name of the import topic. Format is:
     /// projects/{project_name}/topics/{topic_name}.
@@ -1301,30 +1303,30 @@ pub mod ingestion_failure_event {
     /// all, and ingestion of the subsequent messages will proceed as normal.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ApiViolationReason {}
     /// Set when an Avro file is unsupported or its format is not valid. When this
     /// occurs, one or more Avro objects won't be ingested.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AvroFailureReason {}
     /// Set when a Pub/Sub message fails to get published due to a schema
     /// validation violation.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct SchemaViolationReason {}
     /// Set when a Pub/Sub message fails to get published due to a message
     /// transformation error.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct MessageTransformationFailureReason {}
     /// Failure when ingesting from a Cloud Storage source.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct CloudStorageFailure {
         /// Optional. Name of the Cloud Storage bucket used for ingestion.
         #[prost(string, tag = "1")]
@@ -1346,7 +1348,7 @@ pub mod ingestion_failure_event {
         /// Reason why ingestion failed for the specified object.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Reason {
             /// Optional. Failure encountered when parsing an Avro file.
             #[prost(message, tag = "5")]
@@ -1367,7 +1369,7 @@ pub mod ingestion_failure_event {
     /// Failure when ingesting from an Amazon MSK source.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AwsMskFailureReason {
         /// Optional. The ARN of the cluster of the topic being ingested from.
         #[prost(string, tag = "1")]
@@ -1391,7 +1393,7 @@ pub mod ingestion_failure_event {
         /// Reason why ingestion failed for the specified message.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Reason {
             /// Optional. The Pub/Sub API limits prevented the desired message from
             /// being published.
@@ -1409,7 +1411,7 @@ pub mod ingestion_failure_event {
     /// Failure when ingesting from an Azure Event Hubs source.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AzureEventHubsFailureReason {
         /// Optional. The namespace containing the event hub being ingested from.
         #[prost(string, tag = "1")]
@@ -1433,7 +1435,7 @@ pub mod ingestion_failure_event {
         /// Reason why ingestion failed for the specified message.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Reason {
             /// Optional. The Pub/Sub API limits prevented the desired message from
             /// being published.
@@ -1451,7 +1453,7 @@ pub mod ingestion_failure_event {
     /// Failure when ingesting from a Confluent Cloud source.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ConfluentCloudFailureReason {
         /// Optional. The cluster ID containing the topic being ingested from.
         #[prost(string, tag = "1")]
@@ -1475,7 +1477,7 @@ pub mod ingestion_failure_event {
         /// Reason why ingestion failed for the specified message.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Reason {
             /// Optional. The Pub/Sub API limits prevented the desired message from
             /// being published.
@@ -1493,7 +1495,7 @@ pub mod ingestion_failure_event {
     /// Failure when ingesting from an AWS Kinesis source.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AwsKinesisFailureReason {
         /// Optional. The stream ARN of the Kinesis stream being ingested from.
         #[prost(string, tag = "1")]
@@ -1505,7 +1507,7 @@ pub mod ingestion_failure_event {
         #[prost(string, tag = "3")]
         pub sequence_number: ::prost::alloc::string::String,
         /// Reason why ingestion failed for the specified message.
-        #[prost(oneof = "aws_kinesis_failure_reason::Reason", tags = "4, 5")]
+        #[prost(oneof = "aws_kinesis_failure_reason::Reason", tags = "4, 5, 6")]
         pub reason: ::core::option::Option<aws_kinesis_failure_reason::Reason>,
     }
     /// Nested message and enum types in `AwsKinesisFailureReason`.
@@ -1513,7 +1515,7 @@ pub mod ingestion_failure_event {
         /// Reason why ingestion failed for the specified message.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Reason {
             /// Optional. The Pub/Sub message failed schema validation.
             #[prost(message, tag = "4")]
@@ -1522,11 +1524,16 @@ pub mod ingestion_failure_event {
             /// the Pub/Sub message.
             #[prost(message, tag = "5")]
             MessageTransformationFailureReason(super::MessageTransformationFailureReason),
+            /// Optional. The message failed to be published due to an API violation.
+            /// This is only set when the size of the data field of the Kinesis record
+            /// is zero.
+            #[prost(message, tag = "6")]
+            ApiViolationReason(super::ApiViolationReason),
         }
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Failure {
         /// Optional. Failure when ingesting from Cloud Storage.
         #[prost(message, tag = "3")]
@@ -1549,7 +1556,7 @@ pub mod ingestion_failure_event {
 /// message.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct JavaScriptUdf {
     /// Required. Name of the JavasScript function that should applied to Pub/Sub
     /// messages.
@@ -1558,32 +1565,32 @@ pub struct JavaScriptUdf {
     /// Required. JavaScript code that contains a function `function_name` with the
     /// below signature:
     ///
-    /// ```
-    ///    /**
-    ///    * Transforms a Pub/Sub message.
+    /// ```text,
+    ///   /**
+    ///   * Transforms a Pub/Sub message.
     ///
-    ///    * @return {(Object<string, (string | Object<string, string>)>|null)} - To
-    ///    * filter a message, return `null`. To transform a message return a map
-    ///    * with the following keys:
-    ///    *   - (required) 'data' : {string}
-    ///    *   - (optional) 'attributes' : {Object<string, string>}
-    ///    * Returning empty `attributes` will remove all attributes from the
-    ///    * message.
-    ///    *
-    ///    * @param  {(Object<string, (string | Object<string, string>)>} Pub/Sub
-    ///    * message. Keys:
-    ///    *   - (required) 'data' : {string}
-    ///    *   - (required) 'attributes' : {Object<string, string>}
-    ///    *
-    ///    * @param  {Object<string, any>} metadata - Pub/Sub message metadata.
-    ///    * Keys:
-    ///    *   - (optional) 'message_id'  : {string}
-    ///    *   - (optional) 'publish_time': {string} YYYY-MM-DDTHH:MM:SSZ format
-    ///    *   - (optional) 'ordering_key': {string}
-    ///    */
+    ///   * @return {(Object<string, (string | Object<string, string>)>|null)} - To
+    ///   * filter a message, return `null`. To transform a message return a map
+    ///   * with the following keys:
+    ///   *   - (required) 'data' : {string}
+    ///   *   - (optional) 'attributes' : {Object<string, string>}
+    ///   * Returning empty `attributes` will remove all attributes from the
+    ///   * message.
+    ///   *
+    ///   * @param  {(Object<string, (string | Object<string, string>)>} Pub/Sub
+    ///   * message. Keys:
+    ///   *   - (required) 'data' : {string}
+    ///   *   - (required) 'attributes' : {Object<string, string>}
+    ///   *
+    ///   * @param  {Object<string, any>} metadata - Pub/Sub message metadata.
+    ///   * Keys:
+    ///   *   - (optional) 'message_id'  : {string}
+    ///   *   - (optional) 'publish_time': {string} YYYY-MM-DDTHH:MM:SSZ format
+    ///   *   - (optional) 'ordering_key': {string}
+    ///   */
     ///
-    ///    function <function_name>(message, metadata) {
-    ///    }
+    ///   function <function_name>(message, metadata) {
+    ///   }
     /// ```
     #[prost(string, tag = "2")]
     pub code: ::prost::alloc::string::String,
@@ -1591,7 +1598,7 @@ pub struct JavaScriptUdf {
 /// All supported message transforms types.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MessageTransform {
     /// Optional. This field is deprecated, use the `disabled` field to disable
     /// transforms.
@@ -1611,7 +1618,7 @@ pub mod message_transform {
     /// The type of transform to apply to messages.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Transform {
         /// Optional. JavaScript User Defined Function. If multiple JavaScriptUDF's
         /// are specified on a resource, each must have a unique `function_name`.
@@ -1676,6 +1683,13 @@ pub struct Topic {
     /// Transforms are applied in the order specified.
     #[prost(message, repeated, tag = "13")]
     pub message_transforms: ::prost::alloc::vec::Vec<MessageTransform>,
+    /// Optional. Input only. Immutable. Tag keys/values directly bound to this
+    /// resource. For example:
+    /// "123/environment": "production",
+    /// "123/costCenter": "marketing"
+    #[prost(map = "string, string", tag = "14")]
+    pub tags:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `Topic`.
 pub mod topic {
@@ -1764,7 +1778,7 @@ pub struct PubsubMessage {
 /// Request for the GetTopic method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTopicRequest {
     /// Required. The name of the topic to get.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -1803,7 +1817,7 @@ pub struct PublishRequest {
 /// Response for the `Publish` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PublishResponse {
     /// Optional. The server-assigned ID of each published message, in the same
     /// order as the messages in the request. IDs are guaranteed to be unique
@@ -1814,7 +1828,7 @@ pub struct PublishResponse {
 /// Request for the `ListTopics` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListTopicsRequest {
     /// Required. The name of the project in which to list topics.
     /// Format is `projects/{project-id}`.
@@ -1845,7 +1859,7 @@ pub struct ListTopicsResponse {
 /// Request for the `ListTopicSubscriptions` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListTopicSubscriptionsRequest {
     /// Required. The name of the topic that subscriptions are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -1863,7 +1877,7 @@ pub struct ListTopicSubscriptionsRequest {
 /// Response for the `ListTopicSubscriptions` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListTopicSubscriptionsResponse {
     /// Optional. The names of subscriptions attached to the topic specified in the
     /// request.
@@ -1878,7 +1892,7 @@ pub struct ListTopicSubscriptionsResponse {
 /// Request for the `ListTopicSnapshots` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListTopicSnapshotsRequest {
     /// Required. The name of the topic that snapshots are attached to.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -1896,7 +1910,7 @@ pub struct ListTopicSnapshotsRequest {
 /// Response for the `ListTopicSnapshots` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListTopicSnapshotsResponse {
     /// Optional. The names of the snapshots that match the request.
     #[prost(string, repeated, tag = "1")]
@@ -1910,7 +1924,7 @@ pub struct ListTopicSnapshotsResponse {
 /// Request for the `DeleteTopic` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteTopicRequest {
     /// Required. Name of the topic to delete.
     /// Format is `projects/{project}/topics/{topic}`.
@@ -1920,7 +1934,7 @@ pub struct DeleteTopicRequest {
 /// Request for the DetachSubscription method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DetachSubscriptionRequest {
     /// Required. The subscription to detach.
     /// Format is `projects/{project}/subscriptions/{subscription}`.
@@ -1931,7 +1945,7 @@ pub struct DetachSubscriptionRequest {
 /// Reserved for future use.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DetachSubscriptionResponse {}
 /// A subscription resource. If none of `push_config`, `bigquery_config`, or
 /// `cloud_storage_config` is set, then the subscriber will pull and ack messages
@@ -1968,7 +1982,7 @@ pub struct Subscription {
     /// Optional. The approximate amount of time (on a best-effort basis) Pub/Sub
     /// waits for the subscriber to acknowledge receipt before resending the
     /// message. In the interval after the message is delivered and before it is
-    /// acknowledged, it is considered to be _outstanding_. During that time
+    /// acknowledged, it is considered to be *outstanding*. During that time
     /// period, the message will not be redelivered (on a best-effort basis).
     ///
     /// For pull subscriptions, this value is used as the initial value for the ack
@@ -2059,8 +2073,8 @@ pub struct Subscription {
     /// delivery of a message with a given value of `message_id` on this
     /// subscription:
     ///
-    /// * The message sent to a subscriber is guaranteed not to be resent
-    /// before the message's acknowledgment deadline expires.
+    /// * The message sent to a subscriber is guaranteed not to be resent before the message's
+    ///   acknowledgment deadline expires.
     /// * An acknowledged message will not be resent to a subscriber.
     ///
     /// Note that subscribers may still receive multiple copies of a message
@@ -2090,6 +2104,13 @@ pub struct Subscription {
     /// subscribers. Transforms are applied in the order specified.
     #[prost(message, repeated, tag = "25")]
     pub message_transforms: ::prost::alloc::vec::Vec<MessageTransform>,
+    /// Optional. Input only. Immutable. Tag keys/values directly bound to this
+    /// resource. For example:
+    /// "123/environment": "production",
+    /// "123/costCenter": "marketing"
+    #[prost(map = "string, string", tag = "26")]
+    pub tags:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Nested message and enum types in `Subscription`.
 pub mod subscription {
@@ -2097,7 +2118,7 @@ pub mod subscription {
     /// subscription](<https://cloud.google.com/bigquery/docs/analytics-hub-manage-subscriptions>).
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AnalyticsHubSubscriptionInfo {
         /// Optional. The name of the associated Analytics Hub listing resource.
         /// Pattern:
@@ -2162,7 +2183,7 @@ pub mod subscription {
 /// delay can be more or less than configured backoff.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RetryPolicy {
     /// Optional. The minimum delay between consecutive deliveries of a given
     /// message. Value should be between 0 and 600 seconds. Defaults to 10 seconds.
@@ -2181,7 +2202,7 @@ pub struct RetryPolicy {
 /// the create/update subscription request will fail.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeadLetterPolicy {
     /// Optional. The name of the topic to which dead letter messages should be
     /// published. Format is `projects/{project}/topics/{topic}`.The Pub/Sub
@@ -2214,7 +2235,7 @@ pub struct DeadLetterPolicy {
 /// automatic resource deletion).
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ExpirationPolicy {
     /// Optional. Specifies the "time-to-live" duration for an associated resource.
     /// The resource expires if it is not active for a period of `ttl`. The
@@ -2277,7 +2298,7 @@ pub mod push_config {
     /// token](<https://developers.google.com/identity/protocols/OpenIDConnect>).
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct OidcToken {
         /// Optional. [Service account
         /// email](<https://cloud.google.com/iam/docs/service-accounts>)
@@ -2301,12 +2322,12 @@ pub mod push_config {
     /// (<https://cloud.google.com/pubsub/docs/reference/rpc/google.pubsub.v1#pubsubmessage>).
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct PubsubWrapper {}
     /// Sets the `data` field as the HTTP body for delivery.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct NoWrapper {
         /// Optional. When true, writes the Pub/Sub message metadata to
         /// `x-goog-pubsub-<KEY>:<VAL>` headers of the HTTP request. Writes the
@@ -2321,7 +2342,7 @@ pub mod push_config {
     /// authenticated push.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum AuthenticationMethod {
         /// Optional. If specified, Pub/Sub will generate and attach an OIDC JWT
         /// token as an `Authorization` header in the HTTP request for every pushed
@@ -2333,7 +2354,7 @@ pub mod push_config {
     /// the chosen wrapper. When unset, `PubsubWrapper` is used.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Wrapper {
         /// Optional. When set, the payload to the push endpoint is in the form of
         /// the JSON representation of a PubsubMessage
@@ -2348,7 +2369,7 @@ pub mod push_config {
 /// Configuration for a BigQuery subscription.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BigQueryConfig {
     /// Optional. The name of the table to which to write data, of the form
     /// {projectId}.{datasetId}.{tableId}
@@ -2405,10 +2426,9 @@ pub mod big_query_config {
         Active = 1,
         /// Cannot write to the BigQuery table because of permission denied errors.
         /// This can happen if
-        /// - Pub/Sub SA has not been granted the [appropriate BigQuery IAM
-        /// permissions](<https://cloud.google.com/pubsub/docs/create-subscription#assign_bigquery_service_account>)
-        /// - bigquery.googleapis.com API is not enabled for the project
-        /// ([instructions](<https://cloud.google.com/service-usage/docs/enable-disable>))
+        ///
+        /// * Pub/Sub SA has not been granted the [appropriate BigQuery IAM permissions](<https://cloud.google.com/pubsub/docs/create-subscription#assign_bigquery_service_account>)
+        /// * bigquery.googleapis.com API is not enabled for the project ([instructions](<https://cloud.google.com/service-usage/docs/enable-disable>))
         PermissionDenied = 2,
         /// Cannot write to the BigQuery table because it does not exist.
         NotFound = 3,
@@ -2450,12 +2470,12 @@ pub mod big_query_config {
 /// Configuration for a Cloud Storage subscription.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CloudStorageConfig {
     /// Required. User-provided name for the Cloud Storage bucket.
     /// The bucket must be created by the user. The bucket name must be without
-    /// any prefix like "gs://". See the [bucket naming
-    /// requirements] (<https://cloud.google.com/storage/docs/buckets#naming>).
+    /// any prefix like "gs://". See the \[bucket naming
+    /// requirements\] (<https://cloud.google.com/storage/docs/buckets#naming>).
     #[prost(string, tag = "1")]
     pub bucket: ::prost::alloc::string::String,
     /// Optional. User-provided prefix for Cloud Storage filename. See the [object
@@ -2509,13 +2529,13 @@ pub mod cloud_storage_config {
     /// newline.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct TextConfig {}
     /// Configuration for writing message data in Avro format.
     /// Message payloads and metadata will be written to files as an Avro binary.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AvroConfig {
         /// Optional. When true, write the subscription name, message_id,
         /// publish_time, attributes, and ordering_key as additional fields in the
@@ -2583,7 +2603,7 @@ pub mod cloud_storage_config {
     /// Defaults to text format.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum OutputFormat {
         /// Optional. If set, message data will be written to Cloud Storage in text
         /// format.
@@ -2628,7 +2648,7 @@ pub struct ReceivedMessage {
 /// Request for the GetSubscription method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetSubscriptionRequest {
     /// Required. The name of the subscription to get.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -2651,7 +2671,7 @@ pub struct UpdateSubscriptionRequest {
 /// Request for the `ListSubscriptions` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListSubscriptionsRequest {
     /// Required. The name of the project in which to list subscriptions.
     /// Format is `projects/{project-id}`.
@@ -2683,7 +2703,7 @@ pub struct ListSubscriptionsResponse {
 /// Request for the DeleteSubscription method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteSubscriptionRequest {
     /// Required. The subscription to delete.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -2711,7 +2731,7 @@ pub struct ModifyPushConfigRequest {
 /// Request for the `Pull` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PullRequest {
     /// Required. The subscription from which messages should be pulled.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -2749,7 +2769,7 @@ pub struct PullResponse {
 /// Request for the ModifyAckDeadline method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ModifyAckDeadlineRequest {
     /// Required. The name of the subscription.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -2773,7 +2793,7 @@ pub struct ModifyAckDeadlineRequest {
 /// Request for the Acknowledge method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AcknowledgeRequest {
     /// Required. The subscription whose message is being acknowledged.
     /// Format is `projects/{project}/subscriptions/{sub}`.
@@ -2790,7 +2810,7 @@ pub struct AcknowledgeRequest {
 /// deadline modifications from the client to the server.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StreamingPullRequest {
     /// Required. The subscription for which to initialize the new stream. This
     /// must be provided in the first request on the stream, and must not be set in
@@ -2814,7 +2834,7 @@ pub struct StreamingPullRequest {
     /// system. Must be >= 0. For example, if the value is 10, the new ack deadline
     /// will expire 10 seconds after this request is received. If the value is 0,
     /// the message is immediately made available for another streaming or
-    /// non-streaming pull request. If the value is < 0 (an error), the stream will
+    /// non-streaming pull request. If the value is \< 0 (an error), the stream will
     /// be aborted with status `INVALID_ARGUMENT`.
     #[prost(int32, repeated, packed = "false", tag = "3")]
     pub modify_deadline_seconds: ::prost::alloc::vec::Vec<i32>,
@@ -2844,7 +2864,7 @@ pub struct StreamingPullRequest {
     /// streaming pull client that have not yet been acked or nacked, the server
     /// stops sending more messages. The sending of messages resumes once the
     /// number of outstanding messages is less than this value. If the value is
-    /// <= 0, there is no limit to the number of outstanding messages. This
+    /// \<= 0, there is no limit to the number of outstanding messages. This
     /// property can only be set on the initial StreamingPullRequest. If it is set
     /// on a subsequent request, the stream will be aborted with status
     /// `INVALID_ARGUMENT`.
@@ -2855,12 +2875,17 @@ pub struct StreamingPullRequest {
     /// currently sent to the streaming pull client that have not yet been acked or
     /// nacked, the server will stop sending more messages. The sending of messages
     /// resumes once the number of outstanding bytes is less than this value. If
-    /// the value is <= 0, there is no limit to the number of outstanding bytes.
+    /// the value is \<= 0, there is no limit to the number of outstanding bytes.
     /// This property can only be set on the initial StreamingPullRequest. If it is
     /// set on a subsequent request, the stream will be aborted with status
     /// `INVALID_ARGUMENT`.
     #[prost(int64, tag = "8")]
     pub max_outstanding_bytes: i64,
+    /// Optional. The protocol version used by the client. This property can only
+    /// be set on the initial StreamingPullRequest. If it is set on a subsequent
+    /// request, the stream will be aborted with status `INVALID_ARGUMENT`.
+    #[prost(int64, tag = "10")]
+    pub protocol_version: i64,
 }
 /// Response for the `StreamingPull` method. This response is used to stream
 /// messages from the server to the client.
@@ -2868,7 +2893,7 @@ pub struct StreamingPullRequest {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct StreamingPullResponse {
-    /// Optional. Received Pub/Sub messages. This will not be empty.
+    /// Optional. Received Pub/Sub messages.
     #[prost(message, repeated, tag = "1")]
     pub received_messages: ::prost::alloc::vec::Vec<ReceivedMessage>,
     /// Optional. This field will only be set if `enable_exactly_once_delivery` is
@@ -2892,7 +2917,7 @@ pub mod streaming_pull_response {
     /// previously received message.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AcknowledgeConfirmation {
         /// Optional. Successfully processed acknowledgment IDs.
         #[prost(string, repeated, tag = "1")]
@@ -2913,7 +2938,7 @@ pub mod streaming_pull_response {
     /// deadline for a specific message.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ModifyAckDeadlineConfirmation {
         /// Optional. Successfully processed acknowledgment IDs.
         #[prost(string, repeated, tag = "1")]
@@ -2930,7 +2955,7 @@ pub mod streaming_pull_response {
     /// Subscription properties sent as part of the response.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct SubscriptionProperties {
         /// Optional. True iff exactly once delivery is enabled for this
         /// subscription.
@@ -2956,12 +2981,12 @@ pub struct CreateSnapshotRequest {
     pub name: ::prost::alloc::string::String,
     /// Required. The subscription whose backlog the snapshot retains.
     /// Specifically, the created snapshot is guaranteed to retain:
-    ///   (a) The existing backlog on the subscription. More precisely, this is
-    ///       defined as the messages in the subscription's backlog that are
-    ///       unacknowledged upon the successful completion of the
-    ///       `CreateSnapshot` request; as well as:
-    ///   (b) Any messages published to the subscription's topic following the
-    ///       successful completion of the CreateSnapshot request.
+    /// (a) The existing backlog on the subscription. More precisely, this is
+    /// defined as the messages in the subscription's backlog that are
+    /// unacknowledged upon the successful completion of the
+    /// `CreateSnapshot` request; as well as:
+    /// (b) Any messages published to the subscription's topic following the
+    /// successful completion of the CreateSnapshot request.
     /// Format is `projects/{project}/subscriptions/{sub}`.
     #[prost(string, tag = "2")]
     pub subscription: ::prost::alloc::string::String,
@@ -2969,6 +2994,13 @@ pub struct CreateSnapshotRequest {
     /// labels](<https://cloud.google.com/pubsub/docs/labels>).
     #[prost(map = "string, string", tag = "3")]
     pub labels:
+        ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
+    /// Optional. Input only. Immutable. Tag keys/values directly bound to this
+    /// resource. For example:
+    /// "123/environment": "production",
+    /// "123/costCenter": "marketing"
+    #[prost(map = "string, string", tag = "4")]
+    pub tags:
         ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
 }
 /// Request for the UpdateSnapshot method.
@@ -3021,7 +3053,7 @@ pub struct Snapshot {
 /// Request for the GetSnapshot method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetSnapshotRequest {
     /// Required. The name of the snapshot to get.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -3031,7 +3063,7 @@ pub struct GetSnapshotRequest {
 /// Request for the `ListSnapshots` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListSnapshotsRequest {
     /// Required. The name of the project in which to list snapshots.
     /// Format is `projects/{project-id}`.
@@ -3063,7 +3095,7 @@ pub struct ListSnapshotsResponse {
 /// Request for the `DeleteSnapshot` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteSnapshotRequest {
     /// Required. The name of the snapshot to delete.
     /// Format is `projects/{project}/snapshots/{snap}`.
@@ -3073,7 +3105,7 @@ pub struct DeleteSnapshotRequest {
 /// Request for the `Seek` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SeekRequest {
     /// Required. The subscription to affect.
     #[prost(string, tag = "1")]
@@ -3085,7 +3117,7 @@ pub struct SeekRequest {
 pub mod seek_request {
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Target {
         /// Optional. The time to seek to.
         /// Messages retained in the subscription that were published before this
@@ -3110,7 +3142,7 @@ pub mod seek_request {
 /// Response for the `Seek` method (this response is empty).
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SeekResponse {}
 /// Generated client implementations.
 pub mod publisher_client {
@@ -3204,7 +3236,7 @@ pub mod publisher_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// Creates the given topic with the given name. See the [resource name rules]
+        /// Creates the given topic with the given name. See the \[resource name rules\]
         /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names).
         pub async fn create_topic(
             &mut self,
@@ -3213,7 +3245,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/CreateTopic");
             let mut req = request.into_request();
@@ -3230,7 +3262,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/UpdateTopic");
             let mut req = request.into_request();
@@ -3247,7 +3279,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/Publish");
             let mut req = request.into_request();
             req.extensions_mut()
@@ -3262,7 +3294,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/GetTopic");
             let mut req = request.into_request();
             req.extensions_mut()
@@ -3278,7 +3310,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/ListTopics");
             let mut req = request.into_request();
@@ -3297,7 +3329,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Publisher/ListTopicSubscriptions",
             );
@@ -3321,7 +3353,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Publisher/ListTopicSnapshots",
             );
@@ -3345,7 +3377,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Publisher/DeleteTopic");
             let mut req = request.into_request();
@@ -3365,7 +3397,7 @@ pub mod publisher_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Publisher/DetachSubscription",
             );
@@ -3471,14 +3503,14 @@ pub mod subscriber_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// Creates a subscription to a given topic. See the [resource name rules]
+        /// Creates a subscription to a given topic. See the \[resource name rules\]
         /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names).
         /// If the subscription already exists, returns `ALREADY_EXISTS`.
         /// If the corresponding topic doesn't exist, returns `NOT_FOUND`.
         ///
         /// If the name is not provided in the request, the server will assign a random
         /// name for this subscription on the same project as the topic, conforming
-        /// to the [resource name format]
+        /// to the \[resource name format\]
         /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names). The
         /// generated name is populated in the returned Subscription object. Note that
         /// for REST API requests, you must specify a name in the request.
@@ -3489,7 +3521,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/CreateSubscription",
             );
@@ -3508,7 +3540,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/GetSubscription",
             );
@@ -3529,7 +3561,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/UpdateSubscription",
             );
@@ -3549,7 +3581,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/ListSubscriptions",
             );
@@ -3573,7 +3605,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/DeleteSubscription",
             );
@@ -3597,7 +3629,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/ModifyAckDeadline",
             );
@@ -3623,7 +3655,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Acknowledge");
             let mut req = request.into_request();
@@ -3641,7 +3673,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Pull");
             let mut req = request.into_request();
             req.extensions_mut()
@@ -3665,7 +3697,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/StreamingPull");
             let mut req = request.into_streaming_request();
@@ -3689,7 +3721,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.pubsub.v1.Subscriber/ModifyPushConfig",
             );
@@ -3712,7 +3744,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/GetSnapshot");
             let mut req = request.into_request();
@@ -3722,8 +3754,7 @@ pub mod subscriber_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Lists the existing snapshots. Snapshots are used in [Seek](
-        /// https://cloud.google.com/pubsub/docs/replay-overview) operations, which
+        /// Lists the existing snapshots. Snapshots are used in [Seek](https://cloud.google.com/pubsub/docs/replay-overview) operations, which
         /// allow you to manage message acknowledgments in bulk. That is, you can set
         /// the acknowledgment state of messages in an existing subscription to the
         /// state captured by a snapshot.
@@ -3735,7 +3766,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/ListSnapshots");
             let mut req = request.into_request();
@@ -3757,7 +3788,7 @@ pub mod subscriber_client {
         /// See also the `Snapshot.expire_time` field. If the name is not provided in
         /// the request, the server will assign a random
         /// name for this snapshot on the same project as the subscription, conforming
-        /// to the [resource name format]
+        /// to the \[resource name format\]
         /// (https://cloud.google.com/pubsub/docs/pubsub-basics#resource_names). The
         /// generated name is populated in the returned Snapshot object. Note that for
         /// REST API requests, you must specify a name in the request.
@@ -3768,7 +3799,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/CreateSnapshot");
             let mut req = request.into_request();
@@ -3791,7 +3822,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/UpdateSnapshot");
             let mut req = request.into_request();
@@ -3801,7 +3832,7 @@ pub mod subscriber_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Removes an existing snapshot. Snapshots are used in [Seek]
+        /// Removes an existing snapshot. Snapshots are used in \[Seek\]
         /// (https://cloud.google.com/pubsub/docs/replay-overview) operations, which
         /// allow you to manage message acknowledgments in bulk. That is, you can set
         /// the acknowledgment state of messages in an existing subscription to the
@@ -3818,7 +3849,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/DeleteSnapshot");
             let mut req = request.into_request();
@@ -3829,7 +3860,7 @@ pub mod subscriber_client {
             self.inner.unary(req, path, codec).await
         }
         /// Seeks an existing subscription to a point in time or to a given snapshot,
-        /// whichever is provided in the request. Snapshots are used in [Seek]
+        /// whichever is provided in the request. Snapshots are used in \[Seek\]
         /// (https://cloud.google.com/pubsub/docs/replay-overview) operations, which
         /// allow you to manage message acknowledgments in bulk. That is, you can set
         /// the acknowledgment state of messages in an existing subscription to the
@@ -3842,7 +3873,7 @@ pub mod subscriber_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/google.pubsub.v1.Subscriber/Seek");
             let mut req = request.into_request();
             req.extensions_mut()

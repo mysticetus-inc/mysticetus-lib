@@ -6,7 +6,7 @@
 /// standard</a>. Values must be within normalized ranges.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(PartialOrd, Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct LatLng {
     /// The latitude in degrees. It must be in the range \[-90.0, +90.0\].
     #[prost(double, tag = "1")]
@@ -72,11 +72,11 @@ impl DayOfWeek {
 }
 /// Represents a time of day. The date and time zone are either not significant
 /// or are specified elsewhere. An API may choose to allow leap seconds. Related
-/// types are [google.type.Date][google.type.Date] and
+/// types are \[google.type.Date\]\[google.type.Date\] and
 /// `google.protobuf.Timestamp`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TimeOfDay {
     /// Hours of day in 24 hour format. Should be from 0 to 23. An API may choose
     /// to allow the value "24:00:00" for scenarios like business closing time.
@@ -160,34 +160,42 @@ impl CalendarPeriod {
 ///
 /// Example (Comparison):
 ///
-///      title: "Summary size limit"
-///      description: "Determines if a summary is less than 100 chars"
-///      expression: "document.summary.size() < 100"
+/// ```text
+/// title: "Summary size limit"
+/// description: "Determines if a summary is less than 100 chars"
+/// expression: "document.summary.size() < 100"
+/// ```
 ///
 /// Example (Equality):
 ///
-///      title: "Requestor is owner"
-///      description: "Determines if requestor is the document owner"
-///      expression: "document.owner == request.auth.claims.email"
+/// ```text
+/// title: "Requestor is owner"
+/// description: "Determines if requestor is the document owner"
+/// expression: "document.owner == request.auth.claims.email"
+/// ```
 ///
 /// Example (Logic):
 ///
-///      title: "Public documents"
-///      description: "Determine whether the document should be publicly visible"
-///      expression: "document.type != 'private' && document.type != 'internal'"
+/// ```text
+/// title: "Public documents"
+/// description: "Determine whether the document should be publicly visible"
+/// expression: "document.type != 'private' && document.type != 'internal'"
+/// ```
 ///
 /// Example (Data Manipulation):
 ///
-///      title: "Notification string"
-///      description: "Create a notification string with a timestamp."
-///      expression: "'New message received at ' + string(document.create_time)"
+/// ```text
+/// title: "Notification string"
+/// description: "Create a notification string with a timestamp."
+/// expression: "'New message received at ' + string(document.create_time)"
+/// ```
 ///
 /// The exact variables and functions that may be referenced within an expression
 /// are determined by the service that evaluates it. See the service
 /// documentation for additional information.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Expr {
     /// Textual representation of an expression in Common Expression Language
     /// syntax.
@@ -215,14 +223,13 @@ pub struct Expr {
 /// * A full date, with non-zero year, month, and day values
 /// * A month and day value, with a zero year, such as an anniversary
 /// * A year on its own, with zero month and day values
-/// * A year and month value, with a zero day, such as a credit card expiration
-/// date
+/// * A year and month value, with a zero day, such as a credit card expiration date
 ///
-/// Related types are [google.type.TimeOfDay][google.type.TimeOfDay] and
+/// Related types are \[google.type.TimeOfDay\]\[google.type.TimeOfDay\] and
 /// `google.protobuf.Timestamp`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Date {
     /// Year of the date. Must be from 1 to 9999, or 0 to specify a date without
     /// a year.

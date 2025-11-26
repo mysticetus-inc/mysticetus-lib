@@ -2,12 +2,13 @@
 /// Defines a status condition for a resource.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Condition {
     /// type is used to communicate the status of the reconciliation process.
     /// See also:
     /// <https://github.com/knative/serving/blob/main/docs/spec/errors.md#error-conditions-and-reporting>
     /// Types common to all resources include:
+    ///
     /// * "Ready": True when the Resource is ready.
     #[prost(string, tag = "1")]
     pub r#type: ::prost::alloc::string::String,
@@ -339,7 +340,7 @@ pub mod condition {
     /// Successful conditions cannot have a reason.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Reasons {
         /// Output only. A common (service-level) reason for this condition.
         #[prost(enumeration = "CommonReason", tag = "6")]
@@ -450,7 +451,7 @@ pub struct ResourceRequirements {
 /// EnvVar represents an environment variable present in a Container.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EnvVar {
     /// Required. Name of the environment variable. Must not exceed 32768
     /// characters.
@@ -463,7 +464,7 @@ pub struct EnvVar {
 pub mod env_var {
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Values {
         /// Literal value of the environment variable.
         /// Defaults to "", and the maximum length is 32768 bytes.
@@ -478,7 +479,7 @@ pub mod env_var {
 /// EnvVarSource represents a source for the value of an EnvVar.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EnvVarSource {
     /// Selects a secret and a specific version from Cloud Secret Manager.
     #[prost(message, optional, tag = "1")]
@@ -487,7 +488,7 @@ pub struct EnvVarSource {
 /// SecretEnvVarSource represents a source for the value of an EnvVar.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SecretKeySelector {
     /// Required. The name of the secret in Cloud Secret Manager.
     /// Format: {secret_name} if the secret is in the same project.
@@ -504,21 +505,21 @@ pub struct SecretKeySelector {
 /// ContainerPort represents a network port in a single container.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ContainerPort {
     /// If specified, used to specify which protocol to use.
     /// Allowed values are "http1" and "h2c".
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// Port number the container listens on.
-    /// This must be a valid TCP port number, 0 < container_port < 65536.
+    /// This must be a valid TCP port number, 0 \< container_port \< 65536.
     #[prost(int32, tag = "3")]
     pub container_port: i32,
 }
 /// VolumeMount describes a mounting of a Volume within a container.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VolumeMount {
     /// Required. This must match the Name of a Volume.
     #[prost(string, tag = "1")]
@@ -594,13 +595,12 @@ pub struct SecretVolumeSource {
     /// Notes
     ///
     /// * Internally, a umask of 0222 will be applied to any non-zero value.
-    /// * This is an integer representation of the mode bits. So, the octal
-    /// integer value should look exactly as the chmod numeric notation with a
-    /// leading zero. Some examples: for chmod 640 (u=rw,g=r), set to 0640 (octal)
-    /// or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or
-    /// 493 (base-10).
-    /// * This might be in conflict with other options that affect the
-    /// file mode, like fsGroup, and the result can be other mode bits set.
+    /// * This is an integer representation of the mode bits. So, the octal integer value should
+    ///   look exactly as the chmod numeric notation with a leading zero. Some examples: for chmod
+    ///   640 (u=rw,g=r), set to 0640 (octal) or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx),
+    ///   set to 0755 (octal) or 493 (base-10).
+    /// * This might be in conflict with other options that affect the file mode, like fsGroup, and
+    ///   the result can be other mode bits set.
     ///
     /// This might be in conflict with other options that affect the
     /// file mode, like fsGroup, and as a result, other mode bits could be set.
@@ -611,7 +611,7 @@ pub struct SecretVolumeSource {
 /// to, relative to VolumeMount's mount_path.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VersionToPath {
     /// Required. The relative path of the secret in the container.
     #[prost(string, tag = "1")]
@@ -628,13 +628,12 @@ pub struct VersionToPath {
     /// Notes
     ///
     /// * Internally, a umask of 0222 will be applied to any non-zero value.
-    /// * This is an integer representation of the mode bits. So, the octal
-    /// integer value should look exactly as the chmod numeric notation with a
-    /// leading zero. Some examples: for chmod 640 (u=rw,g=r), set to 0640 (octal)
-    /// or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx), set to 0755 (octal) or
-    /// 493 (base-10).
-    /// * This might be in conflict with other options that affect the
-    /// file mode, like fsGroup, and the result can be other mode bits set.
+    /// * This is an integer representation of the mode bits. So, the octal integer value should
+    ///   look exactly as the chmod numeric notation with a leading zero. Some examples: for chmod
+    ///   640 (u=rw,g=r), set to 0640 (octal) or 416 (base-10). For chmod 755 (u=rwx,g=rx,o=rx),
+    ///   set to 0755 (octal) or 493 (base-10).
+    /// * This might be in conflict with other options that affect the file mode, like fsGroup, and
+    ///   the result can be other mode bits set.
     #[prost(int32, tag = "3")]
     pub mode: i32,
 }
@@ -644,7 +643,7 @@ pub struct VersionToPath {
 /// how to connect Cloud SQL and Cloud Run.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CloudSqlInstance {
     /// The Cloud SQL instance connection names, as can be found in
     /// <https://console.cloud.google.com/sql/instances.> Visit
@@ -659,7 +658,7 @@ pub struct CloudSqlInstance {
 /// destroyed with it (it does not persist across sandbox runs).
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EmptyDirVolumeSource {
     /// The medium on which the data is stored. Acceptable values today is only
     /// MEMORY or none. When none, the default will currently be backed by memory
@@ -716,7 +715,7 @@ pub mod empty_dir_volume_source {
 /// Represents an NFS mount.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct NfsVolumeSource {
     /// Hostname or IP address of the NFS server
     #[prost(string, tag = "1")]
@@ -732,7 +731,7 @@ pub struct NfsVolumeSource {
 /// FUSE.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GcsVolumeSource {
     /// Cloud Storage Bucket name.
     #[prost(string, tag = "1")]
@@ -815,7 +814,7 @@ pub struct HttpGetAction {
 /// HTTPHeader describes a custom header to be used in HTTP probes
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct HttpHeader {
     /// Required. The header field name
     #[prost(string, tag = "1")]
@@ -827,7 +826,7 @@ pub struct HttpHeader {
 /// TCPSocketAction describes an action based on opening a socket
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TcpSocketAction {
     /// Optional. Port number to access on the container. Must be in the range 1 to
     /// 65535. If not specified, defaults to the exposed port of the container,
@@ -838,7 +837,7 @@ pub struct TcpSocketAction {
 /// GRPCAction describes an action involving a GRPC port.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GrpcAction {
     /// Optional. Port number of the gRPC service. Number must be in the range 1 to
     /// 65535. If not specified, defaults to the exposed port of the container,
@@ -855,7 +854,7 @@ pub struct GrpcAction {
 /// Build information of the image.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BuildInfo {
     /// Output only. Entry point of the function when the image is a Cloud Run
     /// function.
@@ -892,7 +891,7 @@ pub mod vpc_access {
     /// Direct VPC egress settings.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct NetworkInterface {
         /// Optional. The VPC network that the Cloud Run resource will be able to
         /// send traffic to. At least one of network or subnetwork must be specified.
@@ -951,7 +950,7 @@ pub mod vpc_access {
 /// Settings for Binary Authorization feature.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BinaryAuthorization {
     /// Optional. If present, indicates to use Breakglass using this justification.
     /// If use_default is False, then it must be empty.
@@ -966,7 +965,7 @@ pub struct BinaryAuthorization {
 pub mod binary_authorization {
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum BinauthzMethod {
         /// Optional. If True, indicates to use the default project's binary
         /// authorization policy. If False, binary authorization will be disabled.
@@ -981,7 +980,7 @@ pub mod binary_authorization {
 /// Settings for revision-level scaling settings.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RevisionScaling {
     /// Optional. Minimum number of serving instances that this resource should
     /// have.
@@ -998,7 +997,7 @@ pub struct RevisionScaling {
 /// <https://cloud.google.com/service-mesh/docs/overview.>
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ServiceMesh {
     /// The Mesh resource name. Format:
     /// `projects/{project}/locations/global/meshes/{mesh}`, where `{project}` can
@@ -1010,7 +1009,7 @@ pub struct ServiceMesh {
 /// at the revision level.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ServiceScaling {
     /// Optional. total min instances for the service. This number of instances is
     /// divided among all revisions with specified traffic based on the percent
@@ -1065,10 +1064,19 @@ pub mod service_scaling {
         }
     }
 }
+/// Worker pool scaling settings.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WorkerPoolScaling {
+    /// Optional. The total number of instances in manual scaling mode.
+    #[prost(int32, optional, tag = "6")]
+    pub manual_instance_count: ::core::option::Option<i32>,
+}
 /// Hardware constraints configuration.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct NodeSelector {
     /// Required. GPU accelerator type to attach to an instance.
     #[prost(string, tag = "1")]
@@ -1337,7 +1345,7 @@ pub struct RevisionTemplate {
 /// to a specific Revision name, or pointing to the latest Ready Revision.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TrafficTarget {
     /// The allocation type for this traffic target.
     #[prost(enumeration = "TrafficTargetAllocationType", tag = "1")]
@@ -1358,7 +1366,7 @@ pub struct TrafficTarget {
 /// Represents the observed state of a single `TrafficTarget` entry.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TrafficTargetStatus {
     /// The allocation type for this traffic target.
     #[prost(enumeration = "TrafficTargetAllocationType", tag = "1")]
@@ -1458,7 +1466,7 @@ pub struct UpdateServiceRequest {
 /// Request message for retrieving a list of Services.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListServicesRequest {
     /// Required. The location and project to list resources on.
     /// Location must be a valid Google Cloud region, and cannot be the "-"
@@ -1493,7 +1501,7 @@ pub struct ListServicesResponse {
 /// Request message for obtaining a Service by its full name.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetServiceRequest {
     /// Required. The full name of the Service.
     /// Format: projects/{project}/locations/{location}/services/{service}, where
@@ -1504,7 +1512,7 @@ pub struct GetServiceRequest {
 /// Request message to delete a Service by its full name.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteServiceRequest {
     /// Required. The full name of the Service.
     /// Format: projects/{project}/locations/{location}/services/{service}, where
@@ -1830,7 +1838,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/CreateService");
             let mut req = request.into_request();
@@ -1848,7 +1856,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/GetService");
             let mut req = request.into_request();
@@ -1867,7 +1875,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/ListServices");
             let mut req = request.into_request();
@@ -1888,7 +1896,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/UpdateService");
             let mut req = request.into_request();
@@ -1911,7 +1919,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/DeleteService");
             let mut req = request.into_request();
@@ -1933,7 +1941,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/GetIamPolicy");
             let mut req = request.into_request();
@@ -1955,7 +1963,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Services/SetIamPolicy");
             let mut req = request.into_request();
@@ -1980,7 +1988,7 @@ pub mod services_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.run.v2.Services/TestIamPermissions",
             );
@@ -1996,7 +2004,7 @@ pub mod services_client {
 /// Effective settings for the current revision
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RevisionScalingStatus {
     /// The current number of min instances provisioned for this revision.
     #[prost(int32, tag = "1")]
@@ -2005,7 +2013,7 @@ pub struct RevisionScalingStatus {
 /// Request message for obtaining a Revision by its full name.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRevisionRequest {
     /// Required. The full name of the Revision.
     /// Format:
@@ -2016,7 +2024,7 @@ pub struct GetRevisionRequest {
 /// Request message for retrieving a list of Revisions.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListRevisionsRequest {
     /// Required. The Service from which the Revisions should be listed.
     /// To list all Revisions across Services, use "-" instead of Service name.
@@ -2053,7 +2061,7 @@ pub struct ListRevisionsResponse {
 /// Service. Only retired revisions can be deleted with this API.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteRevisionRequest {
     /// Required. The name of the Revision to delete.
     /// Format:
@@ -2318,7 +2326,7 @@ pub mod revisions_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.cloud.run.v2.Revisions/GetRevision");
             let mut req = request.into_request();
@@ -2338,7 +2346,7 @@ pub mod revisions_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.run.v2.Revisions/ListRevisions",
             );
@@ -2360,7 +2368,7 @@ pub mod revisions_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.run.v2.Revisions/DeleteRevision",
             );

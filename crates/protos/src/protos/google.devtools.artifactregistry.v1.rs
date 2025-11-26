@@ -4,7 +4,7 @@
 /// See <https://www.debian.org/doc/debian-policy/ch-controlfields.html>
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AptArtifact {
     /// Output only. The Artifact Registry resource name of the artifact.
     #[prost(string, tag = "1")]
@@ -66,7 +66,7 @@ pub mod apt_artifact {
 /// Google Cloud Storage location where the artifacts currently reside.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportAptArtifactsGcsSource {
     /// Cloud Storage paths URI (e.g., gs://my_bucket//my_object).
     #[prost(string, repeated, tag = "1")]
@@ -78,7 +78,7 @@ pub struct ImportAptArtifactsGcsSource {
 /// The request to import new apt artifacts.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportAptArtifactsRequest {
     /// The name of the parent resource where the artifacts will be imported.
     #[prost(string, tag = "1")]
@@ -92,7 +92,7 @@ pub mod import_apt_artifacts_request {
     /// The source location of the package binaries.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location where input content is located.
         #[prost(message, tag = "2")]
@@ -116,7 +116,7 @@ pub mod import_apt_artifacts_error_info {
     /// The source that was not imported.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location requested.
         #[prost(message, tag = "1")]
@@ -138,11 +138,12 @@ pub struct ImportAptArtifactsResponse {
 /// The operation metadata for importing artifacts.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportAptArtifactsMetadata {}
 /// DockerImage represents a docker artifact.
 /// The following fields are returned as untyped metadata in the Version
 /// resource, using camelcase keys (i.e. metadata.imageSizeBytes):
+///
 /// * imageSizeBytes
 /// * mediaType
 /// * buildTime
@@ -152,8 +153,8 @@ pub struct ImportAptArtifactsMetadata {}
 pub struct DockerImage {
     /// Required. registry_location, project_id, repository_name and image id forms
     /// a unique image
-    /// name:`projects/<project_id>/locations/<location>/repository/<repository_name>/dockerImages/
-    /// <docker_image>`. For example,
+    /// name:`projects/<project_id>/locations/<location>/repositories/<repository_name>/
+    /// dockerImages/<docker_image>`. For example,
     /// "projects/test-project/locations/us-west4/repositories/test-repo/dockerImages/
     /// nginx@sha256:e9954c1fc875017be1c3e36eca16be2d9e9bccc4bf072163515467d6a823c7cf",
     /// where "us-west4" is the registry_location, "test-project" is the
@@ -195,11 +196,57 @@ pub struct DockerImage {
     /// Output only. The time when the docker image was last updated.
     #[prost(message, optional, tag = "8")]
     pub update_time: ::core::option::Option<super::super::super::protobuf::Timestamp>,
+    /// ArtifactType of this image, e.g. "application/vnd.example+type".
+    /// If the `subject_digest` is set and no `artifact_type` is given, the
+    /// `media_type` will be considered as the `artifact_type`. This field is
+    /// returned as the `metadata.artifactType` field in the Version resource.
+    #[prost(string, tag = "9")]
+    pub artifact_type: ::prost::alloc::string::String,
+    /// Optional. For multi-arch images (manifest lists), this field contains the
+    /// list of image manifests.
+    #[prost(message, repeated, tag = "11")]
+    pub image_manifests: ::prost::alloc::vec::Vec<ImageManifest>,
+}
+/// Details of a single image manifest within a multi-arch image.
+#[derive(serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ImageManifest {
+    /// Optional. The CPU architecture of the image.
+    /// Values are provided by the Docker client and are not validated by Artifact
+    /// Registry. Example values include "amd64", "arm64", "ppc64le", "s390x",
+    /// "riscv64", "mips64le", etc.
+    #[prost(string, tag = "1")]
+    pub architecture: ::prost::alloc::string::String,
+    /// Optional. The operating system of the image.
+    /// Values are provided by the Docker client and are not validated by Artifact
+    /// Registry. Example values include "linux", "windows", "darwin", "aix", etc.
+    #[prost(string, tag = "2")]
+    pub os: ::prost::alloc::string::String,
+    /// Optional. The manifest digest, in the format "sha256:\<sha256_hex_digest>".
+    #[prost(string, tag = "3")]
+    pub digest: ::prost::alloc::string::String,
+    /// Optional. The media type of the manifest, e.g.,
+    /// "application/vnd.docker.distribution.manifest.v2+json"
+    #[prost(string, tag = "4")]
+    pub media_type: ::prost::alloc::string::String,
+    /// Optional. The OS version of the image, for example on Windows
+    /// `10.0.14393.1066`.
+    #[prost(string, tag = "5")]
+    pub os_version: ::prost::alloc::string::String,
+    /// Optional. The required OS features for the image, for example on Windows
+    /// `win32k`.
+    #[prost(string, repeated, tag = "6")]
+    pub os_features: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Optional. The variant of the CPU in the image, for example `v7` to specify
+    /// ARMv7 when architecture is `arm`.
+    #[prost(string, tag = "7")]
+    pub variant: ::prost::alloc::string::String,
 }
 /// The request to list docker images.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListDockerImagesRequest {
     /// Required. The name of the parent resource whose docker images will be
     /// listed.
@@ -231,7 +278,7 @@ pub struct ListDockerImagesResponse {
 /// The request to get docker images.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetDockerImageRequest {
     /// Required. The name of the docker images.
     #[prost(string, tag = "1")]
@@ -240,7 +287,7 @@ pub struct GetDockerImageRequest {
 /// MavenArtifact represents a maven artifact.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MavenArtifact {
     /// Required. registry_location, project_id, repository_name and maven_artifact
     /// forms a unique artifact For example,
@@ -278,7 +325,7 @@ pub struct MavenArtifact {
 /// The request to list maven artifacts.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListMavenArtifactsRequest {
     /// Required. The name of the parent resource whose maven artifacts will be
     /// listed.
@@ -307,7 +354,7 @@ pub struct ListMavenArtifactsResponse {
 /// The request to get maven artifacts.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetMavenArtifactRequest {
     /// Required. The name of the maven artifact.
     #[prost(string, tag = "1")]
@@ -316,7 +363,7 @@ pub struct GetMavenArtifactRequest {
 /// NpmPackage represents an npm artifact.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct NpmPackage {
     /// Required. registry_location, project_id, repository_name and npm_package
     /// forms a unique package For example,
@@ -346,7 +393,7 @@ pub struct NpmPackage {
 /// The request to list npm packages.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListNpmPackagesRequest {
     /// Required. The name of the parent resource whose npm packages will be
     /// listed.
@@ -375,7 +422,7 @@ pub struct ListNpmPackagesResponse {
 /// The request to get npm packages.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetNpmPackageRequest {
     /// Required. The name of the npm package.
     #[prost(string, tag = "1")]
@@ -384,7 +431,7 @@ pub struct GetNpmPackageRequest {
 /// PythonPackage represents a python artifact.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PythonPackage {
     /// Required. registry_location, project_id, repository_name and python_package
     /// forms a unique package
@@ -418,7 +465,7 @@ pub struct PythonPackage {
 /// The request to list python packages.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListPythonPackagesRequest {
     /// Required. The name of the parent resource whose python packages will be
     /// listed.
@@ -447,7 +494,7 @@ pub struct ListPythonPackagesResponse {
 /// The request to get python packages.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetPythonPackageRequest {
     /// Required. The name of the python package.
     #[prost(string, tag = "1")]
@@ -504,7 +551,7 @@ pub struct Attachment {
 /// The request to list attachments.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListAttachmentsRequest {
     /// Required. The name of the parent resource whose attachments will be listed.
     #[prost(string, tag = "1")]
@@ -512,9 +559,9 @@ pub struct ListAttachmentsRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `target`
-    ///    * `type`
-    ///    * `attachment_namespace`
+    /// * `target`
+    /// * `type`
+    /// * `attachment_namespace`
     #[prost(string, tag = "2")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of attachments to return. Maximum page size is 1,000.
@@ -540,7 +587,7 @@ pub struct ListAttachmentsResponse {
 /// The request to retrieve an attachment.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetAttachmentRequest {
     /// Required. The name of the attachment to retrieve.
     #[prost(string, tag = "1")]
@@ -565,7 +612,7 @@ pub struct CreateAttachmentRequest {
 /// The request to delete an attachment.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteAttachmentRequest {
     /// Required. The name of the attachment to delete.
     #[prost(string, tag = "1")]
@@ -574,7 +621,7 @@ pub struct DeleteAttachmentRequest {
 /// A hash of file content.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Hash {
     /// The algorithm used to compute the hash value.
     #[prost(enumeration = "hash::HashType", tag = "1")]
@@ -658,7 +705,7 @@ pub struct File {
 /// The request to list files.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListFilesRequest {
     /// Required. The name of the repository whose files will be listed. For
     /// example: "projects/p1/locations/us-central1/repositories/repo1
@@ -667,56 +714,54 @@ pub struct ListFilesRequest {
     /// An expression for filtering the results of the request. Filter rules are
     /// case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `owner`
-    ///    * `annotations`
+    /// * `name`
+    /// * `owner`
+    /// * `annotations`
     ///
     /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to files with the name `my_file.txt`
-    ///   in project `my-project` in the `us-central` region, in repository
-    ///   `my-repo`, append the following filter expression to your request:
+    /// To filter the results of your request to files with the name `my_file.txt`
+    /// in project `my-project` in the `us-central` region, in repository
+    /// `my-repo`, append the following filter expression to your request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-file.
-    ///      txt"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-file.txt"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file.txt"
-    ///      `
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/my-*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file.txt"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/files/*file*"`
     ///
-    ///   To filter the results of your request to files owned by the version `1.0`
-    ///   in package `pkg1`, append the following filter expression to your request:
+    /// To filter the results of your request to files owned by the version `1.0`
+    /// in package `pkg1`, append the following filter expression to your request:
     ///
-    ///    * `owner="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/versions/1.0"`
+    /// * `owner="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/versions/1.0"`
     ///
-    ///   To filter the results of your request to files with the annotation
-    ///   key-value pair \[`external_link`: `external_link_value`\], append the
-    ///   following filter expression to your request:
+    /// To filter the results of your request to files with the annotation
+    /// key-value pair \[`external_link`: `external_link_value`\], append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link:external_link_value"`
+    /// * `"annotations.external_link:external_link_value"`
     ///
-    ///   To filter just for a specific annotation key `external_link`, append the
-    ///   following filter expression to your request:
+    /// To filter just for a specific annotation key `external_link`, append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link"`
+    /// * `"annotations.external_link"`
     ///
-    ///   If the annotation key or value contains special characters, you can escape
-    ///   them by surrounding the value with backticks. For example, to filter the
-    ///   results of your request to files with the annotation key-value pair
-    ///   \[`external.link`:`<https://example.com/my-file`\],> append the following
-    ///   filter expression to your request:
+    /// If the annotation key or value contains special characters, you can escape
+    /// them by surrounding the value with backticks. For example, to filter the
+    /// results of your request to files with the annotation key-value pair
+    /// \[`external.link`:`<https://example.com/my-file`\],> append the following
+    /// filter expression to your request:
     ///
-    ///    * `` "annotations.`external.link`:`<https://example.com/my-file`"> ``
+    /// * ``"annotations.`external.link`:`<https://example.com/my-file`"``>
     ///
-    ///   You can also filter with annotations with a wildcard to
-    ///   match any number of characters before or after the value:
+    /// You can also filter with annotations with a wildcard to
+    /// match any number of characters before or after the value:
     ///
-    ///    * `` "annotations.*_link:`*example.com*`" ``
+    /// * ``"annotations.*_link:`*example.com*`"``
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of files to return. Maximum page size is 1,000.
@@ -745,7 +790,7 @@ pub struct ListFilesResponse {
 /// The request to retrieve a file.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetFileRequest {
     /// Required. The name of the file to retrieve.
     #[prost(string, tag = "1")]
@@ -754,7 +799,7 @@ pub struct GetFileRequest {
 /// The request to delete a file.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteFileRequest {
     /// Required. The name of the file to delete.
     #[prost(string, tag = "1")]
@@ -802,7 +847,7 @@ pub struct Package {
 /// The request to list packages.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListPackagesRequest {
     /// Required. The name of the parent resource whose packages will be listed.
     #[prost(string, tag = "1")]
@@ -816,51 +861,49 @@ pub struct ListPackagesRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `annotations`
+    /// * `name`
+    /// * `annotations`
     ///
     /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to packages with the name
-    ///   `my-package` in project `my-project` in the `us-central` region, in
-    ///   repository `my-repo`, append the following filter expression to your
-    ///   request:
+    /// To filter the results of your request to packages with the name
+    /// `my-package` in project `my-project` in the `us-central` region, in
+    /// repository `my-repo`, append the following filter expression to your
+    /// request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*
-    ///      package"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*pack*"
-    ///      `
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/my-*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*package"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/*pack*"`
     ///
-    ///   To filter the results of your request to packages with the annotation
-    ///   key-value pair \[`external_link`: `external_link_value`\], append the
-    ///   following filter expression to your request":
+    /// To filter the results of your request to packages with the annotation
+    /// key-value pair \[`external_link`: `external_link_value`\], append the
+    /// following filter expression to your request":
     ///
-    ///    * `"annotations.external_link:external_link_value"`
+    /// * `"annotations.external_link:external_link_value"`
     ///
-    ///   To filter the results just for a specific annotation key `external_link`,
-    ///   append the following filter expression to your request:
+    /// To filter the results just for a specific annotation key `external_link`,
+    /// append the following filter expression to your request:
     ///
-    ///    * `"annotations.external_link"`
+    /// * `"annotations.external_link"`
     ///
-    ///   If the annotation key or value contains special characters, you can escape
-    ///   them by surrounding the value with backticks. For example, to filter the
-    ///   results of your request to packages with the annotation key-value pair
-    ///   \[`external.link`:`<https://example.com/my-package`\],> append the following
-    ///   filter expression to your request:
+    /// If the annotation key or value contains special characters, you can escape
+    /// them by surrounding the value with backticks. For example, to filter the
+    /// results of your request to packages with the annotation key-value pair
+    /// \[`external.link`:`<https://example.com/my-package`\],> append the following
+    /// filter expression to your request:
     ///
-    ///    * `` "annotations.`external.link`:`<https://example.com/my-package`"> ``
+    /// * ``"annotations.`external.link`:`<https://example.com/my-package`"``>
     ///
-    ///   You can also filter with annotations with a wildcard to
-    ///   match any number of characters before or after the value:
+    /// You can also filter with annotations with a wildcard to
+    /// match any number of characters before or after the value:
     ///
-    ///    * `` "annotations.*_link:`*example.com*`" ``
+    /// * ``"annotations.*_link:`*example.com*`"``
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// Optional. The field to order the results by.
@@ -883,7 +926,7 @@ pub struct ListPackagesResponse {
 /// The request to retrieve a package.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetPackageRequest {
     /// Required. The name of the package to retrieve.
     #[prost(string, tag = "1")]
@@ -892,7 +935,7 @@ pub struct GetPackageRequest {
 /// The request to delete a package.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeletePackageRequest {
     /// Required. The name of the package to delete.
     #[prost(string, tag = "1")]
@@ -915,7 +958,7 @@ pub struct UpdatePackageRequest {
 /// Artifact policy configuration for the repository contents.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpstreamPolicy {
     /// The user-provided ID of the upstream policy.
     #[prost(string, tag = "1")]
@@ -933,7 +976,7 @@ pub struct UpstreamPolicy {
 /// satisfied.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CleanupPolicyCondition {
     /// Match versions by tag status.
     #[prost(
@@ -1004,7 +1047,7 @@ pub mod cleanup_policy_condition {
 /// for retaining a minimum number of versions.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CleanupPolicyMostRecentVersions {
     /// List of package name prefixes that will apply this rule.
     #[prost(string, repeated, tag = "1")]
@@ -1016,7 +1059,7 @@ pub struct CleanupPolicyMostRecentVersions {
 /// Artifact policy configuration for repository cleanup policies.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CleanupPolicy {
     /// The user-provided ID of the cleanup policy.
     #[prost(string, tag = "1")]
@@ -1066,7 +1109,7 @@ pub mod cleanup_policy {
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum ConditionType {
         /// Policy condition for matching versions.
         #[prost(message, tag = "2")]
@@ -1090,7 +1133,7 @@ pub struct VirtualRepositoryConfig {
 /// Remote repository configuration.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RemoteRepositoryConfig {
     /// The description of the remote source.
     #[prost(string, tag = "1")]
@@ -1114,7 +1157,7 @@ pub mod remote_repository_config {
     /// The credentials to access the remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct UpstreamCredentials {
         #[prost(oneof = "upstream_credentials::Credentials", tags = "1")]
         pub credentials: ::core::option::Option<upstream_credentials::Credentials>,
@@ -1124,7 +1167,7 @@ pub mod remote_repository_config {
         /// Username and password credentials.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct UsernamePasswordCredentials {
             /// The username to access the remote repository.
             #[prost(string, tag = "1")]
@@ -1137,7 +1180,7 @@ pub mod remote_repository_config {
         }
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Credentials {
             /// Use username and password to access the remote repository.
             #[prost(message, tag = "1")]
@@ -1147,7 +1190,7 @@ pub mod remote_repository_config {
     /// Configuration for a Docker remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct DockerRepository {
         /// Address of the remote repository.
         #[prost(oneof = "docker_repository::Upstream", tags = "1, 3")]
@@ -1158,7 +1201,7 @@ pub mod remote_repository_config {
         /// Customer-specified publicly available remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the custom remote repository, for ex:
             /// "<https://registry-1.docker.io".>
@@ -1202,7 +1245,7 @@ pub mod remote_repository_config {
         /// Address of the remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Docker repositories supported by Artifact
             /// Registry.
@@ -1216,7 +1259,7 @@ pub mod remote_repository_config {
     /// Configuration for a Maven remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct MavenRepository {
         /// Address of the remote repository.
         #[prost(oneof = "maven_repository::Upstream", tags = "1, 3")]
@@ -1227,7 +1270,7 @@ pub mod remote_repository_config {
         /// Customer-specified publicly available remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.maven.registry/".>
@@ -1271,7 +1314,7 @@ pub mod remote_repository_config {
         /// Address of the remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Maven repositories supported by Artifact
             /// Registry.
@@ -1285,7 +1328,7 @@ pub mod remote_repository_config {
     /// Configuration for a Npm remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct NpmRepository {
         /// Address of the remote repository
         #[prost(oneof = "npm_repository::Upstream", tags = "1, 3")]
@@ -1296,7 +1339,7 @@ pub mod remote_repository_config {
         /// Customer-specified publicly available remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.npm.registry/".>
@@ -1339,7 +1382,7 @@ pub mod remote_repository_config {
         /// Address of the remote repository
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Npm repositories supported by Artifact
             /// Registry.
@@ -1353,7 +1396,7 @@ pub mod remote_repository_config {
     /// Configuration for a Python remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct PythonRepository {
         /// Address of the remote repository.
         #[prost(oneof = "python_repository::Upstream", tags = "1, 3")]
@@ -1364,7 +1407,7 @@ pub mod remote_repository_config {
         /// Customer-specified publicly available remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.python.registry/".>
@@ -1407,7 +1450,7 @@ pub mod remote_repository_config {
         /// Address of the remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Python repositories supported by Artifact
             /// Registry.
@@ -1421,7 +1464,7 @@ pub mod remote_repository_config {
     /// Configuration for an Apt remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AptRepository {
         /// Address of the remote repository.
         #[prost(oneof = "apt_repository::Upstream", tags = "1, 3")]
@@ -1433,7 +1476,7 @@ pub mod remote_repository_config {
         /// base and a custom repository path.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct PublicRepository {
             /// A common public repository base for Apt.
             #[prost(enumeration = "public_repository::RepositoryBase", tag = "1")]
@@ -1489,7 +1532,7 @@ pub mod remote_repository_config {
         /// Customer-specified publicly available remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.apt.registry/".>
@@ -1499,7 +1542,7 @@ pub mod remote_repository_config {
         /// Address of the remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Apt repositories supported by Artifact
             /// Registry.
@@ -1513,7 +1556,7 @@ pub mod remote_repository_config {
     /// Configuration for a Yum remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct YumRepository {
         /// Address of the remote repository.
         #[prost(oneof = "yum_repository::Upstream", tags = "1, 3")]
@@ -1525,7 +1568,7 @@ pub mod remote_repository_config {
         /// base and a custom repository path.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct PublicRepository {
             /// A common public repository base for Yum.
             #[prost(enumeration = "public_repository::RepositoryBase", tag = "1")]
@@ -1593,7 +1636,7 @@ pub mod remote_repository_config {
         /// Customer-specified publicly available remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct CustomRepository {
             /// An http/https uri reference to the upstream remote repository, for ex:
             /// "<https://my.yum.registry/".>
@@ -1603,7 +1646,7 @@ pub mod remote_repository_config {
         /// Address of the remote repository.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum Upstream {
             /// One of the publicly available Yum repositories supported by Artifact
             /// Registry.
@@ -1617,7 +1660,7 @@ pub mod remote_repository_config {
     /// Common remote repository settings type.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct CommonRemoteRepository {
         /// Required. A common public repository base for remote repository.
         #[prost(string, tag = "1")]
@@ -1626,7 +1669,7 @@ pub mod remote_repository_config {
     /// Settings specific to the remote repository.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum RemoteSource {
         /// Specific settings for a Docker remote repository.
         #[prost(message, tag = "2")]
@@ -1700,10 +1743,10 @@ pub struct Repository {
         ::std::collections::HashMap<::prost::alloc::string::String, CleanupPolicy>,
     /// Output only. The size, in bytes, of all artifact storage in this
     /// repository. Repositories that are generally available or in public preview
-    ///   use this to calculate storage costs.
+    /// use this to calculate storage costs.
     #[prost(int64, tag = "13")]
     pub size_bytes: i64,
-    /// Output only. If set, the repository satisfies physical zone separation.
+    /// Output only. Whether or not this repository satisfies PZS.
     #[prost(bool, tag = "16")]
     pub satisfies_pzs: bool,
     /// Optional. If true, the cleanup pipeline is prevented from deleting versions
@@ -1719,7 +1762,7 @@ pub struct Repository {
     /// error rather than defaulting to standard.
     #[prost(bool, tag = "21")]
     pub disallow_unspecified_mode: bool,
-    /// Output only. If set, the repository satisfies physical zone isolation.
+    /// Output only. Whether or not this repository satisfies PZI.
     #[prost(bool, tag = "22")]
     pub satisfies_pzi: bool,
     /// Output only. The repository endpoint, for example:
@@ -1741,7 +1784,7 @@ pub mod repository {
     /// format type.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct MavenRepositoryConfig {
         /// The repository with this flag will allow publishing
         /// the same snapshot versions.
@@ -1798,7 +1841,7 @@ pub mod repository {
     /// format type.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct DockerRepositoryConfig {
         /// The repository which enabled this flag prevents all tags from being
         /// modified, moved or deleted. This does not prevent tags from being
@@ -1810,7 +1853,7 @@ pub mod repository {
     /// repository, as well as output fields describing current state.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct VulnerabilityScanningConfig {
         /// Optional. Config for whether this repository has vulnerability scanning
         /// disabled.
@@ -1844,7 +1887,8 @@ pub mod repository {
         )]
         #[repr(i32)]
         pub enum EnablementConfig {
-            /// Not set. This will be treated as INHERITED.
+            /// Not set. This will be treated as INHERITED for Docker repositories and
+            /// DISABLED for non-Docker repositories.
             Unspecified = 0,
             /// Scanning is Enabled, but dependent on API enablement.
             Inherited = 1,
@@ -1943,6 +1987,8 @@ pub mod repository {
         Go = 10,
         /// Generic package format.
         Generic = 11,
+        /// Ruby package format.
+        Ruby = 12,
     }
     impl Format {
         /// String value of the enum field names used in the ProtoBuf definition.
@@ -1961,6 +2007,7 @@ pub mod repository {
                 Self::Kfp => "KFP",
                 Self::Go => "GO",
                 Self::Generic => "GENERIC",
+                Self::Ruby => "RUBY",
             }
         }
         /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1976,6 +2023,7 @@ pub mod repository {
                 "KFP" => Some(Self::Kfp),
                 "GO" => Some(Self::Go),
                 "GENERIC" => Some(Self::Generic),
+                "RUBY" => Some(Self::Ruby),
                 _ => None,
             }
         }
@@ -2023,7 +2071,7 @@ pub mod repository {
     /// Repository-specific configurations.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum FormatConfig {
         /// Maven repository config contains repository level configuration
         /// for the repositories of maven type.
@@ -2051,7 +2099,7 @@ pub mod repository {
 /// The request to list repositories.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListRepositoriesRequest {
     /// Required. The name of the parent resource whose repositories will be
     /// listed.
@@ -2066,22 +2114,22 @@ pub struct ListRepositoriesRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
+    /// * `name`
     ///
-    ///   Examples of using a filter:
+    /// Examples of using a filter:
     ///
     /// To filter the results of your request to repositories with the name
     /// `my-repo` in project `my-project` in the `us-central` region, append the
     /// following filter expression to your request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/*repo"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/*repo*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/*repo"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/*repo*"`
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// Optional. The field to order the results by.
@@ -2104,7 +2152,7 @@ pub struct ListRepositoriesResponse {
 /// The request to retrieve a repository.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRepositoryRequest {
     /// Required. The name of the repository to retrieve.
     #[prost(string, tag = "1")]
@@ -2143,7 +2191,7 @@ pub struct UpdateRepositoryRequest {
 /// The request to delete a repository.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteRepositoryRequest {
     /// Required. The name of the repository to delete.
     #[prost(string, tag = "1")]
@@ -2154,7 +2202,7 @@ pub struct DeleteRepositoryRequest {
 /// entire repository and one rule for each package within.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Rule {
     /// The name of the rule, for example:
     /// `projects/p1/locations/us-central1/repositories/repo1/rules/rule1`.
@@ -2246,7 +2294,7 @@ pub mod rule {
 /// The request to list rules.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListRulesRequest {
     /// Required. The name of the parent repository whose rules will be listed.
     /// For example:
@@ -2276,7 +2324,7 @@ pub struct ListRulesResponse {
 /// The request to retrieve a rule.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetRuleRequest {
     /// Required. The name of the rule to retrieve.
     #[prost(string, tag = "1")]
@@ -2285,7 +2333,7 @@ pub struct GetRuleRequest {
 /// The request to create a new rule.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateRuleRequest {
     /// Required. The name of the parent resource where the rule will be created.
     #[prost(string, tag = "1")]
@@ -2300,7 +2348,7 @@ pub struct CreateRuleRequest {
 /// The request to update a rule.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateRuleRequest {
     /// The rule that replaces the resource on the server.
     #[prost(message, optional, tag = "1")]
@@ -2314,7 +2362,7 @@ pub struct UpdateRuleRequest {
 /// The request to delete a rule.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteRuleRequest {
     /// Required. The name of the rule to delete.
     #[prost(string, tag = "1")]
@@ -2323,7 +2371,7 @@ pub struct DeleteRuleRequest {
 /// The Artifact Registry settings that apply to a Project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ProjectSettings {
     /// The name of the project's settings.
     ///
@@ -2403,7 +2451,7 @@ pub mod project_settings {
 /// Gets the redirection status for a project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetProjectSettingsRequest {
     /// Required. The name of the projectSettings resource.
     #[prost(string, tag = "1")]
@@ -2412,7 +2460,7 @@ pub struct GetProjectSettingsRequest {
 /// Sets the settings of the project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateProjectSettingsRequest {
     /// The project settings.
     #[prost(message, optional, tag = "2")]
@@ -2425,12 +2473,12 @@ pub struct UpdateProjectSettingsRequest {
 /// to access the version.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Tag {
     /// The name of the tag, for example:
     /// "projects/p1/locations/us-central1/repositories/repo1/packages/pkg1/tags/tag1".
     /// If the package part contains slashes, the slashes are escaped.
-    /// The tag part can only have characters in \[a-zA-Z0-9\-._~:@\], anything else
+    /// The tag part can only have characters in \[a-zA-Z0-9-.\_~:@\], anything else
     /// must be URL encoded.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -2444,7 +2492,7 @@ pub struct Tag {
 /// The request to list tags.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListTagsRequest {
     /// The name of the parent package whose tags will be listed.
     /// For example:
@@ -2454,35 +2502,35 @@ pub struct ListTagsRequest {
     /// An expression for filtering the results of the request. Filter rules are
     /// case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `version`
+    /// * `name`
+    /// * `version`
     ///
-    ///   Examples of using a filter:
+    /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to tags with the name `my-tag` in
-    ///   package `my-package` in repository `my-repo` in project "`y-project` in
-    ///   the us-central region, append the following filter expression to your
-    ///   request:
+    /// To filter the results of your request to tags with the name `my-tag` in
+    /// package `my-package` in repository `my-repo` in project "`y-project` in
+    /// the us-central region, append the following filter expression to your
+    /// request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/tags/my-tag"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/tags/my-tag"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/tags/my*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/tags/*tag"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/tags/*tag*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/tags/my*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/tags/*tag"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/tags/*tag*"`
     ///
-    ///   To filter the results of your request to tags applied to the version
-    ///   `1.0` in package `my-package`, append the following filter expression to
-    ///   your request:
+    /// To filter the results of your request to tags applied to the version
+    /// `1.0` in package `my-package`, append the following filter expression to
+    /// your request:
     ///
-    ///    * `version="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/versions/1.0"`
+    /// * `version="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/versions/1.0"`
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// The maximum number of tags to return. Maximum page size is 1,000.
@@ -2508,7 +2556,7 @@ pub struct ListTagsResponse {
 /// The request to retrieve a tag.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTagRequest {
     /// The name of the tag to retrieve.
     #[prost(string, tag = "1")]
@@ -2517,7 +2565,7 @@ pub struct GetTagRequest {
 /// The request to create a new tag.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct CreateTagRequest {
     /// The name of the parent resource where the tag will be created.
     #[prost(string, tag = "1")]
@@ -2532,7 +2580,7 @@ pub struct CreateTagRequest {
 /// The request to create or update a tag.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateTagRequest {
     /// The tag that replaces the resource on the server.
     #[prost(message, optional, tag = "1")]
@@ -2546,7 +2594,7 @@ pub struct UpdateTagRequest {
 /// The request to delete a tag.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteTagRequest {
     /// The name of the tag to delete.
     #[prost(string, tag = "1")]
@@ -2581,8 +2629,8 @@ pub struct Version {
     /// Output only. Repository-specific Metadata stored against this version.
     /// The fields returned are defined by the underlying repository-specific
     /// resource. Currently, the resources could be:
-    /// [DockerImage][google.devtools.artifactregistry.v1.DockerImage]
-    /// [MavenArtifact][google.devtools.artifactregistry.v1.MavenArtifact]
+    /// \[DockerImage\]\[google.devtools.artifactregistry.v1.DockerImage\]
+    /// \[MavenArtifact\]\[google.devtools.artifactregistry.v1.MavenArtifact\]
     #[prost(message, optional, tag = "8")]
     pub metadata: ::core::option::Option<super::super::super::protobuf::Struct>,
     /// Optional. Client specified annotations.
@@ -2593,7 +2641,7 @@ pub struct Version {
 /// The request to list versions.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListVersionsRequest {
     /// The name of the parent resource whose versions will be listed.
     #[prost(string, tag = "1")]
@@ -2613,52 +2661,52 @@ pub struct ListVersionsRequest {
     /// Optional. An expression for filtering the results of the request. Filter
     /// rules are case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `annotations`
+    /// * `name`
+    /// * `annotations`
     ///
-    ///   Examples of using a filter:
+    /// Examples of using a filter:
     ///
-    ///   To filter the results of your request to versions with the name
-    ///   `my-version` in project `my-project` in the `us-central` region, in
-    ///   repository `my-repo`, append the following filter expression to your
-    ///   request:
+    /// To filter the results of your request to versions with the name
+    /// `my-version` in project `my-project` in the `us-central` region, in
+    /// repository `my-repo`, append the following filter expression to your
+    /// request:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/versions/my-version"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/versions/my-version"`
     ///
-    ///   You can also use wildcards to match any number of characters before or
-    ///   after the value:
+    /// You can also use wildcards to match any number of characters before or
+    /// after the value:
     ///
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/versions/*version"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/versions/my*"`
-    ///    * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
-    ///      my-package/versions/*version*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/versions/*version"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/versions/my*"`
+    /// * `name="projects/my-project/locations/us-central1/repositories/my-repo/packages/
+    ///   my-package/versions/*version*"`
     ///
-    ///   To filter the results of your request to versions with the annotation
-    ///   key-value pair \[`external_link`: `external_link_value`\], append the
-    ///   following filter expression to your request:
+    /// To filter the results of your request to versions with the annotation
+    /// key-value pair \[`external_link`: `external_link_value`\], append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link:external_link_value"`
+    /// * `"annotations.external_link:external_link_value"`
     ///
-    ///   To filter just for a specific annotation key `external_link`, append the
-    ///   following filter expression to your request:
+    /// To filter just for a specific annotation key `external_link`, append the
+    /// following filter expression to your request:
     ///
-    ///    * `"annotations.external_link"`
+    /// * `"annotations.external_link"`
     ///
-    ///   If the annotation key or value contains special characters, you can escape
-    ///   them by surrounding the value with backticks. For example, to filter the
-    ///   results of your request to versions with the annotation key-value pair
-    ///   \[`external.link`:`<https://example.com/my-version`\],> append the following
-    ///   filter expression to your request:
+    /// If the annotation key or value contains special characters, you can escape
+    /// them by surrounding the value with backticks. For example, to filter the
+    /// results of your request to versions with the annotation key-value pair
+    /// \[`external.link`:`<https://example.com/my-version`\],> append the following
+    /// filter expression to your request:
     ///
-    ///    * `` "annotations.`external.link`:`<https://example.com/my-version`"> ``
+    /// * ``"annotations.`external.link`:`<https://example.com/my-version`"``>
     ///
-    ///   You can also filter with annotations with a wildcard to
-    ///   match any number of characters before or after the value:
+    /// You can also filter with annotations with a wildcard to
+    /// match any number of characters before or after the value:
     ///
-    ///    * `` "annotations.*_link:`*example.com*`" ``
+    /// * ``"annotations.*_link:`*example.com*`"``
     #[prost(string, tag = "6")]
     pub filter: ::prost::alloc::string::String,
 }
@@ -2678,7 +2726,7 @@ pub struct ListVersionsResponse {
 /// The request to retrieve a version.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetVersionRequest {
     /// The name of the version to retrieve.
     #[prost(string, tag = "1")]
@@ -2690,7 +2738,7 @@ pub struct GetVersionRequest {
 /// The request to delete a version.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteVersionRequest {
     /// The name of the version to delete.
     #[prost(string, tag = "1")]
@@ -2703,7 +2751,7 @@ pub struct DeleteVersionRequest {
 /// The request to delete multiple versions across a repository.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BatchDeleteVersionsRequest {
     /// The name of the repository holding all requested versions.
     #[prost(string, tag = "1")]
@@ -2720,7 +2768,7 @@ pub struct BatchDeleteVersionsRequest {
 /// The metadata of an LRO from deleting multiple versions.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BatchDeleteVersionsMetadata {
     /// The versions the operation failed to delete.
     #[prost(string, repeated, tag = "2")]
@@ -2780,7 +2828,7 @@ impl VersionView {
 /// The Artifact Registry VPC SC config that apply to a Project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct VpcscConfig {
     /// The name of the project's VPC SC Config.
     ///
@@ -2841,7 +2889,7 @@ pub mod vpcsc_config {
 /// Gets the VPC SC config for a project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetVpcscConfigRequest {
     /// Required. The name of the VPCSCConfig resource.
     #[prost(string, tag = "1")]
@@ -2850,7 +2898,7 @@ pub struct GetVpcscConfigRequest {
 /// Sets the VPCSC config of the project.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UpdateVpcscConfigRequest {
     /// The project config.
     #[prost(message, optional, tag = "1")]
@@ -2862,7 +2910,7 @@ pub struct UpdateVpcscConfigRequest {
 /// A detailed representation of a Yum artifact.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct YumArtifact {
     /// Output only. The Artifact Registry resource name of the artifact.
     #[prost(string, tag = "1")]
@@ -2918,7 +2966,7 @@ pub mod yum_artifact {
 /// Google Cloud Storage location where the artifacts currently reside.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportYumArtifactsGcsSource {
     /// Cloud Storage paths URI (e.g., gs://my_bucket//my_object).
     #[prost(string, repeated, tag = "1")]
@@ -2930,7 +2978,7 @@ pub struct ImportYumArtifactsGcsSource {
 /// The request to import new yum artifacts.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportYumArtifactsRequest {
     /// The name of the parent resource where the artifacts will be imported.
     #[prost(string, tag = "1")]
@@ -2944,7 +2992,7 @@ pub mod import_yum_artifacts_request {
     /// The source location of the package binaries.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location where input content is located.
         #[prost(message, tag = "2")]
@@ -2968,7 +3016,7 @@ pub mod import_yum_artifacts_error_info {
     /// The source that was not imported.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Source {
         /// Google Cloud Storage location requested.
         #[prost(message, tag = "1")]
@@ -2990,12 +3038,12 @@ pub struct ImportYumArtifactsResponse {
 /// The operation metadata for importing artifacts.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ImportYumArtifactsMetadata {}
 /// Metadata type for longrunning-operations, currently empty.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OperationMetadata {}
 /// Generated client implementations.
 pub mod artifact_registry_client {
@@ -3019,7 +3067,8 @@ pub mod artifact_registry_client {
     /// * Packages, which group versions and their tags.
     /// * Versions, which are specific forms of a package.
     /// * Tags, which represent alternative names for versions.
-    /// * Files, which contain content and are optionally associated with a Package or Version.
+    /// * Files, which contain content and are optionally associated with a Package
+    ///  or Version.
     #[derive(Debug, Clone)]
     pub struct ArtifactRegistryClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -3108,7 +3157,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListDockerImages",
             );
@@ -3127,7 +3176,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetDockerImage",
             );
@@ -3147,7 +3196,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListMavenArtifacts",
             );
@@ -3166,7 +3215,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetMavenArtifact",
             );
@@ -3186,7 +3235,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListNpmPackages",
             );
@@ -3205,7 +3254,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetNpmPackage",
             );
@@ -3225,7 +3274,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListPythonPackages",
             );
@@ -3244,7 +3293,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetPythonPackage",
             );
@@ -3269,7 +3318,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ImportAptArtifacts",
             );
@@ -3294,7 +3343,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ImportYumArtifacts",
             );
@@ -3314,7 +3363,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListRepositories",
             );
@@ -3333,7 +3382,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetRepository",
             );
@@ -3356,7 +3405,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateRepository",
             );
@@ -3375,7 +3424,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateRepository",
             );
@@ -3399,7 +3448,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteRepository",
             );
@@ -3419,7 +3468,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListPackages",
             );
@@ -3438,7 +3487,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetPackage",
             );
@@ -3461,7 +3510,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeletePackage",
             );
@@ -3481,7 +3530,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListVersions",
             );
@@ -3500,7 +3549,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetVersion",
             );
@@ -3523,7 +3572,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteVersion",
             );
@@ -3546,7 +3595,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/BatchDeleteVersions",
             );
@@ -3565,7 +3614,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateVersion",
             );
@@ -3584,7 +3633,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListFiles",
             );
@@ -3603,7 +3652,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetFile",
             );
@@ -3627,7 +3676,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteFile",
             );
@@ -3646,7 +3695,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateFile",
             );
@@ -3665,7 +3714,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListTags",
             );
@@ -3684,7 +3733,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetTag",
             );
@@ -3703,7 +3752,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateTag",
             );
@@ -3722,7 +3771,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateTag",
             );
@@ -3744,7 +3793,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteTag",
             );
@@ -3763,7 +3812,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateRule",
             );
@@ -3782,7 +3831,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListRules",
             );
@@ -3801,7 +3850,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetRule",
             );
@@ -3820,7 +3869,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateRule",
             );
@@ -3842,7 +3891,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteRule",
             );
@@ -3864,7 +3913,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/SetIamPolicy",
             );
@@ -3886,7 +3935,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetIamPolicy",
             );
@@ -3910,7 +3959,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/TestIamPermissions",
             );
@@ -3929,7 +3978,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetProjectSettings",
             );
@@ -3948,7 +3997,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateProjectSettings",
             );
@@ -3967,7 +4016,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetVPCSCConfig",
             );
@@ -3986,7 +4035,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdateVPCSCConfig",
             );
@@ -4005,7 +4054,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/UpdatePackage",
             );
@@ -4025,7 +4074,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/ListAttachments",
             );
@@ -4044,7 +4093,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/GetAttachment",
             );
@@ -4067,7 +4116,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/CreateAttachment",
             );
@@ -4091,7 +4140,7 @@ pub mod artifact_registry_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.devtools.artifactregistry.v1.ArtifactRegistry/DeleteAttachment",
             );

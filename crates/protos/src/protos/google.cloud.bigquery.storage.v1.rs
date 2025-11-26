@@ -7,7 +7,7 @@
 /// See code samples on how this message can be deserialized.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ArrowSchema {
     /// IPC serialized Arrow schema.
     #[prost(bytes = "bytes", tag = "1")]
@@ -16,7 +16,7 @@ pub struct ArrowSchema {
 /// Arrow RecordBatch.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ArrowRecordBatch {
     /// IPC-serialized Arrow RecordBatch.
     #[prost(bytes = "bytes", tag = "1")]
@@ -30,7 +30,7 @@ pub struct ArrowRecordBatch {
 /// Contains options specific to Arrow Serialization.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ArrowSerializationOptions {
     /// The compression codec to use for Arrow buffers in serialized record
     /// batches.
@@ -39,6 +39,13 @@ pub struct ArrowSerializationOptions {
         tag = "2"
     )]
     pub buffer_compression: i32,
+    /// Optional. Set timestamp precision option. If not set, the default precision
+    /// is microseconds.
+    #[prost(
+        enumeration = "arrow_serialization_options::PicosTimestampPrecision",
+        tag = "3"
+    )]
+    pub picos_timestamp_precision: i32,
 }
 /// Nested message and enum types in `ArrowSerializationOptions`.
 pub mod arrow_serialization_options {
@@ -77,11 +84,56 @@ pub mod arrow_serialization_options {
             }
         }
     }
+    /// The precision of the timestamp value in the Avro message. This precision
+    /// will **only** be applied to the column(s) with the `TIMESTAMP_PICOS` type.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum PicosTimestampPrecision {
+        /// Unspecified timestamp precision. The default precision is microseconds.
+        Unspecified = 0,
+        /// Timestamp values returned by Read API will be truncated to microsecond
+        /// level precision. The value will be encoded as Arrow TIMESTAMP type in a
+        /// 64 bit integer.
+        TimestampPrecisionMicros = 1,
+        /// Timestamp values returned by Read API will be truncated to nanosecond
+        /// level precision. The value will be encoded as Arrow TIMESTAMP type in a
+        /// 64 bit integer.
+        TimestampPrecisionNanos = 2,
+        /// Read API will return full precision picosecond value. The value will be
+        /// encoded as a string which conforms to ISO 8601 format.
+        TimestampPrecisionPicos = 3,
+    }
+    impl PicosTimestampPrecision {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "PICOS_TIMESTAMP_PRECISION_UNSPECIFIED",
+                Self::TimestampPrecisionMicros => "TIMESTAMP_PRECISION_MICROS",
+                Self::TimestampPrecisionNanos => "TIMESTAMP_PRECISION_NANOS",
+                Self::TimestampPrecisionPicos => "TIMESTAMP_PRECISION_PICOS",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "PICOS_TIMESTAMP_PRECISION_UNSPECIFIED" => Some(Self::Unspecified),
+                "TIMESTAMP_PRECISION_MICROS" => Some(Self::TimestampPrecisionMicros),
+                "TIMESTAMP_PRECISION_NANOS" => Some(Self::TimestampPrecisionNanos),
+                "TIMESTAMP_PRECISION_PICOS" => Some(Self::TimestampPrecisionPicos),
+                _ => None,
+            }
+        }
+    }
 }
 /// Avro schema.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AvroSchema {
     /// Json serialized schema, as described at
     /// <https://avro.apache.org/docs/1.8.1/spec.html.>
@@ -91,7 +143,7 @@ pub struct AvroSchema {
 /// Avro rows.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AvroRows {
     /// Binary serialized rows in a block.
     #[prost(bytes = "bytes", tag = "1")]
@@ -105,7 +157,7 @@ pub struct AvroRows {
 /// Contains options specific to Avro Serialization.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AvroSerializationOptions {
     /// Enable displayName attribute in Avro schema.
     ///
@@ -119,6 +171,61 @@ pub struct AvroSerializationOptions {
     /// original column name.
     #[prost(bool, tag = "1")]
     pub enable_display_name_attribute: bool,
+    /// Optional. Set timestamp precision option. If not set, the default precision
+    /// is microseconds.
+    #[prost(
+        enumeration = "avro_serialization_options::PicosTimestampPrecision",
+        tag = "2"
+    )]
+    pub picos_timestamp_precision: i32,
+}
+/// Nested message and enum types in `AvroSerializationOptions`.
+pub mod avro_serialization_options {
+    /// The precision of the timestamp value in the Avro message. This precision
+    /// will **only** be applied to the column(s) with the `TIMESTAMP_PICOS` type.
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+    #[repr(i32)]
+    pub enum PicosTimestampPrecision {
+        /// Unspecified timestamp precision. The default precision is microseconds.
+        Unspecified = 0,
+        /// Timestamp values returned by Read API will be truncated to microsecond
+        /// level precision. The value will be encoded as Avro TIMESTAMP type in a
+        /// 64 bit integer.
+        TimestampPrecisionMicros = 1,
+        /// Timestamp values returned by Read API will be truncated to nanosecond
+        /// level precision. The value will be encoded as Avro TIMESTAMP type in a
+        /// 64 bit integer.
+        TimestampPrecisionNanos = 2,
+        /// Read API will return full precision picosecond value. The value will be
+        /// encoded as a string which conforms to ISO 8601 format.
+        TimestampPrecisionPicos = 3,
+    }
+    impl PicosTimestampPrecision {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "PICOS_TIMESTAMP_PRECISION_UNSPECIFIED",
+                Self::TimestampPrecisionMicros => "TIMESTAMP_PRECISION_MICROS",
+                Self::TimestampPrecisionNanos => "TIMESTAMP_PRECISION_NANOS",
+                Self::TimestampPrecisionPicos => "TIMESTAMP_PRECISION_PICOS",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "PICOS_TIMESTAMP_PRECISION_UNSPECIFIED" => Some(Self::Unspecified),
+                "TIMESTAMP_PRECISION_MICROS" => Some(Self::TimestampPrecisionMicros),
+                "TIMESTAMP_PRECISION_NANOS" => Some(Self::TimestampPrecisionNanos),
+                "TIMESTAMP_PRECISION_PICOS" => Some(Self::TimestampPrecisionPicos),
+                _ => None,
+            }
+        }
+    }
 }
 /// ProtoSchema describes the schema of the serialized protocol buffer data rows.
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -140,7 +247,7 @@ pub struct ProtoSchema {
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ProtoRows {
     /// A sequence of rows serialized as a Protocol Buffer.
     ///
@@ -166,7 +273,7 @@ pub struct TableSchema {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TableFieldSchema {
     /// Required. The field name. The name must contain only letters (a-z, A-Z),
-    /// numbers (0-9), or underscores (_), and must start with a letter or
+    /// numbers (0-9), or underscores (\_), and must start with a letter or
     /// underscore. The maximum length is 128 characters.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
@@ -215,14 +322,14 @@ pub struct TableFieldSchema {
     ///
     /// Acceptable values for precision and scale if both are specified:
     ///
-    /// * If type = "NUMERIC": 1 <= precision - scale <= 29 and 0 <= scale <= 9.
-    /// * If type = "BIGNUMERIC": 1 <= precision - scale <= 38 and 0 <= scale <= 38.
+    /// * If type = "NUMERIC": 1 \<= precision - scale \<= 29 and 0 \<= scale \<= 9.
+    /// * If type = "BIGNUMERIC": 1 \<= precision - scale \<= 38 and 0 \<= scale \<= 38.
     ///
     /// Acceptable values for precision if only precision is specified but not
     /// scale (and thus scale is interpreted to be equal to zero):
     ///
-    /// * If type = "NUMERIC": 1 <= precision <= 29.
-    /// * If type = "BIGNUMERIC": 1 <= precision <= 38.
+    /// * If type = "NUMERIC": 1 \<= precision \<= 29.
+    /// * If type = "BIGNUMERIC": 1 \<= precision \<= 38.
     ///
     /// If scale is specified but not precision, then it is invalid.
     #[prost(int64, tag = "8")]
@@ -234,9 +341,20 @@ pub struct TableFieldSchema {
     /// (<https://cloud.google.com/bigquery/docs/default-values>) for this field.
     #[prost(string, tag = "10")]
     pub default_value_expression: ::prost::alloc::string::String,
+    /// Optional. Precision (maximum number of total digits in base 10) for seconds
+    /// of TIMESTAMP type.
+    ///
+    /// Possible values include:
+    ///
+    /// * 6 (Default, for TIMESTAMP type with microsecond precision)
+    /// * 12 (For TIMESTAMP type with picosecond precision)
+    #[prost(message, optional, tag = "27")]
+    pub timestamp_precision:
+        ::core::option::Option<super::super::super::super::protobuf::Int64Value>,
     /// Optional. The subtype of the RANGE, if the type of this field is RANGE. If
     /// the type is RANGE, this field is required. Possible values for the field
     /// element type of a RANGE include:
+    ///
     /// * DATE
     /// * DATETIME
     /// * TIMESTAMP
@@ -248,7 +366,7 @@ pub mod table_field_schema {
     /// Represents the type of a field element.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct FieldElementType {
         /// Required. The type of a field element.
         #[prost(enumeration = "Type", tag = "1")]
@@ -454,7 +572,7 @@ pub mod read_session {
     /// Additional attributes when reading a table.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct TableModifiers {
         /// The snapshot time of the table. If not set, interpreted as now.
         #[prost(message, optional, tag = "1")]
@@ -477,38 +595,38 @@ pub mod read_session {
         ///
         /// As an example, consider a table with the following schema:
         ///
-        ///    {
-        ///        "name": "struct_field",
-        ///        "type": "RECORD",
-        ///        "mode": "NULLABLE",
-        ///        "fields": [
-        ///            {
-        ///                "name": "string_field1",
-        ///                "type": "STRING",
+        /// {
+        /// "name": "struct_field",
+        /// "type": "RECORD",
+        /// "mode": "NULLABLE",
+        /// "fields": \[
+        /// {
+        /// "name": "string_field1",
+        /// "type": "STRING",
         /// .              "mode": "NULLABLE"
-        ///            },
-        ///            {
-        ///                "name": "string_field2",
-        ///                "type": "STRING",
-        ///                "mode": "NULLABLE"
-        ///            }
-        ///        ]
-        ///    }
+        /// },
+        /// {
+        /// "name": "string_field2",
+        /// "type": "STRING",
+        /// "mode": "NULLABLE"
+        /// }
+        /// \]
+        /// }
         ///
         /// Specifying "struct_field" in the selected fields list will result in a
         /// read session schema with the following logical structure:
         ///
-        ///    struct_field {
-        ///        string_field1
-        ///        string_field2
-        ///    }
+        /// struct_field {
+        /// string_field1
+        /// string_field2
+        /// }
         ///
         /// Specifying "struct_field.string_field1" in the selected fields list will
         /// result in a read session schema with the following logical structure:
         ///
-        ///    struct_field {
-        ///        string_field1
-        ///    }
+        /// struct_field {
+        /// string_field1
+        /// }
         ///
         /// The order of the fields in the read session schema is derived from the
         /// table schema and does not correspond to the order in which the fields are
@@ -519,10 +637,10 @@ pub mod read_session {
         /// Aggregates are not supported.
         ///
         /// Examples: "int_field > 5"
-        ///            "date_field = CAST('2014-9-27' as DATE)"
-        ///            "nullable_field is not NULL"
-        ///            "st_equals(geo_field, st_geofromtext("POINT(2, 2)"))"
-        ///            "numeric_field BETWEEN 1.0 AND 5.0"
+        /// "date_field = CAST('2014-9-27' as DATE)"
+        /// "nullable_field is not NULL"
+        /// "st_equals(geo_field, st_geofromtext("POINT(2, 2)"))"
+        /// "numeric_field BETWEEN 1.0 AND 5.0"
         ///
         /// Restricted to a maximum length for 1 MB.
         #[prost(string, tag = "2")]
@@ -593,7 +711,7 @@ pub mod read_session {
         }
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum OutputFormatSerializationOptions {
             /// Optional. Options specific to the Apache Arrow output format.
             #[prost(message, tag = "3")]
@@ -608,7 +726,7 @@ pub mod read_session {
     /// the selected fields.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Schema {
         /// Output only. Avro schema.
         #[prost(message, tag = "4")]
@@ -623,7 +741,7 @@ pub mod read_session {
 /// `ReadStream` lightweight.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadStream {
     /// Output only. Name of the stream, in the form
     /// `projects/{project_id}/locations/{location}/sessions/{session_id}/streams/{stream_id}`.
@@ -642,7 +760,7 @@ pub struct WriteStream {
     /// Immutable. Type of the stream.
     #[prost(enumeration = "write_stream::Type", tag = "2")]
     pub r#type: i32,
-    /// Output only. Create time of the stream. For the _default stream, this is
+    /// Output only. Create time of the stream. For the \_default stream, this is
     /// the creation_time of the table.
     #[prost(message, optional, tag = "3")]
     pub create_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
@@ -661,8 +779,8 @@ pub struct WriteStream {
     /// Immutable. Mode of the stream.
     #[prost(enumeration = "write_stream::WriteMode", tag = "7")]
     pub write_mode: i32,
-    /// Immutable. The geographic location where the stream's dataset resides. See
-    /// <https://cloud.google.com/bigquery/docs/locations> for supported
+    /// Output only. The geographic location where the stream's dataset resides.
+    /// See <https://cloud.google.com/bigquery/docs/locations> for supported
     /// locations.
     #[prost(string, tag = "8")]
     pub location: ::prost::alloc::string::String,
@@ -857,7 +975,7 @@ pub struct CreateReadSessionRequest {
 /// Request message for `ReadRows`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadRowsRequest {
     /// Required. Stream to read rows from.
     #[prost(string, tag = "1")]
@@ -871,7 +989,7 @@ pub struct ReadRowsRequest {
 /// Information on if the current connection is being throttled.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ThrottleState {
     /// How much this connection is being throttled. Zero means no throttling,
     /// 100 means fully throttled.
@@ -899,8 +1017,8 @@ pub mod stream_stats {
         ///
         /// This value, along with `at_response_end`, can be used to interpolate
         /// the progress made as the rows in the message are being processed using
-        /// the following formula: `at_response_start + (at_response_end -
-        /// at_response_start) * rows_processed_from_response / rows_in_response`.
+        /// the following formula: `at_response_start + (at_response_end -  at_response_start) *
+        /// rows_processed_from_response / rows_in_response`.
         ///
         /// Note that if a filter is provided, the `at_response_end` value of the
         /// previous response may not necessarily be equal to the
@@ -961,7 +1079,7 @@ pub mod read_rows_response {
     /// Row data is returned in format specified during session creation.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Rows {
         /// Serialized row data in AVRO format.
         #[prost(message, tag = "3")]
@@ -977,7 +1095,7 @@ pub mod read_rows_response {
     /// RPC.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Schema {
         /// Output only. Avro schema.
         #[prost(message, tag = "7")]
@@ -1008,10 +1126,10 @@ pub struct SplitReadStreamRequest {
 /// Response message for `SplitReadStream`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SplitReadStreamResponse {
     /// Primary stream, which contains the beginning portion of
-    /// |original_stream|. An empty value indicates that the original stream can no
+    /// \|original_stream|. An empty value indicates that the original stream can no
     /// longer be split.
     #[prost(message, optional, tag = "1")]
     pub primary_stream: ::core::option::Option<ReadStream>,
@@ -1051,9 +1169,8 @@ pub struct AppendRowsRequest {
     ///
     /// * In the first request to an AppendRows connection.
     ///
-    /// * In all subsequent requests to an AppendRows connection, if you use the
-    /// same connection to write to multiple tables or change the input schema for
-    /// default streams.
+    /// * In all subsequent requests to an AppendRows connection, if you use the same connection to
+    ///   write to multiple tables or change the input schema for default streams.
     ///
     /// For explicitly created write streams, the format is:
     ///
@@ -1083,7 +1200,7 @@ pub struct AppendRowsRequest {
     /// If present, the write is only performed if the next append offset is same
     /// as the provided value. If not present, the write is performed at the
     /// current end of stream. Specifying a value for this field is not allowed
-    /// when calling AppendRows for the '_default' stream.
+    /// when calling AppendRows for the '\_default' stream.
     #[prost(message, optional, tag = "2")]
     pub offset: ::core::option::Option<super::super::super::super::protobuf::Int64Value>,
     /// Id set by client to annotate its identity. Only initial request setting is
@@ -1116,8 +1233,8 @@ pub struct AppendRowsRequest {
         ::std::collections::HashMap<::prost::alloc::string::String, i32>,
     /// Optional. Default missing value interpretation for all columns in the
     /// table. When a value is specified on an `AppendRowsRequest`, it is applied
-    /// to all requests on the connection from that point forward, until a
-    /// subsequent `AppendRowsRequest` sets it to a different value.
+    /// to all requests from that point forward, until a subsequent
+    /// `AppendRowsRequest` sets it to a different value.
     /// `missing_value_interpretation` can override
     /// `default_missing_value_interpretation`. For example, if you want to write
     /// `NULL` instead of using default values for some columns, you can set
@@ -1138,11 +1255,9 @@ pub struct AppendRowsRequest {
 /// Nested message and enum types in `AppendRowsRequest`.
 pub mod append_rows_request {
     /// Arrow schema and data.
-    /// Arrow format is an experimental feature only selected for allowlisted
-    /// customers.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ArrowData {
         /// Optional. Arrow Schema used to serialize the data.
         #[prost(message, optional, tag = "1")]
@@ -1157,8 +1272,8 @@ pub mod append_rows_request {
     #[serde(rename_all = "camelCase")]
     #[derive(Clone, PartialEq, ::prost::Message)]
     pub struct ProtoData {
-        /// The protocol buffer schema used to serialize the data. Provide this value
-        /// whenever:
+        /// Optional. The protocol buffer schema used to serialize the data. Provide
+        /// this value whenever:
         ///
         /// * You send the first request of an RPC connection.
         ///
@@ -1167,7 +1282,7 @@ pub mod append_rows_request {
         /// * You specify a new destination table.
         #[prost(message, optional, tag = "1")]
         pub writer_schema: ::core::option::Option<super::ProtoSchema>,
-        /// Serialized row data in protobuf message format.
+        /// Required. Serialized row data in protobuf message format.
         /// Currently, the backend expects the serialized rows to adhere to
         /// proto2 semantics when appending rows, particularly with respect to
         /// how default values are encoded.
@@ -1224,8 +1339,7 @@ pub mod append_rows_request {
         /// Rows in proto format.
         #[prost(message, tag = "4")]
         ProtoRows(ProtoData),
-        /// Rows in arrow format. This is an experimental feature only selected for
-        /// allowlisted customers.
+        /// Rows in arrow format.
         #[prost(message, tag = "5")]
         ArrowRows(ArrowData),
     }
@@ -1257,7 +1371,7 @@ pub mod append_rows_response {
     /// AppendResult is returned for successful append requests.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AppendResult {
         /// The row offset at which the last append occurred. The offset will not be
         /// set if appending using default streams.
@@ -1298,7 +1412,7 @@ pub mod append_rows_response {
 /// Request message for `GetWriteStreamRequest`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetWriteStreamRequest {
     /// Required. Name of the stream to get, in the form of
     /// `projects/{project}/datasets/{dataset}/tables/{table}/streams/{stream}`.
@@ -1312,7 +1426,7 @@ pub struct GetWriteStreamRequest {
 /// Request message for `BatchCommitWriteStreams`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BatchCommitWriteStreamsRequest {
     /// Required. Parent table that all the streams should belong to, in the form
     /// of `projects/{project}/datasets/{dataset}/tables/{table}`.
@@ -1343,7 +1457,7 @@ pub struct BatchCommitWriteStreamsResponse {
 /// Request message for invoking `FinalizeWriteStream`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FinalizeWriteStreamRequest {
     /// Required. Name of the stream to finalize, in the form of
     /// `projects/{project}/datasets/{dataset}/tables/{table}/streams/{stream}`.
@@ -1353,7 +1467,7 @@ pub struct FinalizeWriteStreamRequest {
 /// Response message for `FinalizeWriteStream`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FinalizeWriteStreamResponse {
     /// Number of rows in the finalized stream.
     #[prost(int64, tag = "1")]
@@ -1362,7 +1476,7 @@ pub struct FinalizeWriteStreamResponse {
 /// Request message for `FlushRows`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FlushRowsRequest {
     /// Required. The stream that is the target of the flush operation.
     #[prost(string, tag = "1")]
@@ -1375,7 +1489,7 @@ pub struct FlushRowsRequest {
 /// Respond message for `FlushRows`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FlushRowsResponse {
     /// The rows before this offset (including this offset) are flushed.
     #[prost(int64, tag = "1")]
@@ -1387,7 +1501,7 @@ pub struct FlushRowsResponse {
 /// unstructured error text strings.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct StorageError {
     /// BigQuery Storage specific error code.
     #[prost(enumeration = "storage_error::StorageErrorCode", tag = "1")]
@@ -1494,7 +1608,7 @@ pub mod storage_error {
 /// The message that presents row level error info in a request.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RowError {
     /// Index of the malformed row in the request.
     #[prost(int64, tag = "1")]
@@ -1659,7 +1773,7 @@ pub mod big_query_read_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryRead/CreateReadSession",
             );
@@ -1671,9 +1785,9 @@ pub mod big_query_read_client {
             self.inner.unary(req, path, codec).await
         }
         /// Reads rows from the stream in the format prescribed by the ReadSession.
-        /// Each response contains one or more table rows, up to a maximum of 100 MiB
+        /// Each response contains one or more table rows, up to a maximum of 128 MB
         /// per response; read requests which attempt to read individual rows larger
-        /// than 100 MiB will fail.
+        /// than 128 MB will fail.
         ///
         /// Each request also returns a set of stream statistics reflecting the current
         /// state of the stream.
@@ -1687,7 +1801,7 @@ pub mod big_query_read_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryRead/ReadRows",
             );
@@ -1707,8 +1821,8 @@ pub mod big_query_read_client {
         ///
         /// Moreover, the two child streams will be allocated back-to-back in the
         /// original `ReadStream`. Concretely, it is guaranteed that for streams
-        /// original, primary, and residual, that original[0-j] = primary[0-j] and
-        /// original[j-n] = residual[0-m] once the streams have been read to
+        /// original, primary, and residual, that original\[0-j\] = primary\[0-j\] and
+        /// original\[j-n\] = residual\[0-m\] once the streams have been read to
         /// completion.
         pub async fn split_read_stream(
             &mut self,
@@ -1718,7 +1832,7 @@ pub mod big_query_read_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryRead/SplitReadStream",
             );
@@ -1828,7 +1942,7 @@ pub mod big_query_write_client {
             self
         }
         /// Creates a write stream to the given table.
-        /// Additionally, every table has a special stream named '_default'
+        /// Additionally, every table has a special stream named '\_default'
         /// to which data can be written. This stream doesn't need to be created using
         /// CreateWriteStream. It is a stream that can be used simultaneously by any
         /// number of clients. Data written to this stream is considered committed as
@@ -1840,7 +1954,7 @@ pub mod big_query_write_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/CreateWriteStream",
             );
@@ -1874,14 +1988,14 @@ pub mod big_query_write_client {
         /// table are governed by the type of stream:
         ///
         /// * For COMMITTED streams (which includes the default stream), data is
-        /// visible immediately upon successful append.
+        ///  visible immediately upon successful append.
         ///
         /// * For BUFFERED streams, data is made visible via a subsequent `FlushRows`
-        /// rpc which advances a cursor to a newer offset in the stream.
+        ///  rpc which advances a cursor to a newer offset in the stream.
         ///
         /// * For PENDING streams, data is not made visible until the stream itself is
-        /// finalized (via the `FinalizeWriteStream` rpc), and the stream is explicitly
-        /// committed via the `BatchCommitWriteStreams` rpc.
+        ///  finalized (via the `FinalizeWriteStream` rpc), and the stream is explicitly
+        ///  committed via the `BatchCommitWriteStreams` rpc.
         pub async fn append_rows(
             &mut self,
             request: impl tonic::IntoStreamingRequest<Message = super::AppendRowsRequest>,
@@ -1892,7 +2006,7 @@ pub mod big_query_write_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/AppendRows",
             );
@@ -1911,7 +2025,7 @@ pub mod big_query_write_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/GetWriteStream",
             );
@@ -1923,7 +2037,7 @@ pub mod big_query_write_client {
             self.inner.unary(req, path, codec).await
         }
         /// Finalize a write stream so that no new data can be appended to the
-        /// stream. Finalize is not supported on the '_default' stream.
+        /// stream. Finalize is not supported on the '\_default' stream.
         pub async fn finalize_write_stream(
             &mut self,
             request: impl tonic::IntoRequest<super::FinalizeWriteStreamRequest>,
@@ -1932,7 +2046,7 @@ pub mod big_query_write_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/FinalizeWriteStream",
             );
@@ -1959,7 +2073,7 @@ pub mod big_query_write_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/BatchCommitWriteStreams",
             );
@@ -1977,7 +2091,7 @@ pub mod big_query_write_client {
         /// Flush operation flushes up to any previously flushed offset in a BUFFERED
         /// stream, to the offset specified in the request.
         ///
-        /// Flush is not supported on the _default stream, since it is not BUFFERED.
+        /// Flush is not supported on the \_default stream, since it is not BUFFERED.
         pub async fn flush_rows(
             &mut self,
             request: impl tonic::IntoRequest<super::FlushRowsRequest>,
@@ -1985,7 +2099,7 @@ pub mod big_query_write_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.storage.v1.BigQueryWrite/FlushRows",
             );

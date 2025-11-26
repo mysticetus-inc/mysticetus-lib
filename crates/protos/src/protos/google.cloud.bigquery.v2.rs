@@ -2,7 +2,7 @@
 /// Configuration for Cloud KMS encryption settings.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EncryptionConfiguration {
     /// Optional. Describes the Cloud KMS encryption key that will be used to
     /// protect destination BigQuery table. The BigQuery Service Account associated
@@ -13,7 +13,7 @@ pub struct EncryptionConfiguration {
 /// Id path of a model.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ModelReference {
     /// Required. The ID of the project containing this model.
     #[prost(string, tag = "1")]
@@ -22,7 +22,7 @@ pub struct ModelReference {
     #[prost(string, tag = "2")]
     pub dataset_id: ::prost::alloc::string::String,
     /// Required. The ID of the model. The ID must contain only
-    /// letters (a-z, A-Z), numbers (0-9), or underscores (_). The maximum
+    /// letters (a-z, A-Z), numbers (0-9), or underscores (\_). The maximum
     /// length is 1,024 characters.
     #[prost(string, tag = "3")]
     pub model_id: ::prost::alloc::string::String,
@@ -34,41 +34,41 @@ pub struct ModelReference {
 ///
 /// * ARRAY<STRING>:
 ///
-///      {
-///        "typeKind": "ARRAY",
-///        "arrayElementType": {"typeKind": "STRING"}
-///      }
+///   {
+///   "typeKind": "ARRAY",
+///   "arrayElementType": {"typeKind": "STRING"}
+///   }
 ///
-/// * STRUCT<x STRING, y ARRAY<DATE>>:
+/// * STRUCT\<x STRING, y ARRAY<DATE>\>:
 ///
-///      {
-///        "typeKind": "STRUCT",
-///        "structType":
-///        {
-///          "fields":
-///          [
-///            {
-///              "name": "x",
-///              "type": {"typeKind": "STRING"}
-///            },
-///            {
-///              "name": "y",
-///              "type":
-///              {
-///                "typeKind": "ARRAY",
-///                "arrayElementType": {"typeKind": "DATE"}
-///              }
-///            }
-///          ]
-///        }
-///      }
+///   {
+///   "typeKind": "STRUCT",
+///   "structType":
+///   {
+///   "fields":
+///   \[
+///   {
+///   "name": "x",
+///   "type": {"typeKind": "STRING"}
+///   },
+///   {
+///   "name": "y",
+///   "type":
+///   {
+///   "typeKind": "ARRAY",
+///   "arrayElementType": {"typeKind": "DATE"}
+///   }
+///   }
+///   \]
+///   }
+///   }
 ///
 /// * RANGE<DATE>:
 ///
-///      {
-///        "typeKind": "RANGE",
-///        "rangeElementType": {"typeKind": "DATE"}
-///      }
+///   {
+///   "typeKind": "RANGE",
+///   "rangeElementType": {"typeKind": "DATE"}
+///   }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -126,7 +126,7 @@ pub mod standard_sql_data_type {
         /// because a JSON object cannot have duplicate field names.
         Struct = 17,
         /// Encoded as a pair with types matching range_element_type. Pairs must
-        /// begin with "[", end with ")", and be separated by ", ".
+        /// begin with "\[", end with ")", and be separated by ", ".
         Range = 29,
     }
     impl TypeKind {
@@ -231,7 +231,7 @@ pub struct StandardSqlTableType {
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TableReference {
     /// Required. The ID of the project containing this table.
     #[prost(string, tag = "1")]
@@ -252,11 +252,11 @@ pub struct TableReference {
 /// Remote Model Info
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RemoteModelInfo {
     /// Output only. Fully qualified name of the user-provided connection object of
     /// the remote model. Format:
-    /// ```"projects/{project_id}/locations/{location_id}/connections/{connection_id}"```
+    /// `"projects/{project_id}/locations/{location_id}/connections/{connection_id}"`
     #[prost(string, tag = "3")]
     pub connection: ::prost::alloc::string::String,
     /// Output only. Max number of rows in each batch sent to the remote service.
@@ -270,9 +270,8 @@ pub struct RemoteModelInfo {
     /// recognition. The expected format is
     /// `projects/{project}/locations/{location}/recognizers/{recognizer}`.
     /// Customers can specify this field at model creation. If not specified, a
-    /// default recognizer `projects/{model
-    /// project}/locations/global/recognizers/_` will be used. See more details at
-    /// [recognizers](<https://cloud.google.com/speech-to-text/v2/docs/reference/rest/v2/projects.locations.recognizers>)
+    /// default recognizer `projects/{model  project}/locations/global/recognizers/_` will be used.
+    /// See more details at [recognizers](<https://cloud.google.com/speech-to-text/v2/docs/reference/rest/v2/projects.locations.recognizers>)
     #[prost(string, tag = "7")]
     pub speech_recognizer: ::prost::alloc::string::String,
     /// Remote services are services outside of BigQuery used by remote models for
@@ -335,7 +334,7 @@ pub mod remote_model_info {
     /// a selected remote service type, but not both.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum RemoteService {
         /// Output only. The endpoint for remote model.
         #[prost(string, tag = "1")]
@@ -421,7 +420,7 @@ pub struct Model {
     #[prost(message, repeated, tag = "10")]
     pub feature_columns: ::prost::alloc::vec::Vec<StandardSqlField>,
     /// Output only. Label columns that were used to train this model.
-    /// The output of the model will have a "predicted_" prefix to these columns.
+    /// The output of the model will have a "predicted\_" prefix to these columns.
     #[prost(message, repeated, tag = "11")]
     pub label_columns: ::prost::alloc::vec::Vec<StandardSqlField>,
     /// Output only. This field will be populated if a TRANSFORM clause was used to
@@ -463,7 +462,7 @@ pub mod model {
     /// Enums for seasonal period.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct SeasonalPeriod {}
     /// Nested message and enum types in `SeasonalPeriod`.
     pub mod seasonal_period {
@@ -489,6 +488,8 @@ pub mod model {
             Quarterly = 5,
             /// Yearly period, 365 days or irregular.
             Yearly = 6,
+            /// Hourly period, 1 hour.
+            Hourly = 7,
         }
         impl SeasonalPeriodType {
             /// String value of the enum field names used in the ProtoBuf definition.
@@ -504,6 +505,7 @@ pub mod model {
                     Self::Monthly => "MONTHLY",
                     Self::Quarterly => "QUARTERLY",
                     Self::Yearly => "YEARLY",
+                    Self::Hourly => "HOURLY",
                 }
             }
             /// Creates an enum from field names used in the ProtoBuf definition.
@@ -516,6 +518,7 @@ pub mod model {
                     "MONTHLY" => Some(Self::Monthly),
                     "QUARTERLY" => Some(Self::Quarterly),
                     "YEARLY" => Some(Self::Yearly),
+                    "HOURLY" => Some(Self::Hourly),
                     _ => None,
                 }
             }
@@ -524,7 +527,7 @@ pub mod model {
     /// Enums for kmeans model type.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct KmeansEnums {}
     /// Nested message and enum types in `KmeansEnums`.
     pub mod kmeans_enums {
@@ -575,7 +578,7 @@ pub mod model {
     /// Enums for XGBoost model type.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct BoostedTreeOptionEnums {}
     /// Nested message and enum types in `BoostedTreeOptionEnums`.
     pub mod boosted_tree_option_enums {
@@ -705,7 +708,7 @@ pub mod model {
     /// Enums for hyperparameter tuning.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct HparamTuningEnums {}
     /// Nested message and enum types in `HparamTuningEnums`.
     pub mod hparam_tuning_enums {
@@ -732,7 +735,7 @@ pub mod model {
             /// median_absolute_error = APPROX_QUANTILES(absolute_error, 2)\[OFFSET(1)\]
             MedianAbsoluteError = 4,
             /// R^2 score. This corresponds to r2_score in ML.EVALUATE.
-            /// r_squared = 1 - SUM(squared_error)/(COUNT(label)*VAR_POP(label))
+            /// r_squared = 1 - SUM(squared_error)/(COUNT(label)\*VAR_POP(label))
             RSquared = 5,
             /// Explained variance.
             /// explained_variance = 1 - VAR_POP(label_error)/VAR_POP(label)
@@ -988,7 +991,7 @@ pub mod model {
             /// A single entry in the confusion matrix.
             #[derive(serde::Deserialize, serde::Serialize)]
             #[serde(rename_all = "camelCase")]
-            #[derive(Clone, PartialEq, ::prost::Message)]
+            #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
             pub struct Entry {
                 /// The predicted label. For confidence_threshold > 0, we will
                 /// also add an entry indicating the number of items under the
@@ -1073,7 +1076,7 @@ pub mod model {
                 pub struct CategoricalValue {
                     /// Counts of all categories for the categorical feature. If there are
                     /// more than ten categories, we return top ten (by count) and return
-                    /// one more CategoryCount with category "_OTHER_" and count as
+                    /// one more CategoryCount with category "*OTHER*" and count as
                     /// aggregate counts of remaining categories.
                     #[prost(message, repeated, tag = "1")]
                     pub category_counts: ::prost::alloc::vec::Vec<categorical_value::CategoryCount>,
@@ -1083,7 +1086,7 @@ pub mod model {
                     /// Represents the count of a single category within the cluster.
                     #[derive(serde::Deserialize, serde::Serialize)]
                     #[serde(rename_all = "camelCase")]
-                    #[derive(Clone, PartialEq, ::prost::Message)]
+                    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
                     pub struct CategoryCount {
                         /// The name of category.
                         #[prost(string, tag = "1")]
@@ -1266,7 +1269,7 @@ pub mod model {
     /// data tables that were used to train the model.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct DataSplitResult {
         /// Table reference of the training data after split.
         #[prost(message, optional, tag = "1")]
@@ -1281,7 +1284,7 @@ pub mod model {
     /// Arima order, can be used for both non-seasonal and seasonal parts.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ArimaOrder {
         /// Order of the autoregressive part.
         #[prost(message, optional, tag = "1")]
@@ -1346,7 +1349,7 @@ pub mod model {
     /// Encoding methods for categorical features.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct CategoryEncodingMethod {}
     /// Nested message and enum types in `CategoryEncodingMethod`.
     pub mod category_encoding_method {
@@ -1395,7 +1398,7 @@ pub mod model {
     /// PCA solver options.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct PcaSolverOptionEnums {}
     /// Nested message and enum types in `PcaSolverOptionEnums`.
     pub mod pca_solver_option_enums {
@@ -1444,7 +1447,7 @@ pub mod model {
     /// Model registry options.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct ModelRegistryOptionEnums {}
     /// Nested message and enum types in `ModelRegistryOptionEnums`.
     pub mod model_registry_option_enums {
@@ -1494,7 +1497,7 @@ pub mod model {
         /// Output only. The start time of this training run.
         #[prost(message, optional, tag = "8")]
         pub start_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
-        /// Output only. Output of each iteration run, results.size() <=
+        /// Output only. Output of each iteration run, results.size() \<=
         /// max_iterations.
         #[prost(message, repeated, tag = "6")]
         pub results: ::prost::alloc::vec::Vec<training_run::IterationResult>,
@@ -1580,14 +1583,14 @@ pub mod model {
             pub data_split_eval_fraction: f64,
             /// The column to split data with. This column won't be used as a
             /// feature.
-            /// 1. When data_split_method is CUSTOM, the corresponding column should
-            /// be boolean. The rows with true value tag are eval data, and the false
-            /// are training data.
-            /// 2. When data_split_method is SEQ, the first DATA_SPLIT_EVAL_FRACTION
-            /// rows (from smallest to largest) in the corresponding column are used
-            /// as training data, and the rest are eval data. It respects the order
-            /// in Orderable data types:
-            /// <https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_properties>
+            ///
+            /// 1. When data_split_method is CUSTOM, the corresponding column should be boolean.
+            ///    The rows with true value tag are eval data, and the false are training data.
+            /// 1. When data_split_method is SEQ, the first DATA_SPLIT_EVAL_FRACTION
+            ///    rows (from smallest to largest) in the corresponding column are used
+            ///    as training data, and the rest are eval data. It respects the order
+            ///    in Orderable data types:
+            ///    <https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_properties>
             #[prost(string, tag = "12")]
             pub data_split_column: ::prost::alloc::string::String,
             /// The strategy to determine learn rate for the current iteration.
@@ -1865,7 +1868,7 @@ pub mod model {
             #[prost(message, optional, tag = "85")]
             pub fit_intercept:
                 ::core::option::Option<super::super::super::super::super::protobuf::BoolValue>,
-            /// Number of principal components to keep in the PCA model. Must be <= the
+            /// Number of principal components to keep in the PCA model. Must be \<= the
             /// number of features.
             #[prost(int64, tag = "86")]
             pub num_principal_components: i64,
@@ -1930,6 +1933,104 @@ pub mod model {
             /// The apriori support minimum. Applies to contribution analysis models.
             #[prost(double, optional, tag = "107")]
             pub min_apriori_support: ::core::option::Option<f64>,
+            /// The idle TTL of the endpoint before the resources get destroyed. The
+            /// default value is 6.5 hours.
+            #[prost(message, optional, tag = "115")]
+            pub endpoint_idle_ttl:
+                ::core::option::Option<super::super::super::super::super::protobuf::Duration>,
+            /// The type of the machine used to deploy and serve the model.
+            #[prost(string, optional, tag = "117")]
+            pub machine_type: ::core::option::Option<::prost::alloc::string::String>,
+            /// The minimum number of machine replicas that will be always deployed on
+            /// an endpoint. This value must be greater than or equal to 1. The default
+            /// value is 1.
+            #[prost(int64, optional, tag = "118")]
+            pub min_replica_count: ::core::option::Option<i64>,
+            /// The maximum number of machine replicas that will be deployed on an
+            /// endpoint. The default value is equal to min_replica_count.
+            #[prost(int64, optional, tag = "119")]
+            pub max_replica_count: ::core::option::Option<i64>,
+            /// Specifies the reservation affinity type used to configure a Vertex AI
+            /// resource. The default value is `NO_RESERVATION`.
+            #[prost(
+                enumeration = "training_options::ReservationAffinityType",
+                optional,
+                tag = "120"
+            )]
+            pub reservation_affinity_type: ::core::option::Option<i32>,
+            /// Corresponds to the label key of a reservation resource used by Vertex
+            /// AI. To target a SPECIFIC_RESERVATION by name, use
+            /// `compute.googleapis.com/reservation-name` as the key and specify the
+            /// name of your reservation as its value.
+            #[prost(string, optional, tag = "121")]
+            pub reservation_affinity_key: ::core::option::Option<::prost::alloc::string::String>,
+            /// Corresponds to the label values of a reservation resource used by
+            /// Vertex AI. This must be the full resource name of the reservation or
+            /// reservation block.
+            #[prost(string, repeated, tag = "122")]
+            pub reservation_affinity_values:
+                ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+            /// The id that uniquely identifies an external model.
+            #[prost(oneof = "training_options::ExternalModelId", tags = "113, 114")]
+            pub external_model_id: ::core::option::Option<training_options::ExternalModelId>,
+        }
+        /// Nested message and enum types in `TrainingOptions`.
+        pub mod training_options {
+            /// Supported reservation affinity types to configure a Vertex AI
+            /// resource.
+            #[derive(serde::Deserialize, serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            #[derive(
+                Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration,
+            )]
+            #[repr(i32)]
+            pub enum ReservationAffinityType {
+                /// Default value.
+                Unspecified = 0,
+                /// No reservation.
+                NoReservation = 1,
+                /// Any reservation.
+                AnyReservation = 2,
+                /// Specific reservation.
+                SpecificReservation = 3,
+            }
+            impl ReservationAffinityType {
+                /// String value of the enum field names used in the ProtoBuf definition.
+                ///
+                /// The values are not transformed in any way and thus are considered stable
+                /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+                pub fn as_str_name(&self) -> &'static str {
+                    match self {
+                        Self::Unspecified => "RESERVATION_AFFINITY_TYPE_UNSPECIFIED",
+                        Self::NoReservation => "NO_RESERVATION",
+                        Self::AnyReservation => "ANY_RESERVATION",
+                        Self::SpecificReservation => "SPECIFIC_RESERVATION",
+                    }
+                }
+                /// Creates an enum from field names used in the ProtoBuf definition.
+                pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+                    match value {
+                        "RESERVATION_AFFINITY_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+                        "NO_RESERVATION" => Some(Self::NoReservation),
+                        "ANY_RESERVATION" => Some(Self::AnyReservation),
+                        "SPECIFIC_RESERVATION" => Some(Self::SpecificReservation),
+                        _ => None,
+                    }
+                }
+            }
+            /// The id that uniquely identifies an external model.
+            #[derive(serde::Deserialize, serde::Serialize)]
+            #[serde(rename_all = "camelCase")]
+            #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+            pub enum ExternalModelId {
+                /// The id of a Hugging Face model. For example, `google/gemma-2-2b-it`.
+                #[prost(string, tag = "113")]
+                HuggingFaceModelId(::prost::alloc::string::String),
+                /// The name of a Vertex model garden publisher model. Format is
+                /// `publishers/{publisher}/models/{model}@{optional_version_id}`.
+                #[prost(string, tag = "114")]
+                ModelGardenModelName(::prost::alloc::string::String),
+            }
         }
         /// Information about a single iteration of the training run.
         #[derive(serde::Deserialize, serde::Serialize)]
@@ -2183,7 +2284,7 @@ pub mod model {
         /// Range of an int hyperparameter.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct IntRange {
             /// Min value of the int parameter.
             #[prost(message, optional, tag = "1")]
@@ -2220,7 +2321,7 @@ pub mod model {
     /// Search space for string and enum.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct StringHparamSearchSpace {
         /// Canididates for the string or enum parameter in lower case.
         #[prost(string, repeated, tag = "1")]
@@ -2240,7 +2341,7 @@ pub mod model {
         /// An array of int.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, PartialEq, ::prost::Message)]
+        #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct IntArray {
             /// Elements in the int array.
             #[prost(int64, repeated, tag = "1")]
@@ -3185,7 +3286,7 @@ pub mod model {
 /// Request format for getting information about a BigQuery ML model.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetModelRequest {
     /// Required. Project ID of the requested model.
     #[prost(string, tag = "1")]
@@ -3219,7 +3320,7 @@ pub struct PatchModelRequest {
 /// Request format for deleting BigQuery ML models.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteModelRequest {
     /// Required. Project ID of the model to delete.
     #[prost(string, tag = "1")]
@@ -3234,7 +3335,7 @@ pub struct DeleteModelRequest {
 /// Request format for listing BigQuery ML models.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListModelsRequest {
     /// Required. Project ID of the models to list.
     #[prost(string, tag = "1")]
@@ -3364,7 +3465,7 @@ pub mod model_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.v2.ModelService/GetModel",
             );
@@ -3386,7 +3487,7 @@ pub mod model_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.v2.ModelService/ListModels",
             );
@@ -3405,7 +3506,7 @@ pub mod model_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.v2.ModelService/PatchModel",
             );
@@ -3427,7 +3528,7 @@ pub mod model_service_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.cloud.bigquery.v2.ModelService/DeleteModel",
             );

@@ -20,22 +20,23 @@ prost.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, optional = true }
 tonic = { workspace = true, optional = true }
+tonic-prost = { workspace = true, optional = true }
 timestamp = { path = "../timestamp", optional = true }
 # type-mods = { path = "../type-mods", features = ["enum-str"] }
 
 [build-dependencies]
-tonic-build = { workspace = true, features = ["prost"] }
+tonic-prost-build = { workspace = true }
 
 
 [features]
 default = []
 # Common dependencies
 protobuf = ["timestamp"]
-iam = ["protobuf", "type", "tonic"]
+iam = ["protobuf", "type", "dep:tonic", "dep:tonic-prost"]
 type = []
 longrunning = ["rpc"]
 api = ["protobuf"]
-rpc = ["protobuf", "tonic", "serde_json"]
+rpc = ["protobuf", "serde_json", "dep:tonic", "dep:tonic-prost",]
 
 # specific features
 bigquery = ["rpc"]

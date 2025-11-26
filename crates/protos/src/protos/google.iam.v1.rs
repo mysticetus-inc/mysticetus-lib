@@ -2,7 +2,7 @@
 /// Encapsulates settings provided to GetIamPolicy.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetPolicyOptions {
     /// Optional. The maximum policy version that will be used to format the
     /// policy.
@@ -28,7 +28,6 @@ pub struct GetPolicyOptions {
 /// An Identity and Access Management (IAM) policy, which specifies access
 /// controls for Google Cloud resources.
 ///
-///
 /// A `Policy` is a collection of `bindings`. A `binding` binds one or more
 /// `members`, or principals, to a single `role`. Principals can be user
 /// accounts, service accounts, Google groups, and domains (such as G Suite). A
@@ -45,55 +44,55 @@ pub struct GetPolicyOptions {
 ///
 /// **JSON example:**
 ///
-/// ```
-///      {
-///        "bindings": [
-///          {
-///            "role": "roles/resourcemanager.organizationAdmin",
-///            "members": [
-///              "user:mike@example.com",
-///              "group:admins@example.com",
-///              "domain:google.com",
-///              "serviceAccount:my-project-id@appspot.gserviceaccount.com"
-///            ]
-///          },
-///          {
-///            "role": "roles/resourcemanager.organizationViewer",
-///            "members": [
-///              "user:eve@example.com"
-///            ],
-///            "condition": {
-///              "title": "expirable access",
-///              "description": "Does not grant access after Sep 2020",
-///              "expression": "request.time <
-///              timestamp('2020-10-01T00:00:00.000Z')",
-///            }
-///          }
-///        ],
-///        "etag": "BwWWja0YfJA=",
-///        "version": 3
-///      }
+/// ```text,
+///     {
+///       "bindings": [
+///         {
+///           "role": "roles/resourcemanager.organizationAdmin",
+///           "members": [
+///             "user:mike@example.com",
+///             "group:admins@example.com",
+///             "domain:google.com",
+///             "serviceAccount:my-project-id@appspot.gserviceaccount.com"
+///           ]
+///         },
+///         {
+///           "role": "roles/resourcemanager.organizationViewer",
+///           "members": [
+///             "user:eve@example.com"
+///           ],
+///           "condition": {
+///             "title": "expirable access",
+///             "description": "Does not grant access after Sep 2020",
+///             "expression": "request.time <
+///             timestamp('2020-10-01T00:00:00.000Z')",
+///           }
+///         }
+///       ],
+///       "etag": "BwWWja0YfJA=",
+///       "version": 3
+///     }
 /// ```
 ///
 /// **YAML example:**
 ///
-/// ```
-///      bindings:
-///      - members:
-///        - user:mike@example.com
-///        - group:admins@example.com
-///        - domain:google.com
-///        - serviceAccount:my-project-id@appspot.gserviceaccount.com
-///        role: roles/resourcemanager.organizationAdmin
-///      - members:
-///        - user:eve@example.com
-///        role: roles/resourcemanager.organizationViewer
-///        condition:
-///          title: expirable access
-///          description: Does not grant access after Sep 2020
-///          expression: request.time < timestamp('2020-10-01T00:00:00.000Z')
-///      etag: BwWWja0YfJA=
-///      version: 3
+/// ```text,
+///     bindings:
+///     - members:
+///       - user:mike@example.com
+///       - group:admins@example.com
+///       - domain:google.com
+///       - serviceAccount:my-project-id@appspot.gserviceaccount.com
+///       role: roles/resourcemanager.organizationAdmin
+///     - members:
+///       - user:eve@example.com
+///       role: roles/resourcemanager.organizationViewer
+///       condition:
+///         title: expirable access
+///         description: Does not grant access after Sep 2020
+///         expression: request.time < timestamp('2020-10-01T00:00:00.000Z')
+///     etag: BwWWja0YfJA=
+///     version: 3
 /// ```
 ///
 /// For a description of IAM and its features, see the
@@ -162,7 +161,7 @@ pub struct Policy {
 /// Associates `members`, or principals, with a `role`.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Binding {
     /// Role that is assigned to the list of `members`, or principals.
     /// For example, `roles/viewer`, `roles/editor`, or `roles/owner`.
@@ -179,7 +178,6 @@ pub struct Binding {
     ///
     /// * `user:{emailid}`: An email address that represents a specific Google account. For
     ///   example, `alice@example.com` .
-    ///
     ///
     /// * `serviceAccount:{emailid}`: An email address that represents a service account. For
     ///   example, `my-other-app@appspot.gserviceaccount.com`.
@@ -203,10 +201,8 @@ pub struct Binding {
     ///   `admins@example.com?uid=123456789012345678901`. If the group is recovered, this value
     ///   reverts to `group:{emailid}` and the recovered group retains the role in the binding.
     ///
-    ///
     /// * `domain:{domain}`: The G Suite domain (primary) that represents all the users of that
     ///   domain. For example, `google.com` or `example.com`.
-    ///
     #[prost(string, repeated, tag = "2")]
     pub members: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     /// The condition that is associated with this binding.
@@ -236,41 +232,43 @@ pub struct Binding {
 ///
 /// Example Policy with multiple AuditConfigs:
 ///
+/// ```text
+/// {
+///    "audit_configs": [
 ///      {
-///        "audit_configs": [
+///        "service": "allServices",
+///        "audit_log_configs": [
 ///          {
-///            "service": "allServices",
-///            "audit_log_configs": [
-///              {
-///                "log_type": "DATA_READ",
-///                "exempted_members": [
-///                  "user:jose@example.com"
-///                ]
-///              },
-///              {
-///                "log_type": "DATA_WRITE"
-///              },
-///              {
-///                "log_type": "ADMIN_READ"
-///              }
+///            "log_type": "DATA_READ",
+///            "exempted_members": [
+///              "user:jose@example.com"
 ///            ]
 ///          },
 ///          {
-///            "service": "sampleservice.googleapis.com",
-///            "audit_log_configs": [
-///              {
-///                "log_type": "DATA_READ"
-///              },
-///              {
-///                "log_type": "DATA_WRITE",
-///                "exempted_members": [
-///                  "user:aliya@example.com"
-///                ]
-///              }
+///            "log_type": "DATA_WRITE"
+///          },
+///          {
+///            "log_type": "ADMIN_READ"
+///          }
+///        ]
+///      },
+///      {
+///        "service": "sampleservice.googleapis.com",
+///        "audit_log_configs": [
+///          {
+///            "log_type": "DATA_READ"
+///          },
+///          {
+///            "log_type": "DATA_WRITE",
+///            "exempted_members": [
+///              "user:aliya@example.com"
 ///            ]
 ///          }
 ///        ]
 ///      }
+///    ]
+/// }
+/// ```
 ///
 /// For sampleservice, this policy enables DATA_READ, DATA_WRITE and ADMIN_READ
 /// logging. It also exempts `jose@example.com` from DATA_READ logging, and
@@ -291,25 +289,27 @@ pub struct AuditConfig {
 /// Provides the configuration for logging a type of permissions.
 /// Example:
 ///
+/// ```text
+/// {
+///    "audit_log_configs": [
 ///      {
-///        "audit_log_configs": [
-///          {
-///            "log_type": "DATA_READ",
-///            "exempted_members": [
-///              "user:jose@example.com"
-///            ]
-///          },
-///          {
-///            "log_type": "DATA_WRITE"
-///          }
+///        "log_type": "DATA_READ",
+///        "exempted_members": [
+///          "user:jose@example.com"
 ///        ]
+///      },
+///      {
+///        "log_type": "DATA_WRITE"
 ///      }
+///    ]
+/// }
+/// ```
 ///
 /// This enables 'DATA_READ' and 'DATA_WRITE' logging, while exempting
 /// jose@example.com from DATA_READ logging.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AuditLogConfig {
     /// The log type that this config enables.
     #[prost(enumeration = "audit_log_config::LogType", tag = "1")]
@@ -317,7 +317,7 @@ pub struct AuditLogConfig {
     /// Specifies the identities that do not cause logging for this type of
     /// permission.
     /// Follows the same format of
-    /// [Binding.members][google.iam.v1.Binding.members].
+    /// \[Binding.members\]\[google.iam.v1.Binding.members\].
     #[prost(string, repeated, tag = "2")]
     pub exempted_members: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -380,7 +380,7 @@ pub struct PolicyDelta {
 /// entry) to a binding will be a separate entry.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct BindingDelta {
     /// The action that was performed on a Binding.
     /// Required
@@ -442,7 +442,7 @@ pub mod binding_delta {
 /// exempted_member in each entry) to a AuditConfig will be a separate entry.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct AuditConfigDelta {
     /// The action that was performed on an audit configuration in a policy.
     /// Required
@@ -529,7 +529,7 @@ pub struct SetIamPolicyRequest {
 /// Request message for `GetIamPolicy` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetIamPolicyRequest {
     /// REQUIRED: The resource for which the policy is being requested.
     /// See the operation documentation for the appropriate value for this field.
@@ -543,7 +543,7 @@ pub struct GetIamPolicyRequest {
 /// Request message for `TestIamPermissions` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TestIamPermissionsRequest {
     /// REQUIRED: The resource for which the policy detail is being requested.
     /// See the operation documentation for the appropriate value for this field.
@@ -559,7 +559,7 @@ pub struct TestIamPermissionsRequest {
 /// Response message for `TestIamPermissions` method.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TestIamPermissionsResponse {
     /// A subset of `TestPermissionsRequest.permissions` that the caller is
     /// allowed.
@@ -692,7 +692,7 @@ pub mod iam_policy_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/SetIamPolicy");
             let mut req = request.into_request();
@@ -710,7 +710,7 @@ pub mod iam_policy_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/GetIamPolicy");
             let mut req = request.into_request();
@@ -733,7 +733,7 @@ pub mod iam_policy_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path =
                 http::uri::PathAndQuery::from_static("/google.iam.v1.IAMPolicy/TestIamPermissions");
             let mut req = request.into_request();

@@ -3,7 +3,7 @@
 /// running instance operations.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OperationProgress {
     /// Percent completion of the operation.
     /// Values are between 0 and 100 inclusive.
@@ -20,7 +20,7 @@ pub struct OperationProgress {
 /// ReplicaSelection identifies replicas with common properties.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReplicaSelection {
     /// Required. Name of the location of the replicas (e.g., "us-central1").
     #[prost(string, tag = "1")]
@@ -65,7 +65,7 @@ impl FulfillmentPeriod {
 }
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReplicaInfo {
     /// The location of the serving resources, e.g., "us-central1".
     #[prost(string, tag = "1")]
@@ -174,7 +174,7 @@ pub struct InstanceConfig {
     /// user-managed configurations. Populated for Google-managed configurations.
     #[prost(message, repeated, tag = "6")]
     pub optional_replicas: ::prost::alloc::vec::Vec<ReplicaInfo>,
-    /// Base configuration name, e.g. projects/<project_name>/instanceConfigs/nam3,
+    /// Base configuration name, e.g. projects/\<project_name>/instanceConfigs/nam3,
     /// based on which this configuration is created. Only set for user-managed
     /// configurations. `base_config` must refer to a configuration of type
     /// `GOOGLE_MANAGED` in the same project as this configuration.
@@ -187,11 +187,11 @@ pub struct InstanceConfig {
     /// And they can be used as arguments to policy management rules (e.g. route,
     /// firewall, load balancing, etc.).
     ///
-    ///   * Label keys must be between 1 and 63 characters long and must conform to the following
-    ///     regular expression: `[a-z][a-z0-9_-]{0,62}`.
-    ///   * Label values must be between 0 and 63 characters long and must conform to the regular
-    ///     expression `\[a-z0-9_-\]{0,63}`.
-    ///   * No more than 64 labels can be associated with a given resource.
+    /// * Label keys must be between 1 and 63 characters long and must conform to the following
+    ///   regular expression: `[a-z][a-z0-9_-]{0,62}`.
+    /// * Label values must be between 0 and 63 characters long and must conform to the regular
+    ///   expression `\[a-z0-9_-\]{0,63}`.
+    /// * No more than 64 labels can be associated with a given resource.
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
     ///
@@ -199,8 +199,8 @@ pub struct InstanceConfig {
     /// characters may be allowed in the future. Therefore, you are advised to use
     /// an internal label representation, such as JSON, which doesn't rely upon
     /// specific characters being disallowed.  For example, representing labels
-    /// as the string:  name + "_" + value  would prove problematic if we were to
-    /// allow "_" in a future release.
+    /// as the string:  name + "*" + value  would prove problematic if we were to
+    /// allow "*" in a future release.
     #[prost(map = "string, string", tag = "8")]
     pub labels:
         ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
@@ -415,7 +415,7 @@ pub mod instance_config {
 /// allocated to each replica identified by the replica selection.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReplicaComputeCapacity {
     /// Required. Identifies replicas by specified properties.
     /// All replicas in the selection have the same amount of compute capacity.
@@ -438,7 +438,7 @@ pub mod replica_compute_capacity {
     /// autoscaling instances.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum ComputeCapacity {
         /// The number of nodes allocated to each replica.
         ///
@@ -487,7 +487,7 @@ pub mod autoscaling_config {
     /// min_limit and max_limit.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AutoscalingLimits {
         /// The minimum compute capacity for the instance.
         #[prost(oneof = "autoscaling_limits::MinLimit", tags = "1, 2")]
@@ -503,7 +503,7 @@ pub mod autoscaling_config {
         /// The minimum compute capacity for the instance.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum MinLimit {
             /// Minimum number of nodes allocated to the instance. If set, this number
             /// should be greater than or equal to 1.
@@ -519,7 +519,7 @@ pub mod autoscaling_config {
         /// capacity.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
         pub enum MaxLimit {
             /// Maximum number of nodes allocated to the instance. If set, this number
             /// should be greater than or equal to min_nodes.
@@ -535,7 +535,7 @@ pub mod autoscaling_config {
     /// The autoscaling targets for an instance.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AutoscalingTargets {
         /// Required. The target high priority cpu utilization percentage that the
         /// autoscaler should be trying to achieve for the instance. This number is
@@ -554,7 +554,7 @@ pub mod autoscaling_config {
     /// the given selection.
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, PartialEq, ::prost::Message)]
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct AsymmetricAutoscalingOption {
         /// Required. Selects the replicas to which this AsymmetricAutoscalingOption
         /// applies. Only read-only replicas are supported.
@@ -574,7 +574,7 @@ pub mod autoscaling_config {
         /// the top-level autoscaling configuration.
         #[derive(serde::Deserialize, serde::Serialize)]
         #[serde(rename_all = "camelCase")]
-        #[derive(Clone, Copy, PartialEq, ::prost::Message)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
         pub struct AutoscalingConfigOverrides {
             /// Optional. If specified, overrides the min/max limit in the top-level
             /// autoscaling configuration for the selected replicas.
@@ -601,8 +601,9 @@ pub struct Instance {
     pub name: ::prost::alloc::string::String,
     /// Required. The name of the instance's configuration. Values are of the form
     /// `projects/<project>/instanceConfigs/<configuration>`. See
-    /// also [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig] and
-    /// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs].
+    /// also \[InstanceConfig\]\[google.spanner.admin.instance.v1.InstanceConfig\] and
+    /// \[ListInstanceConfigs\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// ListInstanceConfigs\].
     #[prost(string, tag = "2")]
     pub config: ::prost::alloc::string::String,
     /// Required. The descriptive name for this instance as it appears in UIs.
@@ -620,7 +621,6 @@ pub struct Instance {
     ///
     /// This might be zero in API responses for instances that are not yet in the
     /// `READY` state.
-    ///
     ///
     /// For more information, see
     /// [Compute capacity, nodes, and processing
@@ -640,7 +640,6 @@ pub struct Instance {
     /// This might be zero in API responses for instances that are not yet in the
     /// `READY` state.
     ///
-    ///
     /// For more information, see
     /// [Compute capacity, nodes and processing
     /// units](<https://cloud.google.com/spanner/docs/compute-capacity>).
@@ -658,9 +657,9 @@ pub struct Instance {
     #[prost(message, optional, tag = "17")]
     pub autoscaling_config: ::core::option::Option<AutoscalingConfig>,
     /// Output only. The current instance state. For
-    /// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance],
+    /// \[CreateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\],
     /// the state must be either omitted or set to `CREATING`. For
-    /// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance],
+    /// \[UpdateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\],
     /// the state must be either omitted or set to `READY`.
     #[prost(enumeration = "instance::State", tag = "6")]
     pub state: i32,
@@ -671,11 +670,11 @@ pub struct Instance {
     /// And they can be used as arguments to policy management rules (e.g. route,
     /// firewall, load balancing, etc.).
     ///
-    ///   * Label keys must be between 1 and 63 characters long and must conform to the following
-    ///     regular expression: `[a-z][a-z0-9_-]{0,62}`.
-    ///   * Label values must be between 0 and 63 characters long and must conform to the regular
-    ///     expression `\[a-z0-9_-\]{0,63}`.
-    ///   * No more than 64 labels can be associated with a given resource.
+    /// * Label keys must be between 1 and 63 characters long and must conform to the following
+    ///   regular expression: `[a-z][a-z0-9_-]{0,62}`.
+    /// * Label values must be between 0 and 63 characters long and must conform to the regular
+    ///   expression `\[a-z0-9_-\]{0,63}`.
+    /// * No more than 64 labels can be associated with a given resource.
     ///
     /// See <https://goo.gl/xmQnxf> for more information on and examples of labels.
     ///
@@ -683,8 +682,8 @@ pub struct Instance {
     /// characters may be allowed in the future. And so you are advised to use an
     /// internal label representation, such as JSON, which doesn't rely upon
     /// specific characters being disallowed.  For example, representing labels
-    /// as the string:  name + "_" + value  would prove problematic if we were to
-    /// allow "_" in a future release.
+    /// as the string:  name + "*" + value  would prove problematic if we were to
+    /// allow "*" in a future release.
     #[prost(map = "string, string", tag = "7")]
     pub labels:
         ::std::collections::HashMap<::prost::alloc::string::String, ::prost::alloc::string::String>,
@@ -884,10 +883,10 @@ pub mod instance {
     }
 }
 /// The request for
-/// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs].
+/// \[ListInstanceConfigs\]\[google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListInstanceConfigsRequest {
     /// Required. The name of the project for which a list of supported instance
     /// configurations is requested. Values are of the form
@@ -899,15 +898,15 @@ pub struct ListInstanceConfigsRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.instance.v1.ListInstanceConfigsResponse.
-    /// next_page_token] from a previous
-    /// [ListInstanceConfigsResponse][google.spanner.admin.instance.v1.
-    /// ListInstanceConfigsResponse].
+    /// \[next_page_token\]\[google.spanner.admin.instance.v1.ListInstanceConfigsResponse.
+    /// next_page_token\] from a previous
+    /// \[ListInstanceConfigsResponse\]\[google.spanner.admin.instance.v1.
+    /// ListInstanceConfigsResponse\].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for
-/// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs].
+/// \[ListInstanceConfigs\]\[google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -916,16 +915,17 @@ pub struct ListInstanceConfigsResponse {
     #[prost(message, repeated, tag = "1")]
     pub instance_configs: ::prost::alloc::vec::Vec<InstanceConfig>,
     /// `next_page_token` can be sent in a subsequent
-    /// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs]
-    /// call to fetch more of the matching instance configurations.
+    /// \[ListInstanceConfigs\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// ListInstanceConfigs\] call to fetch more of the matching instance configurations.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// [GetInstanceConfigRequest][google.spanner.admin.instance.v1.InstanceAdmin.GetInstanceConfig].
+/// \[GetInstanceConfigRequest\]\[google.spanner.admin.instance.v1.InstanceAdmin.GetInstanceConfig\
+/// ].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetInstanceConfigRequest {
     /// Required. The name of the requested instance configuration. Values are of
     /// the form `projects/<project>/instanceConfigs/<config>`.
@@ -933,7 +933,7 @@ pub struct GetInstanceConfigRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for
-/// [CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig].
+/// \[CreateInstanceConfig\]\[google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -961,7 +961,7 @@ pub struct CreateInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// [UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig].
+/// \[UpdateInstanceConfig\]\[google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -969,16 +969,16 @@ pub struct UpdateInstanceConfigRequest {
     /// Required. The user instance configuration to update, which must always
     /// include the instance configuration name. Otherwise, only fields mentioned
     /// in
-    /// [update_mask][google.spanner.admin.instance.v1.UpdateInstanceConfigRequest.update_mask]
+    /// \[update_mask\]\[google.spanner.admin.instance.v1.UpdateInstanceConfigRequest.update_mask\]
     /// need be included. To prevent conflicts of concurrent updates,
-    /// [etag][google.spanner.admin.instance.v1.InstanceConfig.reconciling] can
+    /// \[etag\]\[google.spanner.admin.instance.v1.InstanceConfig.reconciling\] can
     /// be used.
     #[prost(message, optional, tag = "1")]
     pub instance_config: ::core::option::Option<InstanceConfig>,
     /// Required. A mask specifying which fields in
-    /// [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig] should be
+    /// \[InstanceConfig\]\[google.spanner.admin.instance.v1.InstanceConfig\] should be
     /// updated. The field mask must always be specified; this prevents any future
-    /// fields in [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig]
+    /// fields in \[InstanceConfig\]\[google.spanner.admin.instance.v1.InstanceConfig\]
     /// from being erased accidentally by clients that do not know about them. Only
     /// display_name and labels can be updated.
     #[prost(message, optional, tag = "2")]
@@ -989,10 +989,10 @@ pub struct UpdateInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// [DeleteInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstanceConfig].
+/// \[DeleteInstanceConfig\]\[google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstanceConfig\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteInstanceConfigRequest {
     /// Required. The name of the instance configuration to be deleted.
     /// Values are of the form
@@ -1014,11 +1014,11 @@ pub struct DeleteInstanceConfigRequest {
     pub validate_only: bool,
 }
 /// The request for
-/// [ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.
-/// ListInstanceConfigOperations].
+/// \[ListInstanceConfigOperations\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// ListInstanceConfigOperations\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListInstanceConfigOperationsRequest {
     /// Required. The project of the instance configuration operations.
     /// Values are of the form `projects/<project>`.
@@ -1034,17 +1034,17 @@ pub struct ListInstanceConfigOperationsRequest {
     ///
     /// The following fields in the Operation are eligible for filtering:
     ///
-    ///    * `name` - The name of the long-running operation
-    ///    * `done` - False if the operation is in progress, else true.
-    ///    * `metadata.@type` - the type of metadata. For example, the type string for
-    ///      [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.
-    ///      CreateInstanceConfigMetadata] is
-    ///      `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstanceConfigMetadata`.
-    ///    * `metadata.<field_name>` - any field in metadata.value. `metadata.@type` must be
-    ///      specified first, if filtering on metadata fields.
-    ///    * `error` - Error associated with the long-running operation.
-    ///    * `response.@type` - the type of response.
-    ///    * `response.<field_name>` - any field in response.value.
+    /// * `name` - The name of the long-running operation
+    /// * `done` - False if the operation is in progress, else true.
+    /// * `metadata.@type` - the type of metadata. For example, the type string for
+    ///   \[CreateInstanceConfigMetadata\]\[google.spanner.admin.instance.v1.
+    ///   CreateInstanceConfigMetadata\] is
+    ///   `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstanceConfigMetadata`.
+    /// * `metadata.<field_name>` - any field in metadata.value. `metadata.@type` must be specified
+    ///   first, if filtering on metadata fields.
+    /// * `error` - Error associated with the long-running operation.
+    /// * `response.@type` - the type of response.
+    /// * `response.<field_name>` - any field in response.value.
     ///
     /// You can combine multiple expressions by enclosing each expression in
     /// parentheses. By default, expressions are combined with AND logic. However,
@@ -1052,18 +1052,17 @@ pub struct ListInstanceConfigOperationsRequest {
     ///
     /// Here are a few examples:
     ///
-    ///    * `done:true` - The operation is complete.
-    ///    * `(metadata.@type=` \
-    ///      `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstanceConfigMetadata)
-    ///      AND` \ `(metadata.instance_config.name:custom-config) AND` \
-    ///      `(metadata.progress.start_time < \"2021-03-28T14:50:00Z\") AND` \ `(error:*)` - Return
-    ///      operations where:
-    ///      * The operation's metadata type is
-    ///      [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.
-    /// CreateInstanceConfigMetadata].
-    ///      * The instance configuration name contains "custom-config".
-    ///      * The operation started before 2021-03-28T14:50:00Z.
-    ///      * The operation resulted in an error.
+    /// * `done:true` - The operation is complete.
+    /// * `(metadata.@type=`
+    ///   `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstanceConfigMetadata) AND`
+    ///   `(metadata.instance_config.name:custom-config) AND` `(metadata.progress.start_time <
+    ///   \"2021-03-28T14:50:00Z\") AND` `(error:*)` - Return operations where:
+    ///   * The operation's metadata type is
+    ///     \[CreateInstanceConfigMetadata\]\[google.spanner.admin.instance.v1.
+    ///     CreateInstanceConfigMetadata\].
+    ///   * The instance configuration name contains "custom-config".
+    ///   * The operation started before 2021-03-28T14:50:00Z.
+    ///   * The operation resulted in an error.
     #[prost(string, tag = "2")]
     pub filter: ::prost::alloc::string::String,
     /// Number of operations to be returned in the response. If 0 or
@@ -1071,16 +1070,16 @@ pub struct ListInstanceConfigOperationsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.instance.v1.ListInstanceConfigOperationsResponse.
-    /// next_page_token] from a previous
-    /// [ListInstanceConfigOperationsResponse][google.spanner.admin.instance.v1.
-    /// ListInstanceConfigOperationsResponse] to the same `parent` and with the same `filter`.
+    /// \[next_page_token\]\[google.spanner.admin.instance.v1.ListInstanceConfigOperationsResponse.
+    /// next_page_token\] from a previous
+    /// \[ListInstanceConfigOperationsResponse\]\[google.spanner.admin.instance.v1.
+    /// ListInstanceConfigOperationsResponse\] to the same `parent` and with the same `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
 }
 /// The response for
-/// [ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.
-/// ListInstanceConfigOperations].
+/// \[ListInstanceConfigOperations\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// ListInstanceConfigOperations\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1093,30 +1092,30 @@ pub struct ListInstanceConfigOperationsResponse {
     #[prost(message, repeated, tag = "1")]
     pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
     /// `next_page_token` can be sent in a subsequent
-    /// [ListInstanceConfigOperations][google.spanner.admin.instance.v1.InstanceAdmin.
-    /// ListInstanceConfigOperations] call to fetch more of the matching metadata.
+    /// \[ListInstanceConfigOperations\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// ListInstanceConfigOperations\] call to fetch more of the matching metadata.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
 }
 /// The request for
-/// [GetInstance][google.spanner.admin.instance.v1.InstanceAdmin.GetInstance].
+/// \[GetInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.GetInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetInstanceRequest {
     /// Required. The name of the requested instance. Values are of the form
     /// `projects/<project>/instances/<instance>`.
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
     /// If field_mask is present, specifies the subset of
-    /// [Instance][google.spanner.admin.instance.v1.Instance] fields that should be
+    /// \[Instance\]\[google.spanner.admin.instance.v1.Instance\] fields that should be
     /// returned. If absent, all
-    /// [Instance][google.spanner.admin.instance.v1.Instance] fields are returned.
+    /// \[Instance\]\[google.spanner.admin.instance.v1.Instance\] fields are returned.
     #[prost(message, optional, tag = "2")]
     pub field_mask: ::core::option::Option<super::super::super::super::protobuf::FieldMask>,
 }
 /// The request for
-/// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance].
+/// \[CreateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1136,10 +1135,10 @@ pub struct CreateInstanceRequest {
     pub instance: ::core::option::Option<Instance>,
 }
 /// The request for
-/// [ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances].
+/// \[ListInstances\]\[google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListInstancesRequest {
     /// Required. The name of the project for which a list of instances is
     /// requested. Values are of the form `projects/<project>`.
@@ -1150,42 +1149,42 @@ pub struct ListInstancesRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.instance.v1.ListInstancesResponse.next_page_token]
-    /// from a previous
-    /// [ListInstancesResponse][google.spanner.admin.instance.v1.ListInstancesResponse].
+    /// \[next_page_token\]\[google.spanner.admin.instance.v1.ListInstancesResponse.
+    /// next_page_token\] from a previous
+    /// \[ListInstancesResponse\]\[google.spanner.admin.instance.v1.ListInstancesResponse\].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
     /// An expression for filtering the results of the request. Filter rules are
     /// case insensitive. The fields eligible for filtering are:
     ///
-    ///    * `name`
-    ///    * `display_name`
-    ///    * `labels.key` where key is the name of a label
+    /// * `name`
+    /// * `display_name`
+    /// * `labels.key` where key is the name of a label
     ///
     /// Some examples of using filters are:
     ///
-    ///    * `name:*` --> The instance has a name.
-    ///    * `name:Howl` --> The instance's name contains the string "howl".
-    ///    * `name:HOWL` --> Equivalent to above.
-    ///    * `NAME:howl` --> Equivalent to above.
-    ///    * `labels.env:*` --> The instance has the label "env".
-    ///    * `labels.env:dev` --> The instance has the label "env" and the value of the label
-    ///      contains the string "dev".
-    ///    * `name:howl labels.env:dev` --> The instance's name contains "howl" and it has the
-    ///      label "env" with its value containing "dev".
+    /// * `name:*` --> The instance has a name.
+    /// * `name:Howl` --> The instance's name contains the string "howl".
+    /// * `name:HOWL` --> Equivalent to above.
+    /// * `NAME:howl` --> Equivalent to above.
+    /// * `labels.env:*` --> The instance has the label "env".
+    /// * `labels.env:dev` --> The instance has the label "env" and the value of the label contains
+    ///   the string "dev".
+    /// * `name:howl labels.env:dev` --> The instance's name contains "howl" and it has the label
+    ///   "env" with its value containing "dev".
     #[prost(string, tag = "4")]
     pub filter: ::prost::alloc::string::String,
     /// Deadline used while retrieving metadata for instances.
     /// Instances whose metadata cannot be retrieved within this deadline will be
     /// added to
-    /// [unreachable][google.spanner.admin.instance.v1.ListInstancesResponse.unreachable]
+    /// \[unreachable\]\[google.spanner.admin.instance.v1.ListInstancesResponse.unreachable\]
     /// in
-    /// [ListInstancesResponse][google.spanner.admin.instance.v1.ListInstancesResponse].
+    /// \[ListInstancesResponse\]\[google.spanner.admin.instance.v1.ListInstancesResponse\].
     #[prost(message, optional, tag = "5")]
     pub instance_deadline: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// The response for
-/// [ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances].
+/// \[ListInstances\]\[google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1194,43 +1193,43 @@ pub struct ListInstancesResponse {
     #[prost(message, repeated, tag = "1")]
     pub instances: ::prost::alloc::vec::Vec<Instance>,
     /// `next_page_token` can be sent in a subsequent
-    /// [ListInstances][google.spanner.admin.instance.v1.InstanceAdmin.ListInstances]
+    /// \[ListInstances\]\[google.spanner.admin.instance.v1.InstanceAdmin.ListInstances\]
     /// call to fetch more of the matching instances.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
     /// The list of unreachable instances.
     /// It includes the names of instances whose metadata could not be retrieved
     /// within
-    /// [instance_deadline][google.spanner.admin.instance.v1.ListInstancesRequest.
-    /// instance_deadline].
+    /// \[instance_deadline\]\[google.spanner.admin.instance.v1.ListInstancesRequest.
+    /// instance_deadline\].
     #[prost(string, repeated, tag = "3")]
     pub unreachable: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// The request for
-/// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance].
+/// \[UpdateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInstanceRequest {
     /// Required. The instance to update, which must always include the instance
     /// name.  Otherwise, only fields mentioned in
-    /// [field_mask][google.spanner.admin.instance.v1.UpdateInstanceRequest.field_mask]
+    /// \[field_mask\]\[google.spanner.admin.instance.v1.UpdateInstanceRequest.field_mask\]
     /// need be included.
     #[prost(message, optional, tag = "1")]
     pub instance: ::core::option::Option<Instance>,
     /// Required. A mask specifying which fields in
-    /// [Instance][google.spanner.admin.instance.v1.Instance] should be updated.
+    /// \[Instance\]\[google.spanner.admin.instance.v1.Instance\] should be updated.
     /// The field mask must always be specified; this prevents any future fields in
-    /// [Instance][google.spanner.admin.instance.v1.Instance] from being erased
+    /// \[Instance\]\[google.spanner.admin.instance.v1.Instance\] from being erased
     /// accidentally by clients that do not know about them.
     #[prost(message, optional, tag = "2")]
     pub field_mask: ::core::option::Option<super::super::super::super::protobuf::FieldMask>,
 }
 /// The request for
-/// [DeleteInstance][google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstance].
+/// \[DeleteInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.DeleteInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteInstanceRequest {
     /// Required. The name of the instance to be deleted. Values are of the form
     /// `projects/<project>/instances/<instance>`
@@ -1238,7 +1237,7 @@ pub struct DeleteInstanceRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// Metadata type for the operation returned by
-/// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance].
+/// \[CreateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1247,7 +1246,7 @@ pub struct CreateInstanceMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance: ::core::option::Option<Instance>,
     /// The time at which the
-    /// [CreateInstance][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance]
+    /// \[CreateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.CreateInstance\]
     /// request was received.
     #[prost(message, optional, tag = "2")]
     pub start_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
@@ -1264,7 +1263,7 @@ pub struct CreateInstanceMetadata {
     pub expected_fulfillment_period: i32,
 }
 /// Metadata type for the operation returned by
-/// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance].
+/// \[UpdateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1273,7 +1272,7 @@ pub struct UpdateInstanceMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance: ::core::option::Option<Instance>,
     /// The time at which
-    /// [UpdateInstance][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance]
+    /// \[UpdateInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstance\]
     /// request was received.
     #[prost(message, optional, tag = "2")]
     pub start_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
@@ -1293,7 +1292,7 @@ pub struct UpdateInstanceMetadata {
 /// upgraded for tracking purposes.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct FreeInstanceMetadata {
     /// Output only. Timestamp after which the instance will either be upgraded or
     /// scheduled for deletion after a grace period. ExpireBehavior is used to
@@ -1352,7 +1351,7 @@ pub mod free_instance_metadata {
     }
 }
 /// Metadata type for the operation returned by
-/// [CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig].
+/// \[CreateInstanceConfig\]\[google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1361,8 +1360,8 @@ pub struct CreateInstanceConfigMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance_config: ::core::option::Option<InstanceConfig>,
     /// The progress of the
-    /// [CreateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.CreateInstanceConfig]
-    /// operation.
+    /// \[CreateInstanceConfig\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// CreateInstanceConfig\] operation.
     #[prost(message, optional, tag = "2")]
     pub progress: ::core::option::Option<OperationProgress>,
     /// The time at which this operation was cancelled.
@@ -1370,7 +1369,7 @@ pub struct CreateInstanceConfigMetadata {
     pub cancel_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// Metadata type for the operation returned by
-/// [UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig].
+/// \[UpdateInstanceConfig\]\[google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1379,8 +1378,8 @@ pub struct UpdateInstanceConfigMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance_config: ::core::option::Option<InstanceConfig>,
     /// The progress of the
-    /// [UpdateInstanceConfig][google.spanner.admin.instance.v1.InstanceAdmin.UpdateInstanceConfig]
-    /// operation.
+    /// \[UpdateInstanceConfig\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// UpdateInstanceConfig\] operation.
     #[prost(message, optional, tag = "2")]
     pub progress: ::core::option::Option<OperationProgress>,
     /// The time at which this operation was cancelled.
@@ -1403,14 +1402,21 @@ pub struct InstancePartition {
     pub name: ::prost::alloc::string::String,
     /// Required. The name of the instance partition's configuration. Values are of
     /// the form `projects/<project>/instanceConfigs/<configuration>`. See also
-    /// [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig] and
-    /// [ListInstanceConfigs][google.spanner.admin.instance.v1.InstanceAdmin.ListInstanceConfigs].
+    /// \[InstanceConfig\]\[google.spanner.admin.instance.v1.InstanceConfig\] and
+    /// \[ListInstanceConfigs\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// ListInstanceConfigs\].
     #[prost(string, tag = "2")]
     pub config: ::prost::alloc::string::String,
     /// Required. The descriptive name for this instance partition as it appears in
     /// UIs. Must be unique per project and between 4 and 30 characters in length.
     #[prost(string, tag = "3")]
     pub display_name: ::prost::alloc::string::String,
+    /// Optional. The autoscaling configuration. Autoscaling is enabled if this
+    /// field is set. When autoscaling is enabled, fields in compute_capacity are
+    /// treated as OUTPUT_ONLY fields and reflect the current compute capacity
+    /// allocated to the instance partition.
+    #[prost(message, optional, tag = "13")]
+    pub autoscaling_config: ::core::option::Option<AutoscalingConfig>,
     /// Output only. The current instance partition state.
     #[prost(enumeration = "instance_partition::State", tag = "7")]
     pub state: i32,
@@ -1504,7 +1510,7 @@ pub mod instance_partition {
     /// units](<https://cloud.google.com/spanner/docs/compute-capacity>).
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
-    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum ComputeCapacity {
         /// The number of nodes allocated to this instance partition.
         ///
@@ -1527,8 +1533,8 @@ pub mod instance_partition {
     }
 }
 /// Metadata type for the operation returned by
-/// [CreateInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.
-/// CreateInstancePartition].
+/// \[CreateInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// CreateInstancePartition\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1537,8 +1543,8 @@ pub struct CreateInstancePartitionMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance_partition: ::core::option::Option<InstancePartition>,
     /// The time at which the
-    /// [CreateInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.
-    /// CreateInstancePartition] request was received.
+    /// \[CreateInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// CreateInstancePartition\] request was received.
     #[prost(message, optional, tag = "2")]
     pub start_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// The time at which this operation was cancelled. If set, this operation is
@@ -1551,8 +1557,8 @@ pub struct CreateInstancePartitionMetadata {
     pub end_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// The request for
-/// [CreateInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.
-/// CreateInstancePartition].
+/// \[CreateInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// CreateInstancePartition\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1574,11 +1580,11 @@ pub struct CreateInstancePartitionRequest {
     pub instance_partition: ::core::option::Option<InstancePartition>,
 }
 /// The request for
-/// [DeleteInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.
-/// DeleteInstancePartition].
+/// \[DeleteInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// DeleteInstancePartition\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteInstancePartitionRequest {
     /// Required. The name of the instance partition to be deleted.
     /// Values are of the form
@@ -1593,10 +1599,10 @@ pub struct DeleteInstancePartitionRequest {
     pub etag: ::prost::alloc::string::String,
 }
 /// The request for
-/// [GetInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.GetInstancePartition].
+/// \[GetInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.GetInstancePartition\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetInstancePartitionRequest {
     /// Required. The name of the requested instance partition. Values are of
     /// the form
@@ -1605,30 +1611,30 @@ pub struct GetInstancePartitionRequest {
     pub name: ::prost::alloc::string::String,
 }
 /// The request for
-/// [UpdateInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.
-/// UpdateInstancePartition].
+/// \[UpdateInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// UpdateInstancePartition\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateInstancePartitionRequest {
     /// Required. The instance partition to update, which must always include the
     /// instance partition name. Otherwise, only fields mentioned in
-    /// [field_mask][google.spanner.admin.instance.v1.UpdateInstancePartitionRequest.field_mask]
-    /// need be included.
+    /// \[field_mask\]\[google.spanner.admin.instance.v1.UpdateInstancePartitionRequest.field_mask\
+    /// ] need be included.
     #[prost(message, optional, tag = "1")]
     pub instance_partition: ::core::option::Option<InstancePartition>,
     /// Required. A mask specifying which fields in
-    /// [InstancePartition][google.spanner.admin.instance.v1.InstancePartition]
+    /// \[InstancePartition\]\[google.spanner.admin.instance.v1.InstancePartition\]
     /// should be updated. The field mask must always be specified; this prevents
     /// any future fields in
-    /// [InstancePartition][google.spanner.admin.instance.v1.InstancePartition]
+    /// \[InstancePartition\]\[google.spanner.admin.instance.v1.InstancePartition\]
     /// from being erased accidentally by clients that do not know about them.
     #[prost(message, optional, tag = "2")]
     pub field_mask: ::core::option::Option<super::super::super::super::protobuf::FieldMask>,
 }
 /// Metadata type for the operation returned by
-/// [UpdateInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.
-/// UpdateInstancePartition].
+/// \[UpdateInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// UpdateInstancePartition\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1637,8 +1643,8 @@ pub struct UpdateInstancePartitionMetadata {
     #[prost(message, optional, tag = "1")]
     pub instance_partition: ::core::option::Option<InstancePartition>,
     /// The time at which
-    /// [UpdateInstancePartition][google.spanner.admin.instance.v1.InstanceAdmin.
-    /// UpdateInstancePartition] request was received.
+    /// \[UpdateInstancePartition\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// UpdateInstancePartition\] request was received.
     #[prost(message, optional, tag = "2")]
     pub start_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
     /// The time at which this operation was cancelled. If set, this operation is
@@ -1651,15 +1657,16 @@ pub struct UpdateInstancePartitionMetadata {
     pub end_time: ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// The request for
-/// [ListInstancePartitions][google.spanner.admin.instance.v1.InstanceAdmin.ListInstancePartitions].
+/// \[ListInstancePartitions\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// ListInstancePartitions\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListInstancePartitionsRequest {
     /// Required. The instance whose instance partitions should be listed. Values
-    /// are of the form `projects/<project>/instances/<instance>`. Use `{instance}
-    /// = '-'` to list instance partitions for all Instances in a project, e.g.,
-    /// `projects/myproject/instances/-`.
+    /// are of the form `projects/<project>/instances/<instance>`. Use `{instance}  = '-'` to list
+    /// instance partitions for all Instances in a project, e.g., `projects/myproject/
+    /// instances/-`.
     #[prost(string, tag = "1")]
     pub parent: ::prost::alloc::string::String,
     /// Number of instance partitions to be returned in the response. If 0 or less,
@@ -1667,25 +1674,26 @@ pub struct ListInstancePartitionsRequest {
     #[prost(int32, tag = "2")]
     pub page_size: i32,
     /// If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.instance.v1.ListInstancePartitionsResponse.
-    /// next_page_token] from a previous
-    /// [ListInstancePartitionsResponse][google.spanner.admin.instance.v1.
-    /// ListInstancePartitionsResponse].
+    /// \[next_page_token\]\[google.spanner.admin.instance.v1.ListInstancePartitionsResponse.
+    /// next_page_token\] from a previous
+    /// \[ListInstancePartitionsResponse\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionsResponse\].
     #[prost(string, tag = "3")]
     pub page_token: ::prost::alloc::string::String,
     /// Optional. Deadline used while retrieving metadata for instance partitions.
     /// Instance partitions whose metadata cannot be retrieved within this deadline
     /// will be added to
-    /// [unreachable][google.spanner.admin.instance.v1.ListInstancePartitionsResponse.unreachable]
-    /// in
-    /// [ListInstancePartitionsResponse][google.spanner.admin.instance.v1.
-    /// ListInstancePartitionsResponse].
+    /// \[unreachable\]\[google.spanner.admin.instance.v1.ListInstancePartitionsResponse.
+    /// unreachable\] in
+    /// \[ListInstancePartitionsResponse\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionsResponse\].
     #[prost(message, optional, tag = "4")]
     pub instance_partition_deadline:
         ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// The response for
-/// [ListInstancePartitions][google.spanner.admin.instance.v1.InstanceAdmin.ListInstancePartitions].
+/// \[ListInstancePartitions\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// ListInstancePartitions\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1694,24 +1702,24 @@ pub struct ListInstancePartitionsResponse {
     #[prost(message, repeated, tag = "1")]
     pub instance_partitions: ::prost::alloc::vec::Vec<InstancePartition>,
     /// `next_page_token` can be sent in a subsequent
-    /// [ListInstancePartitions][google.spanner.admin.instance.v1.InstanceAdmin.
-    /// ListInstancePartitions] call to fetch more of the matching instance partitions.
+    /// \[ListInstancePartitions\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// ListInstancePartitions\] call to fetch more of the matching instance partitions.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
     /// The list of unreachable instances or instance partitions.
     /// It includes the names of instances or instance partitions whose metadata
     /// could not be retrieved within
-    /// [instance_partition_deadline][google.spanner.admin.instance.v1.
-    /// ListInstancePartitionsRequest.instance_partition_deadline].
+    /// \[instance_partition_deadline\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionsRequest.instance_partition_deadline\].
     #[prost(string, repeated, tag = "3")]
     pub unreachable: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// The request for
-/// [ListInstancePartitionOperations][google.spanner.admin.instance.v1.InstanceAdmin.
-/// ListInstancePartitionOperations].
+/// \[ListInstancePartitionOperations\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// ListInstancePartitionOperations\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ListInstancePartitionOperationsRequest {
     /// Required. The parent instance of the instance partition operations.
     /// Values are of the form `projects/<project>/instances/<instance>`.
@@ -1727,18 +1735,17 @@ pub struct ListInstancePartitionOperationsRequest {
     ///
     /// The following fields in the Operation are eligible for filtering:
     ///
-    ///    * `name` - The name of the long-running operation
-    ///    * `done` - False if the operation is in progress, else true.
-    ///    * `metadata.@type` - the type of metadata. For example, the type string for
-    ///      [CreateInstancePartitionMetadata][google.spanner.admin.instance.v1.
-    ///      CreateInstancePartitionMetadata] is
-    ///      `type.googleapis.com/google.spanner.admin.instance.v1.
-    ///      CreateInstancePartitionMetadata`.
-    ///    * `metadata.<field_name>` - any field in metadata.value. `metadata.@type` must be
-    ///      specified first, if filtering on metadata fields.
-    ///    * `error` - Error associated with the long-running operation.
-    ///    * `response.@type` - the type of response.
-    ///    * `response.<field_name>` - any field in response.value.
+    /// * `name` - The name of the long-running operation
+    /// * `done` - False if the operation is in progress, else true.
+    /// * `metadata.@type` - the type of metadata. For example, the type string for
+    ///   \[CreateInstancePartitionMetadata\]\[google.spanner.admin.instance.v1.
+    ///   CreateInstancePartitionMetadata\] is
+    ///   `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstancePartitionMetadata`.
+    /// * `metadata.<field_name>` - any field in metadata.value. `metadata.@type` must be specified
+    ///   first, if filtering on metadata fields.
+    /// * `error` - Error associated with the long-running operation.
+    /// * `response.@type` - the type of response.
+    /// * `response.<field_name>` - any field in response.value.
     ///
     /// You can combine multiple expressions by enclosing each expression in
     /// parentheses. By default, expressions are combined with AND logic. However,
@@ -1746,18 +1753,18 @@ pub struct ListInstancePartitionOperationsRequest {
     ///
     /// Here are a few examples:
     ///
-    ///    * `done:true` - The operation is complete.
-    ///    * `(metadata.@type=` \
-    ///      `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstancePartitionMetadata)
-    ///      AND` \ `(metadata.instance_partition.name:custom-instance-partition) AND` \
-    ///      `(metadata.start_time < \"2021-03-28T14:50:00Z\") AND` \ `(error:*)` - Return
-    ///      operations where:
-    ///      * The operation's metadata type is
-    ///      [CreateInstancePartitionMetadata][google.spanner.admin.instance.v1.
-    /// CreateInstancePartitionMetadata].
-    ///      * The instance partition name contains "custom-instance-partition".
-    ///      * The operation started before 2021-03-28T14:50:00Z.
-    ///      * The operation resulted in an error.
+    /// * `done:true` - The operation is complete.
+    /// * `(metadata.@type=`
+    ///   `type.googleapis.com/google.spanner.admin.instance.v1.CreateInstancePartitionMetadata)
+    ///   AND` `(metadata.instance_partition.name:custom-instance-partition) AND`
+    ///   `(metadata.start_time < \"2021-03-28T14:50:00Z\") AND` `(error:*)` - Return operations
+    ///   where:
+    ///   * The operation's metadata type is
+    ///     \[CreateInstancePartitionMetadata\]\[google.spanner.admin.instance.v1.
+    ///     CreateInstancePartitionMetadata\].
+    ///   * The instance partition name contains "custom-instance-partition".
+    ///   * The operation started before 2021-03-28T14:50:00Z.
+    ///   * The operation resulted in an error.
     #[prost(string, tag = "2")]
     pub filter: ::prost::alloc::string::String,
     /// Optional. Number of operations to be returned in the response. If 0 or
@@ -1765,27 +1772,27 @@ pub struct ListInstancePartitionOperationsRequest {
     #[prost(int32, tag = "3")]
     pub page_size: i32,
     /// Optional. If non-empty, `page_token` should contain a
-    /// [next_page_token][google.spanner.admin.instance.v1.ListInstancePartitionOperationsResponse.
-    /// next_page_token] from a previous
-    /// [ListInstancePartitionOperationsResponse][google.spanner.admin.instance.v1.
-    /// ListInstancePartitionOperationsResponse] to the same `parent` and with the same
+    /// \[next_page_token\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionOperationsResponse.next_page_token\] from a previous
+    /// \[ListInstancePartitionOperationsResponse\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionOperationsResponse\] to the same `parent` and with the same
     /// `filter`.
     #[prost(string, tag = "4")]
     pub page_token: ::prost::alloc::string::String,
     /// Optional. Deadline used while retrieving metadata for instance partition
     /// operations. Instance partitions whose operation metadata cannot be
     /// retrieved within this deadline will be added to
-    /// [unreachable_instance_partitions][google.spanner.admin.instance.v1.
-    /// ListInstancePartitionOperationsResponse.unreachable_instance_partitions] in
-    /// [ListInstancePartitionOperationsResponse][google.spanner.admin.instance.v1.
-    /// ListInstancePartitionOperationsResponse].
+    /// \[unreachable_instance_partitions\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionOperationsResponse.unreachable_instance_partitions\] in
+    /// \[ListInstancePartitionOperationsResponse\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionOperationsResponse\].
     #[prost(message, optional, tag = "5")]
     pub instance_partition_deadline:
         ::core::option::Option<super::super::super::super::protobuf::Timestamp>,
 }
 /// The response for
-/// [ListInstancePartitionOperations][google.spanner.admin.instance.v1.InstanceAdmin.
-/// ListInstancePartitionOperations].
+/// \[ListInstancePartitionOperations\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+/// ListInstancePartitionOperations\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1798,23 +1805,23 @@ pub struct ListInstancePartitionOperationsResponse {
     #[prost(message, repeated, tag = "1")]
     pub operations: ::prost::alloc::vec::Vec<super::super::super::super::longrunning::Operation>,
     /// `next_page_token` can be sent in a subsequent
-    /// [ListInstancePartitionOperations][google.spanner.admin.instance.v1.InstanceAdmin.
-    /// ListInstancePartitionOperations] call to fetch more of the matching metadata.
+    /// \[ListInstancePartitionOperations\]\[google.spanner.admin.instance.v1.InstanceAdmin.
+    /// ListInstancePartitionOperations\] call to fetch more of the matching metadata.
     #[prost(string, tag = "2")]
     pub next_page_token: ::prost::alloc::string::String,
     /// The list of unreachable instance partitions.
     /// It includes the names of instance partitions whose operation metadata could
     /// not be retrieved within
-    /// [instance_partition_deadline][google.spanner.admin.instance.v1.
-    /// ListInstancePartitionOperationsRequest.instance_partition_deadline].
+    /// \[instance_partition_deadline\]\[google.spanner.admin.instance.v1.
+    /// ListInstancePartitionOperationsRequest.instance_partition_deadline\].
     #[prost(string, repeated, tag = "3")]
     pub unreachable_instance_partitions: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 /// The request for
-/// [MoveInstance][google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance].
+/// \[MoveInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MoveInstanceRequest {
     /// Required. The instance to move.
     /// Values are of the form `projects/<project>/instances/<instance>`.
@@ -1826,25 +1833,25 @@ pub struct MoveInstanceRequest {
     pub target_config: ::prost::alloc::string::String,
 }
 /// The response for
-/// [MoveInstance][google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance].
+/// \[MoveInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MoveInstanceResponse {}
 /// Metadata type for the operation returned by
-/// [MoveInstance][google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance].
+/// \[MoveInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance\].
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct MoveInstanceMetadata {
     /// The target instance configuration where to move the instance.
     /// Values are of the form `projects/<project>/instanceConfigs/<config>`.
     #[prost(string, tag = "1")]
     pub target_config: ::prost::alloc::string::String,
     /// The progress of the
-    /// [MoveInstance][google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance]
+    /// \[MoveInstance\]\[google.spanner.admin.instance.v1.InstanceAdmin.MoveInstance\]
     /// operation.
-    /// [progress_percent][google.spanner.admin.instance.v1.OperationProgress.progress_percent]
+    /// \[progress_percent\]\[google.spanner.admin.instance.v1.OperationProgress.progress_percent\]
     /// is reset when cancellation is requested.
     #[prost(message, optional, tag = "2")]
     pub progress: ::core::option::Option<OperationProgress>,
@@ -1975,7 +1982,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstanceConfigs",
             );
@@ -1994,7 +2001,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/GetInstanceConfig",
             );
@@ -2014,38 +2021,38 @@ pub mod instance_admin_client {
         ///
         /// Immediately after the request returns:
         ///
-        ///   * The instance configuration is readable via the API, with all requested attributes.
-        ///     The instance configuration's
-        ///     [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling] field is
-        ///     set to true. Its state is `CREATING`.
+        /// * The instance configuration is readable via the API, with all requested
+        ///  attributes. The instance configuration's
+        ///  \[reconciling\]\[google.spanner.admin.instance.v1.InstanceConfig.reconciling\]
+        ///  field is set to true. Its state is `CREATING`.
         ///
         /// While the operation is pending:
         ///
-        ///   * Cancelling the operation renders the instance configuration immediately unreadable
-        ///     via the API.
-        ///   * Except for deleting the creating resource, all other attempts to modify the instance
-        ///     configuration are rejected.
+        /// * Cancelling the operation renders the instance configuration immediately
+        ///  unreadable via the API.
+        /// * Except for deleting the creating resource, all other attempts to modify
+        ///  the instance configuration are rejected.
         ///
         /// Upon completion of the returned operation:
         ///
-        ///   * Instances can be created using the instance configuration.
-        ///   * The instance configuration's
-        ///   [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
-        ///   field becomes false. Its state becomes `READY`.
+        /// * Instances can be created using the instance configuration.
+        /// * The instance configuration's
+        ///  \[reconciling\]\[google.spanner.admin.instance.v1.InstanceConfig.reconciling\]
+        ///  field becomes false. Its state becomes `READY`.
         ///
         /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_config_name>/operations/<operation_id>` and can be used to track
         /// creation of the instance configuration. The
         /// metadata field type is
-        /// [CreateInstanceConfigMetadata][google.spanner.admin.instance.v1.
-        /// CreateInstanceConfigMetadata]. The response field type is
-        /// [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig], if
+        /// \[CreateInstanceConfigMetadata\]\[google.spanner.admin.instance.v1.
+        /// CreateInstanceConfigMetadata\]. The response field type is
+        /// \[InstanceConfig\]\[google.spanner.admin.instance.v1.InstanceConfig\], if
         /// successful.
         ///
         /// Authorization requires `spanner.instanceConfigs.create` permission on
         /// the resource
-        /// [parent][google.spanner.admin.instance.v1.CreateInstanceConfigRequest.parent].
+        /// \[parent\]\[google.spanner.admin.instance.v1.CreateInstanceConfigRequest.parent\].
         pub async fn create_instance_config(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateInstanceConfigRequest>,
@@ -2056,7 +2063,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/CreateInstanceConfig",
             );
@@ -2076,40 +2083,41 @@ pub mod instance_admin_client {
         ///
         /// Immediately after the request returns:
         ///
-        ///   * The instance configuration's
-        ///     [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling] field is
-        ///     set to true.
+        /// * The instance configuration's
+        ///  \[reconciling\]\[google.spanner.admin.instance.v1.InstanceConfig.reconciling\]
+        ///  field is set to true.
         ///
         /// While the operation is pending:
         ///
-        ///   * Cancelling the operation sets its metadata's
-        ///     [cancel_time][google.spanner.admin.instance.v1.UpdateInstanceConfigMetadata.
-        ///     cancel_time]. The operation is guaranteed to succeed at undoing all changes, after
-        ///     which point it terminates with a `CANCELLED` status.
-        ///   * All other attempts to modify the instance configuration are rejected.
-        ///   * Reading the instance configuration via the API continues to give the pre-request
-        ///     values.
+        /// * Cancelling the operation sets its metadata's
+        ///  \[cancel_time\]\[google.spanner.admin.instance.v1.UpdateInstanceConfigMetadata.
+        /// cancel_time\].  The operation is guaranteed to succeed at undoing all changes,
+        /// after  which point it terminates with a `CANCELLED` status.
+        /// * All other attempts to modify the instance configuration are rejected.
+        /// * Reading the instance configuration via the API continues to give the
+        ///  pre-request values.
         ///
         /// Upon completion of the returned operation:
         ///
-        ///   * Creating instances using the instance configuration uses the new values.
-        ///   * The new values of the instance configuration are readable via the API.
-        ///   * The instance configuration's
-        ///   [reconciling][google.spanner.admin.instance.v1.InstanceConfig.reconciling]
-        ///   field becomes false.
+        /// * Creating instances using the instance configuration uses the new
+        ///  values.
+        /// * The new values of the instance configuration are readable via the API.
+        /// * The instance configuration's
+        ///  \[reconciling\]\[google.spanner.admin.instance.v1.InstanceConfig.reconciling\]
+        ///  field becomes false.
         ///
         /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_config_name>/operations/<operation_id>` and can be used to track
         /// the instance configuration modification.  The
         /// metadata field type is
-        /// [UpdateInstanceConfigMetadata][google.spanner.admin.instance.v1.
-        /// UpdateInstanceConfigMetadata]. The response field type is
-        /// [InstanceConfig][google.spanner.admin.instance.v1.InstanceConfig], if
+        /// \[UpdateInstanceConfigMetadata\]\[google.spanner.admin.instance.v1.
+        /// UpdateInstanceConfigMetadata\]. The response field type is
+        /// \[InstanceConfig\]\[google.spanner.admin.instance.v1.InstanceConfig\], if
         /// successful.
         ///
         /// Authorization requires `spanner.instanceConfigs.update` permission on
-        /// the resource [name][google.spanner.admin.instance.v1.InstanceConfig.name].
+        /// the resource \[name\]\[google.spanner.admin.instance.v1.InstanceConfig.name\].
         pub async fn update_instance_config(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateInstanceConfigRequest>,
@@ -2120,7 +2128,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/UpdateInstanceConfig",
             );
@@ -2138,7 +2146,7 @@ pub mod instance_admin_client {
         /// Only user-managed configurations can be deleted.
         ///
         /// Authorization requires `spanner.instanceConfigs.delete` permission on
-        /// the resource [name][google.spanner.admin.instance.v1.InstanceConfig.name].
+        /// the resource \[name\]\[google.spanner.admin.instance.v1.InstanceConfig.name\].
         pub async fn delete_instance_config(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteInstanceConfigRequest>,
@@ -2149,7 +2157,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/DeleteInstanceConfig",
             );
@@ -2181,7 +2189,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstanceConfigOperations",
             );
@@ -2201,7 +2209,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstances",
             );
@@ -2223,7 +2231,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstancePartitions",
             );
@@ -2242,7 +2250,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/GetInstance",
             );
@@ -2262,30 +2270,31 @@ pub mod instance_admin_client {
         ///
         /// Immediately upon completion of this request:
         ///
-        ///   * The instance is readable via the API, with all requested attributes but no allocated
-        ///     resources. Its state is `CREATING`.
+        /// * The instance is readable via the API, with all requested attributes
+        ///  but no allocated resources. Its state is `CREATING`.
         ///
         /// Until completion of the returned operation:
         ///
-        ///   * Cancelling the operation renders the instance immediately unreadable via the API.
-        ///   * The instance can be deleted.
-        ///   * All other attempts to modify the instance are rejected.
+        /// * Cancelling the operation renders the instance immediately unreadable
+        ///  via the API.
+        /// * The instance can be deleted.
+        /// * All other attempts to modify the instance are rejected.
         ///
         /// Upon completion of the returned operation:
         ///
-        ///   * Billing for all successfully-allocated resources begins (some types may have lower
-        ///     than the requested levels).
-        ///   * Databases can be created in the instance.
-        ///   * The instance's allocated resource levels are readable via the API.
-        ///   * The instance's state becomes `READY`.
+        /// * Billing for all successfully-allocated resources begins (some types
+        ///  may have lower than the requested levels).
+        /// * Databases can be created in the instance.
+        /// * The instance's allocated resource levels are readable via the API.
+        /// * The instance's state becomes `READY`.
         ///
         /// The returned long-running operation will
         /// have a name of the format `<instance_name>/operations/<operation_id>` and
         /// can be used to track creation of the instance.  The
         /// metadata field type is
-        /// [CreateInstanceMetadata][google.spanner.admin.instance.v1.CreateInstanceMetadata].
+        /// \[CreateInstanceMetadata\]\[google.spanner.admin.instance.v1.CreateInstanceMetadata\].
         /// The response field type is
-        /// [Instance][google.spanner.admin.instance.v1.Instance], if successful.
+        /// \[Instance\]\[google.spanner.admin.instance.v1.Instance\], if successful.
         pub async fn create_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateInstanceRequest>,
@@ -2296,7 +2305,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/CreateInstance",
             );
@@ -2314,36 +2323,38 @@ pub mod instance_admin_client {
         ///
         /// Immediately upon completion of this request:
         ///
-        ///   * For resource types for which a decrease in the instance's allocation has been
-        ///     requested, billing is based on the newly-requested level.
+        /// * For resource types for which a decrease in the instance's allocation
+        ///  has been requested, billing is based on the newly-requested level.
         ///
         /// Until completion of the returned operation:
         ///
-        ///   * Cancelling the operation sets its metadata's
-        ///     [cancel_time][google.spanner.admin.instance.v1.UpdateInstanceMetadata.cancel_time],
-        ///     and begins restoring resources to their pre-request values. The operation is
-        ///     guaranteed to succeed at undoing all resource changes, after which point it
-        ///     terminates with a `CANCELLED` status.
-        ///   * All other attempts to modify the instance are rejected.
-        ///   * Reading the instance via the API continues to give the pre-request resource levels.
+        /// * Cancelling the operation sets its metadata's
+        ///  \[cancel_time\]\[google.spanner.admin.instance.v1.UpdateInstanceMetadata.cancel_time\],
+        ///  and begins restoring resources to their pre-request values. The
+        ///  operation is guaranteed to succeed at undoing all resource changes,
+        ///  after which point it terminates with a `CANCELLED` status.
+        /// * All other attempts to modify the instance are rejected.
+        /// * Reading the instance via the API continues to give the pre-request
+        ///  resource levels.
         ///
         /// Upon completion of the returned operation:
         ///
-        ///   * Billing begins for all successfully-allocated resources (some types may have lower
-        ///     than the requested levels).
-        ///   * All newly-reserved resources are available for serving the instance's tables.
-        ///   * The instance's new resource levels are readable via the API.
+        /// * Billing begins for all successfully-allocated resources (some types
+        ///  may have lower than the requested levels).
+        /// * All newly-reserved resources are available for serving the instance's
+        ///  tables.
+        /// * The instance's new resource levels are readable via the API.
         ///
         /// The returned long-running operation will
         /// have a name of the format `<instance_name>/operations/<operation_id>` and
         /// can be used to track the instance modification.  The
         /// metadata field type is
-        /// [UpdateInstanceMetadata][google.spanner.admin.instance.v1.UpdateInstanceMetadata].
+        /// \[UpdateInstanceMetadata\]\[google.spanner.admin.instance.v1.UpdateInstanceMetadata\].
         /// The response field type is
-        /// [Instance][google.spanner.admin.instance.v1.Instance], if successful.
+        /// \[Instance\]\[google.spanner.admin.instance.v1.Instance\], if successful.
         ///
         /// Authorization requires `spanner.instances.update` permission on
-        /// the resource [name][google.spanner.admin.instance.v1.Instance.name].
+        /// the resource \[name\]\[google.spanner.admin.instance.v1.Instance.name\].
         pub async fn update_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateInstanceRequest>,
@@ -2354,7 +2365,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/UpdateInstance",
             );
@@ -2369,12 +2380,13 @@ pub mod instance_admin_client {
         ///
         /// Immediately upon completion of the request:
         ///
-        ///   * Billing ceases for all of the instance's reserved resources.
+        /// * Billing ceases for all of the instance's reserved resources.
         ///
         /// Soon afterward:
         ///
-        ///   * The instance and *all of its databases* immediately and irrevocably disappear from
-        ///     the API. All data in the databases is permanently deleted.
+        /// * The instance and *all of its databases* immediately and
+        ///  irrevocably disappear from the API. All data in the databases
+        ///  is permanently deleted.
         pub async fn delete_instance(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteInstanceRequest>,
@@ -2385,7 +2397,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/DeleteInstance",
             );
@@ -2400,7 +2412,7 @@ pub mod instance_admin_client {
         /// existing policy.
         ///
         /// Authorization requires `spanner.instances.setIamPolicy` on
-        /// [resource][google.iam.v1.SetIamPolicyRequest.resource].
+        /// \[resource\]\[google.iam.v1.SetIamPolicyRequest.resource\].
         pub async fn set_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -2413,7 +2425,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/SetIamPolicy",
             );
@@ -2428,7 +2440,7 @@ pub mod instance_admin_client {
         /// policy if an instance exists but does not have a policy set.
         ///
         /// Authorization requires `spanner.instances.getIamPolicy` on
-        /// [resource][google.iam.v1.GetIamPolicyRequest.resource].
+        /// \[resource\]\[google.iam.v1.GetIamPolicyRequest.resource\].
         pub async fn get_iam_policy(
             &mut self,
             request: impl tonic::IntoRequest<
@@ -2441,7 +2453,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/GetIamPolicy",
             );
@@ -2470,7 +2482,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/TestIamPermissions",
             );
@@ -2489,7 +2501,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/GetInstancePartition",
             );
@@ -2509,32 +2521,33 @@ pub mod instance_admin_client {
         ///
         /// Immediately upon completion of this request:
         ///
-        ///   * The instance partition is readable via the API, with all requested attributes but no
-        ///     allocated resources. Its state is `CREATING`.
+        /// * The instance partition is readable via the API, with all requested
+        ///  attributes but no allocated resources. Its state is `CREATING`.
         ///
         /// Until completion of the returned operation:
         ///
-        ///   * Cancelling the operation renders the instance partition immediately unreadable via
-        ///     the API.
-        ///   * The instance partition can be deleted.
-        ///   * All other attempts to modify the instance partition are rejected.
+        /// * Cancelling the operation renders the instance partition immediately
+        ///  unreadable via the API.
+        /// * The instance partition can be deleted.
+        /// * All other attempts to modify the instance partition are rejected.
         ///
         /// Upon completion of the returned operation:
         ///
-        ///   * Billing for all successfully-allocated resources begins (some types may have lower
-        ///     than the requested levels).
-        ///   * Databases can start using this instance partition.
-        ///   * The instance partition's allocated resource levels are readable via the API.
-        ///   * The instance partition's state becomes `READY`.
+        /// * Billing for all successfully-allocated resources begins (some types
+        ///  may have lower than the requested levels).
+        /// * Databases can start using this instance partition.
+        /// * The instance partition's allocated resource levels are readable via the
+        ///  API.
+        /// * The instance partition's state becomes `READY`.
         ///
         /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_partition_name>/operations/<operation_id>` and can be used to
         /// track creation of the instance partition.  The
         /// metadata field type is
-        /// [CreateInstancePartitionMetadata][google.spanner.admin.instance.v1.
-        /// CreateInstancePartitionMetadata]. The response field type is
-        /// [InstancePartition][google.spanner.admin.instance.v1.InstancePartition], if
+        /// \[CreateInstancePartitionMetadata\]\[google.spanner.admin.instance.v1.
+        /// CreateInstancePartitionMetadata\]. The response field type is
+        /// \[InstancePartition\]\[google.spanner.admin.instance.v1.InstancePartition\], if
         /// successful.
         pub async fn create_instance_partition(
             &mut self,
@@ -2546,7 +2559,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/CreateInstancePartition",
             );
@@ -2563,7 +2576,7 @@ pub mod instance_admin_client {
         ///
         /// Authorization requires `spanner.instancePartitions.delete` permission on
         /// the resource
-        /// [name][google.spanner.admin.instance.v1.InstancePartition.name].
+        /// \[name\]\[google.spanner.admin.instance.v1.InstancePartition.name\].
         pub async fn delete_instance_partition(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteInstancePartitionRequest>,
@@ -2574,7 +2587,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/DeleteInstancePartition",
             );
@@ -2592,42 +2605,42 @@ pub mod instance_admin_client {
         ///
         /// Immediately upon completion of this request:
         ///
-        ///   * For resource types for which a decrease in the instance partition's
-        ///   allocation has been requested, billing is based on the newly-requested
-        ///   level.
+        /// * For resource types for which a decrease in the instance partition's
+        ///  allocation has been requested, billing is based on the newly-requested
+        ///  level.
         ///
         /// Until completion of the returned operation:
         ///
-        ///   * Cancelling the operation sets its metadata's
-        ///     [cancel_time][google.spanner.admin.instance.v1.UpdateInstancePartitionMetadata.
-        ///     cancel_time], and begins restoring resources to their pre-request values. The
-        ///     operation is guaranteed to succeed at undoing all resource changes, after which
-        ///     point it terminates with a `CANCELLED` status.
-        ///   * All other attempts to modify the instance partition are rejected.
-        ///   * Reading the instance partition via the API continues to give the pre-request
-        ///     resource levels.
+        /// * Cancelling the operation sets its metadata's
+        ///  \[cancel_time\]\[google.spanner.admin.instance.v1.UpdateInstancePartitionMetadata.
+        /// cancel_time\],  and begins restoring resources to their pre-request values. The
+        ///  operation is guaranteed to succeed at undoing all resource changes,
+        ///  after which point it terminates with a `CANCELLED` status.
+        /// * All other attempts to modify the instance partition are rejected.
+        /// * Reading the instance partition via the API continues to give the
+        ///  pre-request resource levels.
         ///
         /// Upon completion of the returned operation:
         ///
-        ///   * Billing begins for all successfully-allocated resources (some types may have lower
-        ///     than the requested levels).
-        ///   * All newly-reserved resources are available for serving the instance partition's
-        ///     tables.
-        ///   * The instance partition's new resource levels are readable via the API.
+        /// * Billing begins for all successfully-allocated resources (some types
+        ///  may have lower than the requested levels).
+        /// * All newly-reserved resources are available for serving the instance
+        ///  partition's tables.
+        /// * The instance partition's new resource levels are readable via the API.
         ///
         /// The returned long-running operation will
         /// have a name of the format
         /// `<instance_partition_name>/operations/<operation_id>` and can be used to
         /// track the instance partition modification. The
         /// metadata field type is
-        /// [UpdateInstancePartitionMetadata][google.spanner.admin.instance.v1.
-        /// UpdateInstancePartitionMetadata]. The response field type is
-        /// [InstancePartition][google.spanner.admin.instance.v1.InstancePartition], if
+        /// \[UpdateInstancePartitionMetadata\]\[google.spanner.admin.instance.v1.
+        /// UpdateInstancePartitionMetadata\]. The response field type is
+        /// \[InstancePartition\]\[google.spanner.admin.instance.v1.InstancePartition\], if
         /// successful.
         ///
         /// Authorization requires `spanner.instancePartitions.update` permission on
         /// the resource
-        /// [name][google.spanner.admin.instance.v1.InstancePartition.name].
+        /// \[name\]\[google.spanner.admin.instance.v1.InstancePartition.name\].
         pub async fn update_instance_partition(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateInstancePartitionRequest>,
@@ -2638,7 +2651,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/UpdateInstancePartition",
             );
@@ -2662,8 +2675,8 @@ pub mod instance_admin_client {
         ///
         /// Authorization requires `spanner.instancePartitionOperations.list`
         /// permission on the resource
-        /// [parent][google.spanner.admin.instance.v1.ListInstancePartitionOperationsRequest.
-        /// parent].
+        /// \[parent\]\[google.spanner.admin.instance.v1.ListInstancePartitionOperationsRequest.
+        /// parent\].
         pub async fn list_instance_partition_operations(
             &mut self,
             request: impl tonic::IntoRequest<super::ListInstancePartitionOperationsRequest>,
@@ -2674,7 +2687,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/ListInstancePartitionOperations",
             );
@@ -2692,41 +2705,43 @@ pub mod instance_admin_client {
         /// `MoveInstance` returns `FAILED_PRECONDITION` if the instance meets any of
         /// the following criteria:
         ///
-        ///   * Is undergoing a move to a different instance configuration
-        ///   * Has backups
-        ///   * Has an ongoing update
-        ///   * Contains any CMEK-enabled databases
-        ///   * Is a free trial instance
+        /// * Is undergoing a move to a different instance configuration
+        /// * Has backups
+        /// * Has an ongoing update
+        /// * Contains any CMEK-enabled databases
+        /// * Is a free trial instance
         ///
         /// While the operation is pending:
         ///
-        ///   * All other attempts to modify the instance, including changes to its compute
-        ///     capacity, are rejected.
-        ///   * The following database and backup admin operations are rejected:
+        /// * All other attempts to modify the instance, including changes to its
+        ///  compute capacity, are rejected.
         ///
-        ///     * `DatabaseAdmin.CreateDatabase`
-        ///     * `DatabaseAdmin.UpdateDatabaseDdl` (disabled if default_leader is specified in the
-        ///       request.)
-        ///     * `DatabaseAdmin.RestoreDatabase`
-        ///     * `DatabaseAdmin.CreateBackup`
-        ///     * `DatabaseAdmin.CopyBackup`
+        /// * The following database and backup admin operations are rejected:
         ///
-        ///   * Both the source and target instance configurations are subject to hourly compute and
-        ///     storage charges.
-        ///   * The instance might experience higher read-write latencies and a higher transaction
-        ///     abort rate. However, moving an instance doesn't cause any downtime.
+        ///  * `DatabaseAdmin.CreateDatabase`
+        ///  * `DatabaseAdmin.UpdateDatabaseDdl` (disabled if default_leader is specified in the
+        ///    request.)
+        ///  * `DatabaseAdmin.RestoreDatabase`
+        ///  * `DatabaseAdmin.CreateBackup`
+        ///  * `DatabaseAdmin.CopyBackup`
+        /// * Both the source and target instance configurations are subject to
+        ///  hourly compute and storage charges.
+        ///
+        /// * The instance might experience higher read-write latencies and a higher
+        ///  transaction abort rate. However, moving an instance doesn't cause any
+        ///  downtime.
         ///
         /// The returned long-running operation has
         /// a name of the format
         /// `<instance_name>/operations/<operation_id>` and can be used to track
         /// the move instance operation. The
         /// metadata field type is
-        /// [MoveInstanceMetadata][google.spanner.admin.instance.v1.MoveInstanceMetadata].
+        /// \[MoveInstanceMetadata\]\[google.spanner.admin.instance.v1.MoveInstanceMetadata\].
         /// The response field type is
-        /// [Instance][google.spanner.admin.instance.v1.Instance],
+        /// \[Instance\]\[google.spanner.admin.instance.v1.Instance\],
         /// if successful.
         /// Cancelling the operation sets its metadata's
-        /// [cancel_time][google.spanner.admin.instance.v1.MoveInstanceMetadata.cancel_time].
+        /// \[cancel_time\]\[google.spanner.admin.instance.v1.MoveInstanceMetadata.cancel_time\].
         /// Cancellation is not immediate because it involves moving any data
         /// previously moved to the target instance configuration back to the original
         /// instance configuration. You can use this operation to track the progress of
@@ -2735,12 +2750,13 @@ pub mod instance_admin_client {
         ///
         /// If not cancelled, upon completion of the returned operation:
         ///
-        ///   * The instance successfully moves to the target instance configuration.
-        ///   * You are billed for compute and storage in target instance
-        ///   configuration.
+        /// * The instance successfully moves to the target instance
+        ///  configuration.
+        /// * You are billed for compute and storage in target instance
+        ///  configuration.
         ///
         /// Authorization requires the `spanner.instances.update` permission on
-        /// the resource [instance][google.spanner.admin.instance.v1.Instance].
+        /// the resource \[instance\]\[google.spanner.admin.instance.v1.Instance\].
         ///
         /// For more details, see
         /// [Move an instance](https://cloud.google.com/spanner/docs/move-instance).
@@ -2754,7 +2770,7 @@ pub mod instance_admin_client {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
-            let codec = tonic::codec::ProstCodec::default();
+            let codec = tonic_prost::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/google.spanner.admin.instance.v1.InstanceAdmin/MoveInstance",
             );
