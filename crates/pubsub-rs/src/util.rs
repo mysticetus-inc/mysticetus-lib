@@ -26,5 +26,6 @@ pub(crate) fn make_default_topic(project_id: &str, topic: &str) -> Topic {
         satisfies_pzs: false,
         message_retention_duration: None,
         message_transforms: Vec::new(),
+        tags: HashMap::new(),
     }
 }

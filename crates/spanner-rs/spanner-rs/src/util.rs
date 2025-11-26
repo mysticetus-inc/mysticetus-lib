@@ -54,13 +54,6 @@ pub enum MaybeOwnedMut<'a, T> {
     MutRef(&'a mut T),
 }
 
-impl<'a, T> MaybeOwnedMut<'a, T> {
-    #[inline]
-    pub(crate) fn reborrow(&mut self) -> MaybeOwnedMut<'_, T> {
-        MaybeOwnedMut::MutRef(&mut *self)
-    }
-}
-
 impl<T: fmt::Debug> fmt::Debug for MaybeOwnedMut<'_, T> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

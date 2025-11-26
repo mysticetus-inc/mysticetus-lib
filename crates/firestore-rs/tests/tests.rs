@@ -331,9 +331,7 @@ async fn test_query() -> firestore_rs::Result<()> {
 
     use futures::StreamExt;
 
-    let client =
-        firestore_rs::Firestore::new("winged-citron-305220", gcp_auth_channel::Scope::Firestore)
-            .await?;
+    let client = firestore_rs::Firestore::new(gcp_auth_provider::Scope::Firestore).await?;
 
     let mut result_stream = client
         .collection("videos")

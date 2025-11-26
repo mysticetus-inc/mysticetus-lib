@@ -188,7 +188,9 @@ where
                 let (tx, rx) = oneshot::channel();
 
                 if self.sink.send(request).is_err() || self.response_channel_tx.send(tx).is_err() {
-                    return todo!();
+                    self.sink.close();
+                    self.row_iter = None;
+                    return None;
                 }
 
                 return Some(Ok(PendingRequest { rx }));
@@ -252,7 +254,7 @@ impl DriverFutureProjection<'_> {
 
             match response {
                 protos::bigquery_storage::append_rows_response::Response::Error(error) => {
-                    let _ = sender.send(Err(crate::Error::from(error)));
+                    _ = sender.send(Err(crate::Error::from(error)));
                 }
                 protos::bigquery_storage::append_rows_response::Response::AppendResult(result) => {
                     if let Some(offset) = result.offset {
@@ -260,7 +262,7 @@ impl DriverFutureProjection<'_> {
                             .offset
                             .fetch_max(offset.value as usize, std::sync::atomic::Ordering::SeqCst);
                     }
-                    sender.send(Ok(()));
+                    _ = sender.send(Ok(()));
                 }
             }
         }

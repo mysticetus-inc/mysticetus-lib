@@ -1,5 +1,5 @@
 use bytes::Bytes;
-use gcp_auth_provider::{Auth, Scope};
+use gcp_auth_provider::Auth;
 use tiny_skia::Pixmap;
 
 use crate::coords::Zoom;
@@ -20,25 +20,12 @@ impl TileCache {
         Self { gcs }
     }
 
-    pub async fn invalidate_cache(_gcs: small_gcs::BucketClient) -> Result<(), small_gcs::Error> {
-        todo!(
-            "need to implement bucket creating and deletion, that's way simpler than listing and \
-             deleting each cached tile one by one"
-        )
-    }
-
     pub fn from_parts(client: reqwest::Client, auth: Auth) -> Self {
         Self::from_client(small_gcs::BucketClient::from_parts(
             client,
             auth,
             TILE_CACHE_BUCKET.into(),
         ))
-    }
-
-    pub async fn new(scope: Scope) -> Result<Self, Error> {
-        let gcs = small_gcs::BucketClient::new_with_scope(scope, TILE_CACHE_BUCKET).await?;
-
-        Ok(Self { gcs })
     }
 
     pub async fn try_load_tile(

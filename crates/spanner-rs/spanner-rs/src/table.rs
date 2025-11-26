@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use crate::error::ConvertError;
-use crate::queryable::Queryable;
 use crate::{PrimaryKey, Row};
 
 /// Trait implemented on types that represent a single row in a spanner table.

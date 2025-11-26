@@ -1,4 +1,4 @@
-#![feature(const_trait_impl, let_chains, const_option_ext)]
+#![feature(const_trait_impl, let_chains)]
 
 #[macro_use]
 extern crate tracing;
@@ -17,7 +17,7 @@ pub use config::Config;
 pub use error::Error;
 use loader::CacheStats;
 pub use map_geometry::MapGeometry;
-mod layer;
+// mod layer;
 mod loader;
 pub use coords::Zoom;
 use feature::{DrawError, Drawable, Feature};

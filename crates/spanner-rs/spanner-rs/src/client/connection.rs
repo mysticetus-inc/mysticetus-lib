@@ -107,6 +107,7 @@ fn build_read_request(
         resume_token: Bytes::new(),
         partition_token: Bytes::new(),
         request_options: None,
+        routing_hint: None,
     }
 }
 
@@ -136,6 +137,7 @@ fn build_sql_request(
         seqno: 0,
         query_options: None,
         last_statement: false,
+        routing_hint: None,
     }
 }
 

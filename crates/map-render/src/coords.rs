@@ -13,8 +13,10 @@ pub(super) const TILE_SIZE_F64: f64 = TILE_SIZE as f64;
 /// Maximum viewable lat/lon due to the mercator projection.
 ///
 /// Derived from: `arctan(sinh(pi))`
+#[allow(dead_code)]
 pub(super) const MAX_LAT: geo::Latitude = geo::Latitude::new(85.0511);
 /// Minimum viewable lat/lon due to the mercator projection.
+#[allow(dead_code)]
 pub(super) const MIN_LAT: geo::Latitude = geo::Latitude::new(-85.0511);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -110,6 +110,7 @@ impl<'a> ListBuilder<'a> {
             include_trailing_delimiter: self.include_trailing_delimiter,
             prefix: self.prefix.unwrap_or_default(),
             versions: false,
+            filter: String::new(),
             read_mask: None,
             lexicographic_end: self.lexicographic_end.unwrap_or_default(),
             lexicographic_start: self.lexicographic_start.unwrap_or_default(),

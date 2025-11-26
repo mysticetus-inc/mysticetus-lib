@@ -1,11 +1,9 @@
 use std::marker::PhantomData;
-use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use gcp_auth_provider::service::AuthSvc;
-use net_utils::bidi2::{RequestSink, RequestStream};
 use protos::bigquery_storage::append_rows_request::{ProtoData, Rows};
-use protos::bigquery_storage::{AppendRowsRequest, AppendRowsResponse, ProtoSchema, WriteStream};
+use protos::bigquery_storage::{AppendRowsRequest, ProtoSchema};
 use protos::protobuf::Int64Value;
 use tonic::transport::Channel;
 
@@ -13,7 +11,6 @@ use super::append::RequestState;
 use super::missing_value::MissingValueInterpretations;
 use super::types::Boolean;
 use super::{DefaultStream, Schema, StreamType};
-use crate::{BigQueryStorageClient, Error};
 
 pub struct WriteSession<R, Type: StreamType = DefaultStream> {
     pub(super) channel: AuthSvc<Channel>,
@@ -70,9 +67,6 @@ pub(super) fn make_base_message<'a, Type: StreamType>(
             writer_schema: Some(writer_schema),
         })
     });
-
-    // get rid of a lock ASAP if we have it
-    drop(state);
 
     let (missing, default) = MissingValueInterpretations::pair_from_opt(&shared.missing_values);
 

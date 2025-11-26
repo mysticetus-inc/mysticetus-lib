@@ -20,6 +20,9 @@ pub struct WriteBuilder<'a, Kind = NonResumable> {
     spec: WriteObjectSpec,
     write_offset: i64,
     compute_checksums: bool,
+    // TODO: resumable writes will need some sort of state
+    // tracking, so its associated Kind won't be a unit struct
+    #[allow(dead_code)]
     kind: Kind,
 }
 
