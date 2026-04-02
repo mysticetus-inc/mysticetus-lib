@@ -1,7 +1,3 @@
-#![feature(const_trait_impl)]
-// prevents clippy warnings in all generated code
-#![allow(clippy::all)]
-
 //! Contains prost generated types for Google proto/gRPC definitions.
 //!
 //! The main purpose of splitting this off into its own crate, is to prevent the invalid "doctests"

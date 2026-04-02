@@ -83,10 +83,12 @@ where
         serialize_i16(v: i16),
         serialize_i32(v: i32),
         serialize_i64(v: i64),
+        serialize_i128(v: i128),
         serialize_u8(v: u8),
         serialize_u16(v: u16),
         serialize_u32(v: u32),
         serialize_u64(v: u64),
+        serialize_u128(v: u128),
         serialize_f32(v: f32),
         serialize_f64(v: f64),
         serialize_bool(v: bool),
@@ -95,13 +97,6 @@ where
         serialize_bytes(v: &[u8]),
         serialize_unit(),
         serialize_none(),
-    }
-
-    serde::serde_if_integer128! {
-        impl_simple_serializer_fns! {
-            serialize_i128(v: i128),
-            serialize_u128(v: u128),
-        }
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {

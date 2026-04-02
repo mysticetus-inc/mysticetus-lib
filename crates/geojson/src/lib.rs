@@ -1,12 +1,6 @@
-#![feature(
-    associated_type_defaults,
-    vec_into_raw_parts,
-    unboxed_closures,
-    fn_traits,
-    associated_const_equality,
-    array_try_from_fn
-)]
+#![feature(associated_type_defaults, unboxed_closures, fn_traits)]
 #[warn(missing_docs, missing_debug_implementations)]
+#[deny(unsafe_code)]
 pub mod builder;
 pub mod collection;
 pub mod feature;

@@ -8,9 +8,9 @@ edition = "2024"
 [dependencies]
 compact_str = { version = "0.6.0", features = ["serde", "bytes"] }
 serde.workspace = true
-static_assertions = "1.1.0"
-deepsize = { version = "0.2.0", features = ["derive"], optional = true }
+deepsize = { version = "0.2.0", features = ["derive", "smallvec"], optional = true }
 tracing.workspace = true
+smallvec.workspace = true
 
 
 [features]

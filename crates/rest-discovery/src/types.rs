@@ -244,6 +244,7 @@ pub struct Enum {
     pub enum_descriptions: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ParamLocation {

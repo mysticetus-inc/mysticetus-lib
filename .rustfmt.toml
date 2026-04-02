@@ -1,6 +1,6 @@
 edition = "2021"
 unstable_features = true
-version = "Two"
+style_edition="2024"
 comment_width = 100
 format_code_in_doc_comments = true
 format_macro_bodies = true

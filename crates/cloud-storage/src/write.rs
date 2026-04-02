@@ -6,8 +6,8 @@ use net_utils::bidi2::{self, RequestSink};
 use protos::storage::write_object_request::{Data, FirstMessage};
 use protos::storage::write_object_response::WriteStatus;
 use protos::storage::{
-    CommonObjectRequestParams, Object, ObjectChecksums, WriteObjectRequest, WriteObjectResponse,
-    WriteObjectSpec,
+    CommonObjectRequestParams, Object, ObjectChecksums, ObjectContexts, ObjectCustomContextPayload,
+    WriteObjectRequest, WriteObjectResponse, WriteObjectSpec,
 };
 use tokio::task::JoinHandle;
 
@@ -19,6 +19,7 @@ pub struct WriteBuilder<'a, Kind = NonResumable> {
     common_object_request_params: Option<CommonObjectRequestParams>,
     spec: WriteObjectSpec,
     write_offset: i64,
+    contexts: Option<ObjectContexts>,
     compute_checksums: bool,
     // TODO: resumable writes will need some sort of state
     // tracking, so its associated Kind won't be a unit struct
@@ -50,8 +51,22 @@ impl<'a, Kind> WriteBuilder<'a, Kind> {
                 object_size: None,
             },
             common_object_request_params: None,
+            contexts: None,
             kind,
         }
+    }
+
+    pub fn add_context(&mut self, key: impl Into<String>, value: impl Into<String>) {
+        let value = ObjectCustomContextPayload {
+            value: value.into(),
+            create_time: None,
+            update_time: None,
+        };
+
+        self.contexts
+            .get_or_insert_default()
+            .custom
+            .insert(key.into(), value);
     }
 }
 
@@ -66,6 +81,14 @@ impl<'a> WriteBuilder<'a, NonResumable> {
         }
 
         self.spec.object_size = Some(buf.remaining() as i64);
+
+        if let Some(contexts) = self.contexts {
+            self.spec
+                .resource
+                .as_mut()
+                .expect("this should be Some")
+                .contexts = Some(contexts);
+        }
 
         let mut write_offset = self.write_offset;
 

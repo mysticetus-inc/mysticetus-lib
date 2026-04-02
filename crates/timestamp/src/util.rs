@@ -33,7 +33,9 @@ macro_rules! clamp {
     };
 }
 
-pub(crate) use {clamp, max, min};
+pub(crate) use clamp;
+pub(crate) use max;
+pub(crate) use min;
 
 #[test]
 fn test_macros() {

@@ -13,7 +13,7 @@ serde_json = { workspace = true, features = ["raw_value"] }
 timestamp = { path = "../timestamp" }
 uuid = { workspace = true, features = ["serde", "v3", "v4", "v5"] }
 geo = { path = "../geo" }
-itoa = "1.0.2"
+itoa.workspace = true
 serde-helpers = { path = "../serde-helpers" }
 
 axum = { workspace = true, optional = true }

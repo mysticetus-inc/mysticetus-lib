@@ -1,9 +1,8 @@
 use std::fmt;
 
-pub use geo;
-pub use geo::Point;
 pub use geo::geom::{Line as LineString, Polygon};
 pub use geo::util::IndexVisitor;
+pub use geo::{self, Point};
 
 pub mod any;
 pub use any::AnyCoordinate;

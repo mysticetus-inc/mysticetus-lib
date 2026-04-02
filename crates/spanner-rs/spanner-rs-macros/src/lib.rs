@@ -1,4 +1,3 @@
-#![feature(let_chains)]
 #![allow(dead_code, unreachable_code)] // TODO: remove after rebuilding
 
 #[macro_use]

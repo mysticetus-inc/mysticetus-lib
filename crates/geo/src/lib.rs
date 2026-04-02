@@ -1,4 +1,4 @@
-#![feature(array_try_from_fn, const_try, const_trait_impl)]
+#![feature(array_try_from_fn)]
 
 #[cfg(feature = "normal")]
 #[macro_use]

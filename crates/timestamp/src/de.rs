@@ -3,7 +3,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use serde::de::{self, Unexpected};
-use serde::{Deserialize, forward_to_deserialize_any, serde_if_integer128};
+use serde::{Deserialize, forward_to_deserialize_any};
 
 use crate::error::{ConvertError, Error, Num};
 use crate::{Timestamp, Unit};
@@ -321,16 +321,7 @@ impl<'de, Parser: ParseUnit> de::Visitor<'de> for TimestampVisitor<Parser> {
             .map_err(|e| e.into_serde(Unexpected::Float(float)))
     }
 
-    fn visit_i64<E>(self, int: i64) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        self.0
-            .handle_i64(int)
-            .map_err(|e| e.into_serde(Unexpected::Signed(int)))
-    }
-
-    fn visit_i32<E>(self, int: i32) -> Result<Self::Value, E>
+    fn visit_i8<E>(self, int: i8) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
@@ -344,23 +335,36 @@ impl<'de, Parser: ParseUnit> de::Visitor<'de> for TimestampVisitor<Parser> {
         self.visit_i64(int as i64)
     }
 
-    fn visit_i8<E>(self, int: i8) -> Result<Self::Value, E>
+    fn visit_i32<E>(self, int: i32) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
         self.visit_i64(int as i64)
     }
 
-    fn visit_u64<E>(self, uint: u64) -> Result<Self::Value, E>
+    fn visit_i64<E>(self, int: i64) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
         self.0
-            .handle_u64(uint)
-            .map_err(|e| e.into_serde(Unexpected::Unsigned(uint)))
+            .handle_i64(int)
+            .map_err(|e| e.into_serde(Unexpected::Signed(int)))
     }
 
-    fn visit_u32<E>(self, uint: u32) -> Result<Self::Value, E>
+    fn visit_i128<E>(self, int: i128) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let downcasted: i64 = int.try_into().map_err(|_| {
+            ConvertError::OutOfRange.into_serde(Unexpected::Other(
+                "128 bit signed int, out of range of a 64 bit int",
+            ))
+        })?;
+
+        self.visit_i64(downcasted)
+    }
+
+    fn visit_u8<E>(self, uint: u8) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
@@ -374,38 +378,33 @@ impl<'de, Parser: ParseUnit> de::Visitor<'de> for TimestampVisitor<Parser> {
         self.visit_u64(uint as u64)
     }
 
-    fn visit_u8<E>(self, uint: u8) -> Result<Self::Value, E>
+    fn visit_u32<E>(self, uint: u32) -> Result<Self::Value, E>
     where
         E: de::Error,
     {
         self.visit_u64(uint as u64)
     }
 
-    serde::serde_if_integer128! {
-        fn visit_i128<E>(self, int: i128) -> Result<Self::Value, E>
-        where
-            E: de::Error
-        {
-            let downcasted: i64 = int.try_into()
-                .map_err(|_| ConvertError::OutOfRange.into_serde(
-                    Unexpected::Other("128 bit signed int, out of range of a 64 bit int")
-                ))?;
+    fn visit_u64<E>(self, uint: u64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.0
+            .handle_u64(uint)
+            .map_err(|e| e.into_serde(Unexpected::Unsigned(uint)))
+    }
 
+    fn visit_u128<E>(self, int: u128) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        let downcasted: u64 = int.try_into().map_err(|_| {
+            ConvertError::OutOfRange.into_serde(Unexpected::Other(
+                "128 bit uint, out of range of a 64 bit uint",
+            ))
+        })?;
 
-            self.visit_i64(downcasted)
-        }
-
-        fn visit_u128<E>(self, int: u128) -> Result<Self::Value, E>
-        where
-            E: de::Error
-        {
-            let downcasted: u64 = int.try_into()
-                .map_err(|_| ConvertError::OutOfRange.into_serde(
-                    Unexpected::Other("128 bit uint, out of range of a 64 bit uint")
-                ))?;
-
-            self.visit_u64(downcasted)
-        }
+        self.visit_u64(downcasted)
     }
 
     fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -503,6 +502,13 @@ impl<'de> de::Deserializer<'de> for TimestampDeserializer<'de> {
         visitor.visit_i64(self.to_unit_signed())
     }
 
+    fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_i128(self.to_unit_signed() as i128)
+    }
+
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: de::Visitor<'de>,
@@ -522,6 +528,14 @@ impl<'de> de::Deserializer<'de> for TimestampDeserializer<'de> {
     {
         let num: u64 = self.to_unit_unsigned()?;
         visitor.visit_u64(num)
+    }
+
+    fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        let num: u64 = self.to_unit_unsigned()?;
+        visitor.visit_u128(num as u128)
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -603,23 +617,6 @@ impl<'de> de::Deserializer<'de> for TimestampDeserializer<'de> {
         V: de::Visitor<'de>,
     {
         visitor.visit_seq(TimestampSeqAccess(Some(self)))
-    }
-
-    serde_if_integer128! {
-        fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-        where
-            V: de::Visitor<'de>,
-        {
-            visitor.visit_i128(self.to_unit_signed() as i128)
-        }
-
-        fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-        where
-            V: de::Visitor<'de>,
-        {
-            let num: u64 = self.to_unit_unsigned()?;
-            visitor.visit_u128(num as u128)
-        }
     }
 }
 
@@ -729,18 +726,13 @@ where
         visit_i16(i16),
         visit_i32(i32),
         visit_i64(i64),
+        visit_i128(i128),
         visit_u8(u8),
         visit_u16(u16),
         visit_u32(u32),
         visit_u64(u64),
+        visit_u128(u128),
         visit_str(&str),
         visit_string(String),
-    }
-
-    serde_if_integer128! {
-        defer_to_inner! {
-            visit_i128(i128),
-            visit_u128(u128),
-        }
     }
 }

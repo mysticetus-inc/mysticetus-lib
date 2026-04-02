@@ -31,6 +31,7 @@ prost-types = { version = "0.11", optional = true }
 chrono-tz = "0.8.1"
 schemars = { version = "0.8.11", optional = true, features = ["chrono"] }
 rand = { workspace = true, optional = true }
+jiff = { version = "0.2.23", features = ["serde"] }
 
 [dev-dependencies]
 criterion = "0.5.1"

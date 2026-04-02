@@ -6,7 +6,7 @@ mod encode;
 mod serializer;
 
 // We need to publicly export this module so we can fuzz test it, otherwise it stays private
-#[cfg(fuzzing)]
+#[cfg(feature = "fuzzing")]
 pub use encode::zigzag;
 pub(crate) use encode::{Field, FieldPair, WireType, field_type_to_wire_type};
 // pub use schemas::{FieldIndex, Schemas};

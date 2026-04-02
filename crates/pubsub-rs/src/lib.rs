@@ -1,4 +1,3 @@
-#![feature(maybe_uninit_slice)]
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};

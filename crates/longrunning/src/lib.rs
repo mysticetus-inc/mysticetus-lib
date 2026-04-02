@@ -1,4 +1,3 @@
-use gcp_auth_provider::Auth;
 use gcp_auth_provider::service::AuthSvc;
 use prost::bytes::BytesMut;
 use prost::{DecodeError, Message};

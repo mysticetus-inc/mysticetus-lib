@@ -87,10 +87,12 @@ where
         deserialize_i16,
         deserialize_i32,
         deserialize_i64,
+        deserialize_i128,
         deserialize_u8,
         deserialize_u16,
         deserialize_u32,
         deserialize_u64,
+        deserialize_u128,
         deserialize_f32,
         deserialize_f64,
         deserialize_str,
@@ -105,13 +107,6 @@ where
         deserialize_map,
         deserialize_ignored_any,
         deserialize_identifier,
-    }
-
-    serde::serde_if_integer128! {
-        impl_delegated_fn! {
-            deserialize_i128,
-            deserialize_u128,
-        }
     }
 
     #[inline]
@@ -316,20 +311,15 @@ where
         visit_i16(i16),
         visit_i32(i32),
         visit_i64(i64),
+        visit_i128(i128),
         visit_u8(u8),
         visit_u16(u16),
         visit_u32(u32),
         visit_u64(u64),
+        visit_u128(u128),
         visit_f32(f32),
         visit_f64(f64),
         visit_bool(bool),
-    }
-
-    serde::serde_if_integer128! {
-        impl_visitor_delgate! {
-            visit_i128(i128),
-            visit_u128(u128),
-        }
     }
 
     #[inline]
@@ -442,20 +432,15 @@ where
         serialize_i16(i16),
         serialize_i32(i32),
         serialize_i64(i64),
+        serialize_i128(i128),
         serialize_u8(u8),
         serialize_u16(u16),
         serialize_u32(u32),
         serialize_u64(u64),
+        serialize_u128(u128),
         serialize_f32(f32),
         serialize_f64(f64),
         serialize_bool(bool),
-    }
-
-    serde::serde_if_integer128! {
-        impl_delegated_ser_fns! {
-            serialize_i128(i128),
-            serialize_u128(u128),
-        }
     }
 
     #[inline]

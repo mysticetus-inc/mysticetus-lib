@@ -475,6 +475,7 @@ where
     */
 }
 
+#[allow(dead_code)]
 pub struct OptionalValueMapSeed<'a, S>(ValueMapSeed<'a, S>);
 
 impl<'de, S> de::Visitor<'de> for OptionalValueMapSeed<'_, S>

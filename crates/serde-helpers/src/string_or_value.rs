@@ -221,21 +221,16 @@ where
         visit_i16(i16),
         visit_i32(i32),
         visit_i64(i64),
+        visit_i128(i128),
         visit_u8(u8),
         visit_u16(u16),
         visit_u32(u32),
         visit_u64(u64),
+        visit_u128(u128),
         visit_f32(f32),
         visit_f64(f64),
         visit_char(char),
         visit_bool(bool),
-    }
-
-    serde::serde_if_integer128! {
-        impl_visitor_fns! {
-            visit_i128(i128),
-            visit_u128(u128),
-        }
     }
 
     fn visit_unit<E>(self) -> Result<Self::Value, E>

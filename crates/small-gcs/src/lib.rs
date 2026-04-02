@@ -1,5 +1,3 @@
-#![feature(const_trait_impl, linked_list_cursors)]
-
 mod client;
 pub mod list;
 // mod multipart;

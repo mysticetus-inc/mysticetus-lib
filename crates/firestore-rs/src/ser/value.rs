@@ -149,6 +149,13 @@ where
         self.serialize_i64(int as i64)
     }
 
+    fn serialize_i128(self, int: i128) -> Result<Self::Ok, Self::Error> {
+        match int.try_into().ok() {
+            Some(casted_int) => self.serialize_i64(casted_int),
+            None => self.serialize_str(&int.to_string()),
+        }
+    }
+
     fn serialize_u8(self, int: u8) -> Result<Self::Ok, Self::Error> {
         self.serialize_i64(int as i64)
     }
@@ -168,19 +175,10 @@ where
         }
     }
 
-    serde::serde_if_integer128! {
-        fn serialize_i128(self, int: i128) -> Result<Self::Ok, Self::Error> {
-            match int.try_into().ok() {
-                Some(casted_int) => self.serialize_i64(casted_int),
-                None => self.serialize_str(&int.to_string()),
-            }
-        }
-
-        fn serialize_u128(self, int: u128) -> Result<Self::Ok, Self::Error> {
-            match int.try_into().ok() {
-                Some(casted_int) => self.serialize_i64(casted_int),
-                None => self.serialize_str(&int.to_string()),
-            }
+    fn serialize_u128(self, int: u128) -> Result<Self::Ok, Self::Error> {
+        match int.try_into().ok() {
+            Some(casted_int) => self.serialize_i64(casted_int),
+            None => self.serialize_str(&int.to_string()),
         }
     }
 

@@ -1,4 +1,4 @@
-#![feature(int_from_ascii, array_windows)]
+#![feature(int_from_ascii)]
 mod error;
 mod row;
 mod stream;

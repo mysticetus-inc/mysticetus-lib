@@ -84,7 +84,7 @@ impl BucketClient {
         GetBuilder::new(self, path)
     }
 
-    pub fn list(&mut self) -> crate::list::ListBuilder<'_> {
+    pub fn list<'c>(&mut self) -> crate::list::ListBuilder<'_, 'c> {
         crate::list::ListBuilder::new(self)
     }
 }

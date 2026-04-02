@@ -64,8 +64,9 @@ impl<T> ReadableConnection for T where for<'a> T: private::SealedConnection<Tx<'
 #[doc(hidden)]
 pub mod __macro_internals {
     // re-export for macro usage
+    pub use generic_array;
     pub use paste::paste;
-    pub use {generic_array, typenum};
+    pub use typenum;
 
     use crate::Field;
     use crate::convert::{FromSpanner, SpannerEncode};

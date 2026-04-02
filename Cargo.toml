@@ -1,4 +1,5 @@
 [workspace]
+resolver = "3"
 members = [
     "crates/bigquery-rs",
     "crates/bigquery-resources-rs",
@@ -78,6 +79,7 @@ prost-build = "0.14.1"
 rust_xlsxwriter = "0.87.0"
 typenum = "1.17.0"
 time = "0.3.39"
+bytemuck = "1.25.0"
 smallvec = "1.13.2"
 regex = "1.11.0"
 fxhash = "0.2.1"

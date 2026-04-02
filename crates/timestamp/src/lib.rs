@@ -1,12 +1,4 @@
-#![feature(
-    const_try,
-    doc_cfg,
-    step_trait,
-    const_trait_impl,
-    pattern,
-    int_roundings,
-    let_chains
-)]
+#![feature(step_trait)]
 #![deny(clippy::suspicious, clippy::complexity, clippy::perf, clippy::style)]
 #![deny(missing_docs)]
 #![cfg_attr(docsrs, cfg(feature = "protos"))]

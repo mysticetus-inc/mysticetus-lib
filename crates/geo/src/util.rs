@@ -44,20 +44,15 @@ impl<'de> de::Visitor<'de> for IndexVisitor {
 
     impl_primitive_visitors! {
         visit_i8(i8),
-        visit_u8(u8),
         visit_i16(i16),
-        visit_u16(u16),
         visit_i32(i32),
-        visit_u32(u32),
         visit_i64(i64),
+        visit_i128(i128),
+        visit_u8(u8),
+        visit_u16(u16),
+        visit_u32(u32),
         visit_u64(u64),
-    }
-
-    serde::serde_if_integer128! {
-        impl_primitive_visitors! {
-            visit_i128(i128),
-            visit_u128(u128),
-        }
+        visit_u128(u128),
     }
 
     fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>

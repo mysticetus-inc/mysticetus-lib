@@ -83,7 +83,8 @@ macro_rules! impl_field_name_from_str {
     };
 }
 
-pub(crate) use {impl_field_name_from_str, impl_str_marker_type};
+pub(crate) use impl_field_name_from_str;
+pub(crate) use impl_str_marker_type;
 
 pub(crate) fn drain_map_access<'de, M>(mut map_access: M) -> Result<(), M::Error>
 where

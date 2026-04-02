@@ -1,4 +1,3 @@
-#![feature(layout_for_ptr, box_as_ptr)]
 mod http_request;
 mod json;
 mod middleware;
@@ -72,7 +71,6 @@ pub(crate) mod keys {
 
     pub const TRACE_KEY: &str = "logging.googleapis.com/trace";
     pub const TIMESTAMP_KEY: &str = "timestamp";
-    pub const SEVERITY_KEY: &str = "severity";
     pub const SPAN_ID_KEY: &str = "logging.googleapis.com/spanId";
     pub const HTTP_REQUEST_KEY: &str = "httpRequest";
     pub const LABELS_KEY: &str = "logging.googleapis.com/labels";

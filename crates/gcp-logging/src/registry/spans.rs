@@ -18,7 +18,7 @@ pub fn span_stack_len() -> usize {
     with_ref(|spans| spans.len()).unwrap_or(0)
 }
 
-pub trait SpanVisitor {
+pub(crate) trait SpanVisitor {
     type Output;
 
     fn visit_span(&mut self, span: &Id) -> std::ops::ControlFlow<Self::Output>;

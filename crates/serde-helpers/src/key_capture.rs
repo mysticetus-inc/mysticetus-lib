@@ -225,21 +225,16 @@ where
         serialize_i16(i16) -> Signed,
         serialize_i32(i32) -> Signed,
         serialize_i64(i64) -> Signed,
+        serialize_i128(i128) -> Signed,
         serialize_u8(u8) -> Unsigned,
         serialize_u16(u16) -> Unsigned,
         serialize_u32(u32) -> Unsigned,
         serialize_u64(u64) -> Unsigned,
+        serialize_u128(u128) -> Unsigned,
         serialize_bool(bool) -> Bool,
         serialize_char(char) -> Char,
         serialize_f64(f64) -> Float,
         serialize_f32(f32) -> Float,
-    }
-
-    serde::serde_if_integer128! {
-        impl_serialize_fns! {
-            serialize_i128(i128) -> Signed,
-            serialize_u128(u128) -> Unsigned,
-        }
     }
 
     fn serialize_str(mut self, v: &str) -> Result<Self::Ok, Self::Error> {

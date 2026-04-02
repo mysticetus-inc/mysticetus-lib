@@ -342,6 +342,7 @@ impl<'a> DataRef<'a> {
         None
     }
 
+    /*
     pub fn parents(self) -> Spans<'a> {
         Spans {
             records: self.records,
@@ -352,6 +353,7 @@ impl<'a> DataRef<'a> {
                 .and_then(|id| self.records.data.get(super::id_to_idx(id))),
         }
     }
+     */
 }
 
 impl std::ops::Deref for DataRef<'_> {
@@ -371,6 +373,7 @@ impl std::fmt::Debug for DataRef<'_> {
     }
 }
 
+/*
 pub(crate) struct Spans<'a> {
     records: &'a Records,
     current: Option<Ref<'a, Data>>,
@@ -393,7 +396,7 @@ impl<'a> Iterator for Spans<'a> {
         })
     }
 }
-
+ */
 #[derive(Clone)]
 struct RequestData {
     http: HttpRequest,

@@ -1,7 +1,6 @@
 #![feature(
     never_type,
     option_get_or_insert_default,
-    const_trait_impl,
     const_option,
     const_mut_refs,
     backtrace,

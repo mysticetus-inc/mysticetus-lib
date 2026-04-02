@@ -1,4 +1,3 @@
-#![feature(slice_ptr_get, iter_intersperse, fn_traits)]
 use std::borrow::Cow;
 use std::fmt;
 

@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 //! Wrapper around the gRPC Firestore API that emulates the Javascript Firestore API.
 //!
 //! ## Examples:

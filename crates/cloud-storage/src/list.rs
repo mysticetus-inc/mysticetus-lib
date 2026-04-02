@@ -12,7 +12,7 @@ use crate::util::OwnedOrMut;
 
 pub const MAX_PAGE_SIZE: u32 = 1000;
 
-pub struct ListBuilder<'a> {
+pub struct ListBuilder<'a, 'c> {
     client: OwnedOrMut<'a, BucketClient>,
     page_size: u32,
     prefix: Option<String>,
@@ -20,16 +20,36 @@ pub struct ListBuilder<'a> {
     include_trailing_delimiter: bool,
     prefetch_next_chunk: bool,
     glob: Option<String>,
+    context_filter: Option<ContextFilter<'c>>,
     lexicographic_start: Option<String>,
     lexicographic_end: Option<String>,
 }
 
-impl<'a> ListBuilder<'a> {
+struct ContextFilter<'a> {
+    include: bool,
+    key: &'a str,
+    value: Option<&'a str>,
+}
+
+impl ContextFilter<'_> {
+    fn to_filter(&self) -> String {
+        let key = self.key;
+        match (self.include, self.value) {
+            (true, None) => format!("contexts.\"{key}\":*"),
+            (false, None) => format!("NOT contexts.\"{key}\":*"),
+            (true, Some(value)) => format!("contexts.\"{key}\"=\"{value}\""),
+            (false, Some(value)) => format!("NOT contexts.\"{key}\"=\"{value}\""),
+        }
+    }
+}
+
+impl<'a, 'c> ListBuilder<'a, 'c> {
     pub(crate) fn new(client: impl Into<OwnedOrMut<'a, BucketClient>>) -> Self {
         Self {
             client: client.into(),
             page_size: MAX_PAGE_SIZE,
             delimiter: None,
+            context_filter: None,
             include_trailing_delimiter: false,
             glob: None,
             prefix: None,
@@ -43,6 +63,42 @@ impl<'a> ListBuilder<'a> {
     /// <https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-objects-and-prefixes-using-glob>
     pub fn glob(mut self, glob: impl Into<String>) -> Self {
         self.glob = Some(glob.into());
+        self
+    }
+
+    pub fn context_has(mut self, key: &'c str) -> Self {
+        self.context_filter = Some(ContextFilter {
+            include: true,
+            key,
+            value: None,
+        });
+        self
+    }
+
+    pub fn context_missing(mut self, key: &'c str) -> Self {
+        self.context_filter = Some(ContextFilter {
+            include: false,
+            key,
+            value: None,
+        });
+        self
+    }
+
+    pub fn context_eq(mut self, key: &'c str, value: &'c str) -> Self {
+        self.context_filter = Some(ContextFilter {
+            include: true,
+            key,
+            value: Some(value),
+        });
+        self
+    }
+
+    pub fn context_ne(mut self, key: &'c str, value: &'c str) -> Self {
+        self.context_filter = Some(ContextFilter {
+            include: false,
+            key,
+            value: Some(value),
+        });
         self
     }
 
@@ -110,7 +166,10 @@ impl<'a> ListBuilder<'a> {
             include_trailing_delimiter: self.include_trailing_delimiter,
             prefix: self.prefix.unwrap_or_default(),
             versions: false,
-            filter: String::new(),
+            filter: match self.context_filter {
+                Some(filter) => filter.to_filter(),
+                None => String::new(),
+            },
             read_mask: None,
             lexicographic_end: self.lexicographic_end.unwrap_or_default(),
             lexicographic_start: self.lexicographic_start.unwrap_or_default(),
@@ -148,7 +207,7 @@ impl<'a> ListBuilder<'a> {
         self.get().collect().await
     }
 }
-// make all requests via this function, that way the ResuableBoxFuture
+// make all requests via this function, that way the ReusableBoxFuture
 // should be able to be reused across every request (ideally)
 async fn make_request(
     mut client: OwnedOrMut<'_, BucketClient>,
@@ -223,7 +282,7 @@ impl ListStream<'_> {
         Ok(dst)
     }
 
-    /// Convinence method. (basically [`futures::StreamExt::next`] but without
+    /// Convenience method. (basically [`futures::StreamExt::next`] but without
     /// needing to import it, plus the fn name is a bit more clear)
     pub async fn next_page(&mut self) -> crate::Result<Option<ListObjects>> {
         let mut pinned = Pin::new(self);
@@ -265,7 +324,7 @@ impl<'a> Stream for ListStream<'a> {
         loop {
             match this.state {
                 FutureState::Done => match this.next_request_parts.take() {
-                    // if the future isnt pending and we have no next page token, we're done
+                    // if the future isn't pending and we have no next page token, we're done
                     None => break,
                     Some((client, page_token)) => this.start_next_request(client, page_token),
                 },

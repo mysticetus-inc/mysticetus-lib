@@ -1,5 +1,5 @@
 #![feature(proc_macro_diagnostic, proc_macro_tracked_env)]
-use proc_macro::{Diagnostic, Level, Literal, TokenStream, TokenTree, tracked_env};
+use proc_macro::{Diagnostic, Level, Literal, TokenStream, TokenTree};
 
 const DEFAULT_FALLBACK_VALUE: &str = "DEFAULT-FALLBACK-VALUE";
 
@@ -257,7 +257,7 @@ fn pull_ident(
 }
 
 fn get_env_var(key: &str, lit: &Literal) -> Result<Option<Literal>, Diagnostic> {
-    match tracked_env::var(key) {
+    match proc_macro::tracked::env_var(key) {
         Ok(value) => Ok(Some(Literal::string(value.as_str()))),
         Err(std::env::VarError::NotUnicode(_)) => Err(err_diag!(
             lit.span(),
