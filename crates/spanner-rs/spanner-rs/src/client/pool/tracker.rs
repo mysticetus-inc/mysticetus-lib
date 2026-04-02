@@ -101,7 +101,8 @@ impl SessionTracker {
                 ReturnSessionResult::Returned
             }
             super::session::SessionState::Deleted => {
-                _ = self.sessions.remove(session.key().index);
+                _ = self.sessions.try_remove(session.key().index);
+                // _ = self.sessions.remove(session.key().index);
                 ReturnSessionResult::Deleted
             }
             super::session::SessionState::PendingDeletion => {
