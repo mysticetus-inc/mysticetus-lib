@@ -902,6 +902,10 @@ pub mod field_options {
         /// not be able to override it.
         #[prost(enumeration = "super::Edition", optional, tag = "4")]
         pub edition_removed: ::core::option::Option<i32>,
+        /// The removal error text if this feature is used after the edition it was
+        /// removed in.
+        #[prost(string, optional, tag = "5")]
+        pub removal_error: ::core::option::Option<::prost::alloc::string::String>,
     }
     #[derive(serde::Deserialize, serde::Serialize)]
     #[serde(rename_all = "camelCase")]
@@ -1861,6 +1865,8 @@ pub enum Edition {
     /// comparison.
     Edition2023 = 1000,
     Edition2024 = 1001,
+    /// A placeholder edition for developing and testing unscheduled features.
+    Unstable = 9999,
     /// Placeholder editions for testing feature resolution.  These should not be
     /// used or relied on outside of tests.
     Edition1TestOnly = 1,
@@ -1886,6 +1892,7 @@ impl Edition {
             Self::Proto3 => "EDITION_PROTO3",
             Self::Edition2023 => "EDITION_2023",
             Self::Edition2024 => "EDITION_2024",
+            Self::Unstable => "EDITION_UNSTABLE",
             Self::Edition1TestOnly => "EDITION_1_TEST_ONLY",
             Self::Edition2TestOnly => "EDITION_2_TEST_ONLY",
             Self::Edition99997TestOnly => "EDITION_99997_TEST_ONLY",
@@ -1903,6 +1910,7 @@ impl Edition {
             "EDITION_PROTO3" => Some(Self::Proto3),
             "EDITION_2023" => Some(Self::Edition2023),
             "EDITION_2024" => Some(Self::Edition2024),
+            "EDITION_UNSTABLE" => Some(Self::Unstable),
             "EDITION_1_TEST_ONLY" => Some(Self::Edition1TestOnly),
             "EDITION_2_TEST_ONLY" => Some(Self::Edition2TestOnly),
             "EDITION_99997_TEST_ONLY" => Some(Self::Edition99997TestOnly),
@@ -2254,8 +2262,8 @@ pub struct Empty {}
 /// {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional
 /// seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),
 /// are optional. The "Z" suffix indicates the timezone ("UTC"); the timezone
-/// is required. A proto3 JSON serializer should always use UTC (as indicated by
-/// "Z") when printing the Timestamp type and a proto3 JSON parser should be
+/// is required. A ProtoJSON serializer should always use UTC (as indicated by
+/// "Z") when printing the Timestamp type and a ProtoJSON parser should be
 /// able to accept both UTC and other timezones (as indicated by an offset).
 ///
 /// For example, "2017-01-15T01:30:15.01Z" encodes 15.01 seconds past
@@ -2274,7 +2282,7 @@ pub struct Empty {}
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Timestamp {
     /// Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must
-    /// be between -315576000000 and 315576000000 inclusive (which corresponds to
+    /// be between -62135596800 and 253402300799 inclusive (which corresponds to
     /// 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).
     #[prost(int64, tag = "1")]
     pub seconds: i64,
@@ -2642,24 +2650,23 @@ impl NullValue {
 /// An implementation may provide options to override this default behavior for
 /// repeated and message fields.
 ///
-/// In order to reset a field's value to the default, the field must
-/// be in the mask and set to the default value in the provided resource.
-/// Hence, in order to reset all fields of a resource, provide a default
-/// instance of the resource and set all fields in the mask, or do
-/// not provide a mask as described below.
+/// Note that libraries which implement FieldMask resolution have various
+/// different behaviors in the face of empty masks or the special "\*" mask.
+/// When implementing a service you should confirm these cases have the
+/// appropriate behavior in the underlying FieldMask library that you desire,
+/// and you may need to special case those cases in your application code if
+/// the underlying field mask library behavior differs from your intended
+/// service semantics.
 ///
-/// If a field mask is not present on update, the operation applies to
-/// all fields (as if a field mask of all fields has been specified).
-/// Note that in the presence of schema evolution, this may mean that
-/// fields the client does not know and has therefore not filled into
-/// the request will be reset to their default. If this is unwanted
-/// behavior, a specific service may require a client to always specify
-/// a field mask, producing an error if not.
+/// Update methods implementing <https://google.aip.dev/134>
 ///
-/// As with get operations, the location of the resource which
-/// describes the updated values in the request message depends on the
-/// operation kind. In any case, the effect of the field mask is
-/// required to be honored by the API.
+/// * MUST support the special value * meaning "full replace"
+/// * MUST treat an omitted field mask as "replace fields which are present".
+///
+/// Other methods implementing <https://google.aip.dev/157>
+///
+/// * SHOULD support the special value "\*" to mean "get all".
+/// * MUST treat an omitted field mask to mean "get all", unless otherwise documented.
 ///
 /// ## Considerations for HTTP REST
 ///

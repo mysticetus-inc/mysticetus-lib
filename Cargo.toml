@@ -55,7 +55,7 @@ tonic-prost = "0.14"
 tonic-prost-build = "0.14"
 tower = "0.5"
 hashbrown = "0.16"
-reqwest = "0.12.14"
+reqwest = { version = "0.12.14", default-features = false }
 itoa = "1"
 hyper = "1.6"
 url = "2.5"
