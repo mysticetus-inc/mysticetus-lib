@@ -258,6 +258,30 @@ impl Step for Month {
             }
         }
     }
+
+    #[inline]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (new_start, mut overflowing) = (start as usize).overflowing_add(count);
+
+        if new_start > 12 {
+            overflowing = true;
+        }
+
+        let ret = Month::from_number((new_start % 12) as u8 + 1).expect("will be within range");
+        (ret, overflowing)
+    }
+
+    #[inline]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        let (new_start, mut overflowing) = (start as usize).overflowing_sub(count);
+
+        if new_start > 12 {
+            overflowing = true;
+        }
+
+        let ret = Month::from_number((new_start % 12) as u8 + 1).expect("will be within range");
+        (ret, overflowing)
+    }
 }
 
 impl From<Month> for time::Month {

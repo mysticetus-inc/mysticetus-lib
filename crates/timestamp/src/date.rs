@@ -793,6 +793,7 @@ impl Date {
 }
 
 impl Step for Date {
+    #[inline]
     fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
         let (start_year, start_ord) = start.to_ordinal();
         let (end_year, end_ord) = end.to_ordinal();
@@ -810,12 +811,24 @@ impl Step for Date {
         (abs_delta, Some(abs_delta))
     }
 
+    #[inline]
     fn forward_checked(start: Self, count: usize) -> Option<Self> {
         start.checked_add(count * crate::Duration::DAY)
     }
 
+    #[inline]
     fn backward_checked(start: Self, count: usize) -> Option<Self> {
         start.checked_sub(count * crate::Duration::DAY)
+    }
+
+    #[inline]
+    fn forward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        (Date::forward_checked(start, count).unwrap(), false)
+    }
+
+    #[inline]
+    fn backward_overflowing(start: Self, count: usize) -> (Self, bool) {
+        (Date::backward_checked(start, count).unwrap(), false)
     }
 }
 
