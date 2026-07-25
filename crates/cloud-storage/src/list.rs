@@ -190,6 +190,23 @@ impl<'a, 'c> ListBuilder<'a, 'c> {
         Ok(objects)
     }
 
+    /// Clones the underlying borrowed [`BucketClient`] so the resulting [`ListStream`]
+    /// will be <code>'static</code>.
+    pub fn into_static(self) -> ListBuilder<'static, 'c> {
+        ListBuilder {
+            client: self.client.into_static(),
+            page_size: self.page_size,
+            prefix: self.prefix,
+            delimiter: self.delimiter,
+            include_trailing_delimiter: self.include_trailing_delimiter,
+            prefetch_next_chunk: self.prefetch_next_chunk,
+            glob: self.glob,
+            context_filter: self.context_filter,
+            lexicographic_start: self.lexicographic_start,
+            lexicographic_end: self.lexicographic_end,
+        }
+    }
+
     #[must_use = "ListStream needs to be polled to start the initial request"]
     pub fn get(self) -> ListStream<'a> {
         let prefetch_next_chunk = self.prefetch_next_chunk;
