@@ -480,9 +480,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_service_account() -> Result<(), Error> {
-        let parts = ServiceAccount::try_load(&mut Default::default())
-            .unwrap()
-            .await?;
+        let parts = ServiceAccount::new_from_path(
+            "/home/mrudisel/src/firebasecmdcenter/certs/mysticetus-command-center-service-creds.\
+             json",
+        )
+        .await?;
 
         println!("{:?}", parts.project_id);
         println!("{:#?}", parts.provider);

@@ -270,6 +270,7 @@ impl BaseProjection<'_> {
                                         backoff = ?self.backoff,
                                         last_error = ?self.last_error,
                                         has_redirected = *self.has_redirected,
+                                        request = ?parts.request,
                                     );
                                     return Poll::Ready(Err(Error::io(
                                         std::io::ErrorKind::Other,
@@ -290,16 +291,13 @@ impl BaseProjection<'_> {
                         // and 3XX (redirects) are handled by the caller.
                         Ok(resp) if resp.status().is_server_error() => Ok(resp),
                         Ok(resp) => return Poll::Ready(Ok(resp)),
-                        Err(error) => Err(error.into()),
+                        Err(error) => {
+                            Err(Error::with_request_context(error, parts.request.clone()))
+                        }
                     });
 
                     let Some(backoff_sleep) = self.backoff() else {
-                        return Poll::Ready(
-                            self.last_error
-                                .take()
-                                .expect("we just set this")
-                                .map_err(Error::from),
-                        );
+                        return Poll::Ready(self.last_error.take().expect("we just set this"));
                     };
 
                     // do an initial poll with the sleep that gets returned,
@@ -345,7 +343,10 @@ impl PollRequest for Base {
         let mut this = self.project();
 
         loop {
-            let response = std::task::ready!(this.poll_response(cx, parts.reborrow()))?;
+            let response = match std::task::ready!(this.poll_response(cx, parts.reborrow())) {
+                Ok(response) => response,
+                Err(error) => return Poll::Ready(Err(error.add_request_context(parts.request))),
+            };
 
             // handle up to 1 redirect, if we hit one
             if response.status().is_redirection() && !*this.has_redirected {

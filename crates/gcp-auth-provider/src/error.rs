@@ -2,12 +2,16 @@ use aws_lc_rs::error::{KeyRejected, Unspecified};
 use bytes::Bytes;
 use http::{HeaderMap, StatusCode};
 
+use crate::client::BytesBody;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Hyper(#[from] HyperError),
+    #[error(transparent)]
+    Request(#[from] RequestError),
     #[error(transparent)]
     Json(#[from] path_aware_serde::Error<serde_json::Error>),
     #[error(transparent)]
@@ -18,11 +22,42 @@ pub enum Error {
     NoProviderFound,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("{}: {error}", .request.uri())]
+pub struct RequestError {
+    #[source]
+    pub(crate) error: HyperError,
+    pub(crate) request: http::Request<BytesBody>,
+}
+
 impl Error {
+    pub(crate) fn with_request_context(
+        hyper: impl Into<HyperError>,
+        request: http::Request<BytesBody>,
+    ) -> Self {
+        Self::Request(RequestError {
+            error: hyper.into(),
+            request,
+        })
+    }
+    pub(crate) fn add_request_context(self, request: &http::Request<BytesBody>) -> Self {
+        match self {
+            Self::Hyper(error) => Self::Request(RequestError {
+                error,
+                request: request.clone(),
+            }),
+            other => other,
+        }
+    }
+
     /// Returns 'true' if the inner error is a `hyper-util` connect error.
     pub fn is_connect_error(&self) -> bool {
         match self {
-            Error::Hyper(HyperError::HyperUtil(err)) => err.is_connect(),
+            Error::Request(RequestError {
+                error: HyperError::HyperUtil(err),
+                ..
+            })
+            | Error::Hyper(HyperError::HyperUtil(err)) => err.is_connect(),
             _ => false,
         }
     }
@@ -35,7 +70,11 @@ impl Error {
     pub fn is_fatal(&self) -> bool {
         match self {
             Self::Response(resp) => resp.status.is_client_error(),
-            Self::Hyper(HyperError::Hyper(hyp)) => hyp.is_user(),
+            Self::Hyper(HyperError::Hyper(hyp))
+            | Self::Request(RequestError {
+                error: HyperError::Hyper(hyp),
+                ..
+            }) => hyp.is_user(),
             _ => false,
         }
     }
