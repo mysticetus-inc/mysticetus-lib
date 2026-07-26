@@ -6,7 +6,7 @@ use std::task::{Context, Poll};
 use bytes::Bytes;
 use hyper::body::Incoming;
 use hyper_util::client::legacy::{Client as HyperClient, ResponseFuture as HyperResponseFuture};
-use net_utils::backoff::Backoff;
+use net_utils::backoff::{Backoff, BackoffOnce};
 
 use super::{BytesBody, Connector};
 use crate::Error;
@@ -217,12 +217,20 @@ pin_project_lite::pin_project! {
         Backoff,
         Requesting {
             #[pin]
-            req: HyperResponseFuture,
+            req: Option<HyperResponseFuture>,
         }
     }
 }
 
 impl BaseProjection<'_> {
+    fn backoff(&mut self) -> Option<Pin<&mut tokio::time::Sleep>> {
+        let backoff = self.backoff.get_or_insert_default();
+        let backoff_once = backoff.backoff_once()?;
+        let sleep = backoff_once.insert_or_reset(self.backoff_sleep);
+        self.state.set(RequestState::Backoff);
+        Some(sleep)
+    }
+
     /// internal poll method that handles making requests and retrying on server errors
     /// (up to 5 times). Does __NOT__ handle making a redirect, that's handled in the main
     /// [`Request<'_, Conn> as Future>::poll`] call.
@@ -242,11 +250,42 @@ impl BaseProjection<'_> {
                 }
                 PollReady => {
                     std::task::ready!(parts.poll_ready(cx))?;
-                    self.state
-                        .set(RequestState::Requesting { req: parts.call() });
+                    self.state.set(RequestState::Requesting {
+                        req: Some(parts.call()),
+                    });
                 }
-                Requesting { req } => {
-                    *self.last_error = Some(match std::task::ready!(req.poll(cx)) {
+                Requesting { mut req } => {
+                    let Some(req_fut) = req.as_mut().as_pin_mut() else {
+                        match self.backoff() {
+                            Some(backoff_sleep) => {
+                                std::task::ready!(backoff_sleep.poll(cx));
+                                self.state.set(RequestState::PollReady);
+                                continue;
+                            }
+                            None => match self.last_error.take() {
+                                Some(last_error) => return Poll::Ready(last_error),
+                                None => {
+                                    tracing::error!(
+                                        message = "invalid state in gcp_auth_provider::client::future::BaseProjection",
+                                        backoff = ?self.backoff,
+                                        last_error = ?self.last_error,
+                                        has_redirected = *self.has_redirected,
+                                    );
+                                    return Poll::Ready(Err(Error::io(
+                                        std::io::ErrorKind::Other,
+                                        "no error to return after a possible failure, and after \
+                                         backing off",
+                                    )));
+                                }
+                            },
+                        }
+                    };
+
+                    let result = std::task::ready!(req_fut.poll(cx));
+
+                    req.as_mut().set(None);
+
+                    *self.last_error = Some(match result {
                         // Only retry on 5XX errors, since 4XX (client errors) are our fault,
                         // and 3XX (redirects) are handled by the caller.
                         Ok(resp) if resp.status().is_server_error() => Ok(resp),
@@ -254,9 +293,7 @@ impl BaseProjection<'_> {
                         Err(error) => Err(error.into()),
                     });
 
-                    let backoff = self.backoff.get_or_insert_default();
-
-                    let Some(backoff_once) = backoff.backoff_once() else {
+                    let Some(backoff_sleep) = self.backoff() else {
                         return Poll::Ready(
                             self.last_error
                                 .take()
@@ -268,11 +305,10 @@ impl BaseProjection<'_> {
                     // do an initial poll with the sleep that gets returned,
                     // since it avoids one more loop (+ the associated state
                     // checking in 'get_backoff_sleep').
-                    let sleep = backoff_once.insert_or_reset(self.backoff_sleep);
                     // we expect that a brand new or reset sleep would return
                     // pending, but just in case it does complete right away,
                     // treat it like we would in the Backoff branch
-                    std::task::ready!(sleep.poll(cx));
+                    std::task::ready!(backoff_sleep.poll(cx));
                     self.state.set(RequestState::PollReady);
                 }
             }
