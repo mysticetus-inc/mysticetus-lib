@@ -6,7 +6,7 @@ use std::task::{Context, Poll};
 use bytes::Bytes;
 use hyper::body::Incoming;
 use hyper_util::client::legacy::{Client as HyperClient, ResponseFuture as HyperResponseFuture};
-use net_utils::backoff::{Backoff, BackoffOnce};
+use net_utils::backoff::Backoff;
 
 use super::{BytesBody, Connector};
 use crate::Error;
