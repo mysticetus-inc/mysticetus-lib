@@ -7,6 +7,7 @@ pub use bucket::BucketClient;
 pub mod error;
 pub use error::Error;
 
+pub mod delete;
 pub mod generation;
 pub mod get;
 pub mod list;

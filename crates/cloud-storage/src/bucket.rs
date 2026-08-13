@@ -7,6 +7,7 @@ use protos::storage::{Object, storage_client};
 use tonic::transport::Channel;
 
 use super::Error;
+use crate::delete::DeleteBuilder;
 use crate::get::GetBuilder;
 use crate::read::ReadBuilder;
 use crate::write::WriteBuilder;
@@ -67,6 +68,14 @@ impl BucketClient {
 
     pub(crate) fn client_mut(&mut self) -> storage_client::StorageClient<&mut ChannelWithHeaders> {
         storage_client::StorageClient::new(&mut self.channel)
+    }
+
+    #[inline]
+    pub fn delete<S>(&mut self, path: S) -> DeleteBuilder<'_>
+    where
+        S: Into<String>,
+    {
+        DeleteBuilder::new(self, path)
     }
 
     #[inline]
